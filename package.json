@@ -1,5 +1,5 @@
 {
-  "name": "react-native-hcaptcha",
+  "name": "@hcaptcha/react-native-hcaptcha",
   "version": "1.2.0",
   "description": "Implement hCaptcha in React Native (both Android and iOS)",
   "main": "index.js",
@@ -12,8 +12,7 @@
   },
   "keywords": [
     "react-native",
-    "google",
-    "recaptcha",
+    "hcaptcha",
     "captcha",
     "mobile",
     "ios",
