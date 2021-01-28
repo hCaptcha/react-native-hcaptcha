@@ -1,0 +1,41 @@
+{
+  "name": "react-native-hcaptcha",
+  "version": "1.2.0",
+  "description": "Implement hCaptcha in React Native (both Android and iOS)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hCaptcha/react-native-hcaptcha.git"
+  },
+  "keywords": [
+    "react-native",
+    "google",
+    "recaptcha",
+    "captcha",
+    "mobile",
+    "ios",
+    "android"
+  ],
+  "author": "hCaptcha Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/hCaptcha/react-native-hcaptcha/issues"
+  },
+  "homepage": "https://github.com/hCaptcha/react-native-hcaptcha#readme",
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*",
+    "react-native-modal": "^11.5.4",
+    "react-native-webview": "^9.0.1"
+  },
+  "contributors": [
+    {
+      "name": "hCaptcha Team",
+      "email": "support@hcaptcha.com",
+      "url": "https://github.com/hCaptcha/react-native-hcaptcha/"
+    }
+  ]
+}
