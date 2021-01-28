@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Text, View, StyleSheet, TouchableOpacity } from 'react-native';
 import Constants from 'expo-constants';
-import ConfirmHcaptcha from 'react-native-hcaptcha';
+import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 
 const siteKey = '00000000-0000-0000-0000-000000000000';
 const baseUrl = 'https://hcaptcha.com';
