@@ -29,7 +29,7 @@ const Hcaptcha = ({ onMessage, siteKey, style, url, languageCode, cancelButtonTe
 			<head> 
 				<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 				<meta http-equiv="X-UA-Compatible" content="ie=edge"> 
-				<script src="https://hcaptcha.com/1/api.js?render=explicit&hl=${languageCode || 'en'}&host={siteKey || 'missing-sitekey'}.react-native.hcaptcha.com"></script> 
+				<script src="https://hcaptcha.com/1/api.js?hl=${languageCode || 'en'}&host={siteKey || 'missing-sitekey'}.react-native.hcaptcha.com"></script> 
 				<script type="text/javascript"> 
 				var onloadCallback = function() { };  
 				var onDataCallback = function(response) { 

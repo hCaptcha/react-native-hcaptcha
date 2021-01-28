@@ -34,7 +34,7 @@ export default class App extends React.Component {
           ref={_ref => (this.captchaForm = _ref)}
           siteKey={siteKey}
           baseUrl={baseUrl}
-          languageCode="vi"
+          languageCode="en"
           onMessage={this.onMessage}
         />
         <TouchableOpacity
