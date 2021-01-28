@@ -1,6 +1,6 @@
 # react-native-hcaptcha
 
-## hCaptcha Wrapper in React Native (Android and iOS)
+hCaptcha wrapper for React Native (Android and iOS)
 
 
 ## Add it to your project
