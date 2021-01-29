@@ -3,6 +3,7 @@ import { Text, View, StyleSheet, TouchableOpacity } from 'react-native';
 import Constants from 'expo-constants';
 import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 
+// demo sitekey
 const siteKey = '00000000-0000-0000-0000-000000000000';
 const baseUrl = 'https://hcaptcha.com';
 
@@ -14,6 +15,7 @@ export default class App extends React.Component {
     if (event && event.nativeEvent.data) {
       if (['cancel', 'error', 'expired'].includes(event.nativeEvent.data)) {
         this.captchaForm.hide();
+        this.setState({ code: event.nativeEvent.data});
         return;
       } else {
         console.log('Verified code from hCaptcha', event.nativeEvent.data);
@@ -41,11 +43,11 @@ export default class App extends React.Component {
           onPress={() => {
             this.captchaForm.show();
           }}>
-          <Text style={styles.paragraph}>Click</Text>
+          <Text style={styles.paragraph}>Click to launch</Text>
         </TouchableOpacity>
         {code && (
           <Text style={{ alignSelf: 'center' }}>
-            {`Your verification code is `}
+            {`passcode or status: `}
             <Text style={{ color: 'darkviolet', fontWeight: 'bold', fontSize: 6 }}>
               {code}
             </Text>
