@@ -87,7 +87,7 @@ You can `import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha';` to cu
 
 ## Status
 
-This is a preview release. Remaining TODOs:
+This is a preview release. It is expected to be fully functional, but additional releases will be made in the near term. Remaining TODOs:
 
 - Replace `api.js` params with more flexible constructor.
 - Support `rqdata` and other hCaptcha Enterprise features.
