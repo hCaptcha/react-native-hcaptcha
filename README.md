@@ -39,7 +39,7 @@ You can `import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha';` to cu
 - **`siteKey`** _(String)_ - The hCaptcha sitekey
 - **`baseUrl`** _(String)_ The url domain defined on your hCaptcha. You generally will not need to change this.
 - **`onMessage`** _(Function)_ - The callback function that runs after receiving a response, error, or when user cancels.
-- **`languageCode`** _(String)_ - Default language for hCaptcha. Overrides browser defaults. A complete list of supported
+- **`languageCode`** _(String)_ - Default language for hCaptcha. Overrides phone defaults. A complete list of supported
 languages and their codes can be found at [this link](https://docs.hcaptcha.com/languages)
 
 
