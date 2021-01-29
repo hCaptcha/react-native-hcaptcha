@@ -23,7 +23,7 @@ hCaptcha wrapper for React Native (Android and iOS)
 
 ## Usage
 
-See demo in [Snack link](https://snack.expo.io/coming/soon) (coming soon)
+See demo in [Snack link](https://snack.expo.io/rTUn6wTjW)
 
 or Example.App.js example in repo.
 
@@ -76,20 +76,10 @@ class App extends React.Component  {
 You can `import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha';` to customize the UI yourself. 
 
 
-## DEMO
-
-### iOS
-![iOS](https://coming.soon) (gif coming soon)
-
-### Android
-![Android](https://coming.soon) (gif coming soon)
-
-
-
 ## Props
 
 - **`siteKey`** _(String)_ - The hCaptcha sitekey
-- **`baseUrl`** _(String)_ The url domain defined on your hCaptcha.
+- **`baseUrl`** _(String)_ The url domain defined on your hCaptcha. You generally will not need to change this.
 - **`onMessage`** _(Function)_ - The callback function that runs after receiving a response, error, or when user cancels.
 - **`languageCode`** _(String)_ - Default language for hCaptcha. Overrides browser defaults. Can be found at [this link](https://docs.hcaptcha.com/languages)
 - **`cancelButtonText`** _(String)_ - Title of cancel button.
