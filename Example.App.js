@@ -46,7 +46,7 @@ export default class App extends React.Component {
         {code && (
           <Text style={{ alignSelf: 'center' }}>
             {`Your verification code is `}
-            <Text style={{ color: 'darkviolet', fontWeight: 'bold' }}>
+            <Text style={{ color: 'darkviolet', fontWeight: 'bold', fontSize: 6 }}>
               {code}
             </Text>
           </Text>

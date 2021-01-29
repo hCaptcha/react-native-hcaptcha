@@ -29,53 +29,52 @@ const Hcaptcha = ({ onMessage, siteKey, style, url, languageCode, cancelButtonTe
 			<head> 
 				<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 				<meta http-equiv="X-UA-Compatible" content="ie=edge"> 
-				<script src="https://hcaptcha.com/1/api.js?hl=${languageCode || 'en'}&host={siteKey || 'missing-sitekey'}.react-native.hcaptcha.com"></script> 
+				<script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&hl=${languageCode || 'en'}&host=${siteKey || 'missing-sitekey'}.react-native.hcaptcha.com" async defer></script> 
 				<script type="text/javascript"> 
-				var onloadCallback = function() { };  
+				var onloadCallback = function() {
+
+			        try {
+			          console.log("challenge onload starting");
+			          hcaptcha.render("submit", {
+			            sitekey: "${siteKey || ''}",
+			            size: "invisible",
+			            "callback": onDataCallback,
+			            "close-callback": onCancel,
+			            "expired-callback": onDataExpiredCallback,
+			            "error-callback": onDataErrorCallback
+			          });
+			          // have loaded by this point; render is sync.
+			          console.log("challenge render complete");
+			        } catch (e) {
+			          console.log("challenge failed to render");
+					  window.ReactNativeWebView.postMessage("error");
+			        }
+
+			        try {
+			          console.log("showing challenge");
+			          hcaptcha.execute();
+			        } catch (e) {
+			          console.log("failed to show challenge");
+					  window.ReactNativeWebView.postMessage("error");
+			        }
+
+				};  
 				var onDataCallback = function(response) { 
 					window.ReactNativeWebView.postMessage(response);  
-					setTimeout(function () {
-						document.getElementById('captcha').style.display = 'none';
-					}, 1500);
+					// setTimeout(function () {
+					// 	document.getElementById('captcha').style.display = 'none';
+					// }, 1500);
 				};  
 				var onCancel = function() {  
 					window.ReactNativeWebView.postMessage("cancel"); 
-					document.getElementById('captcha').style.display = 'none';
+					// document.getElementById('captcha').style.display = 'none';
 				}
 				var onDataExpiredCallback = function(error) {  window.ReactNativeWebView.postMessage("expired"); };  
 				var onDataErrorCallback = function(error) {  window.ReactNativeWebView.postMessage("error"); } 
 				</script> 
-				<style>
-					.btn {
-						background-color: #c60710; 
-						color: #ffffff; padding: 8px 32px; margin-top: 8px; 
-						border: none; border-radius: 25px; font-weight: bold;
-					}
-					.btn:active {
-						outline: none;
-					}
-					.btn:focus {
-						outline: none;
-					}
-				</style>
 			</head>
 			<body> 
-				<div id="captcha">
-					<div style="text-align: center; padding-top: 100px;">
-					<div class="h-captcha" style="display: inline-block; height: auto;" 
-						data-sitekey="${siteKey}" data-callback="onDataCallback"  
-						data-expired-callback="onDataExpiredCallback"  
-						data-error-callback="onDataErrorCallback">
-					</div>
-					<div>
-						<button 
-							onclick="onCancel()"
-							class="btn" type="button">
-							${cancelButtonText}
-						</button> 
-					</div>
-					</div>
-				</div>
+			    <div id="submit"></div>
 			</body>
 			</html>`;
 		return originalForm;
