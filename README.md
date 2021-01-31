@@ -30,6 +30,13 @@ See [Example.App.js](./Example.App.js) example in repo for a fully worked exampl
 2. [react-native-webview](https://github.com/react-native-community/react-native-webview)
 
 
+## Localization
+
+Make sure the value you pass to `languageCode` is the one the user has set in your app if you allow them to override the system defaults.
+
+Otherwise, you should pass in the preferred device locale, e.g. fetched from `getLocales()` if using [react-native-localize](https://github.com/zoontek/react-native-localize).
+
+
 ### Note
 You can `import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha';` to customize the UI yourself. 
 
