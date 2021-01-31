@@ -1,5 +1,6 @@
 import React from 'react';
 import WebView from 'react-native-webview';
+import { Linking } from 'react-native';
 
 const patchPostMessageJsCode = `(${String(function () {
 	var originalPostMessage = window.ReactNativeWebView.postMessage;
@@ -82,6 +83,13 @@ const Hcaptcha = ({ onMessage, siteKey, style, url, languageCode, cancelButtonTe
 	return (
 		<WebView
 			originWhitelist={['*']}
+                        onShouldStartLoadWithRequest={event => {
+                             if (event.url.slice(0,24) === 'https://www.hcaptcha.com') {
+                                Linking.openURL(event.url)
+                                return false
+                             }
+                            return true
+                        }}
 			mixedContentMode={'always'}
 			onMessage={onMessage}
 			javaScriptEnabled
