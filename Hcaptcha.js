@@ -41,7 +41,9 @@ const Hcaptcha = ({ onMessage, siteKey, style, url, languageCode, cancelButtonTe
 			            size: "invisible",
 			            "callback": onDataCallback,
 			            "close-callback": onCancel,
+			            "open-callback": onOpen,
 			            "expired-callback": onDataExpiredCallback,
+			            "chalexpired-callback": onChalExpiredCallback,
 			            "error-callback": onDataErrorCallback
 			          });
 			          // have loaded by this point; render is sync.
@@ -60,19 +62,24 @@ const Hcaptcha = ({ onMessage, siteKey, style, url, languageCode, cancelButtonTe
 			        }
 
 				};  
-				var onDataCallback = function(response) { 
+				var onDataCallback = function(response) {
 					window.ReactNativeWebView.postMessage(response);  
-					// setTimeout(function () {
-					// 	document.getElementById('captcha').style.display = 'none';
-					// }, 1500);
 				};  
-				var onCancel = function() {  
+				var onCancel = function() {
 					window.ReactNativeWebView.postMessage("cancel"); 
-					// document.getElementById('captcha').style.display = 'none';
 				}
-				var onDataExpiredCallback = function(error) {  window.ReactNativeWebView.postMessage("expired"); };  
-				var onDataErrorCallback = function(error) {  window.ReactNativeWebView.postMessage("error"); } 
-				</script> 
+				var onOpen = function() {
+					// NOTE: disabled for simplicity.
+					// window.ReactNativeWebView.postMessage("open");
+					console.log("challenge opened");
+				}
+				var onDataExpiredCallback = function(error) {  window.ReactNativeWebView.postMessage("expired"); };
+				var onChalExpiredCallback = function(error) {  window.ReactNativeWebView.postMessage("cancel"); };
+				var onDataErrorCallback = function(error) {
+					console.log("challenge error callback fired");
+					window.ReactNativeWebView.postMessage("error");
+				}
+				</script>
 			</head>
 			<body> 
 			    <div id="submit"></div>

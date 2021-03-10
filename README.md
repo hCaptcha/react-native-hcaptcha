@@ -22,6 +22,17 @@ See live demo in [Snack](https://snack.expo.io/rTUn6wTjW).
 
 See [Example.App.js](./Example.App.js) example in repo for a fully worked example implementation.
 
+In particular, note the following special message strings that will be returned via onMessage:
+
+| name | purpose |
+| --- | --- |
+| expired | passcode response expired and the user must re-verify |
+| error | there was an error displaying the challenge |
+| cancel | the user closed the challenge, or did not answer before session expired |
+
+
+Any other string returned by onMessage will be a passcode.
+
 
 ## Dependencies
 
