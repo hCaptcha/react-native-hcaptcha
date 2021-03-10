@@ -22,7 +22,7 @@ See live demo in [Snack](https://snack.expo.io/rTUn6wTjW).
 
 See [Example.App.js](./Example.App.js) example in repo for a fully worked example implementation.
 
-In particular, note the following special message strings that will be returned via onMessage:
+In particular, note the following special message strings that can be returned via onMessage:
 
 | name | purpose |
 | --- | --- |
