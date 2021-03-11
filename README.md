@@ -22,7 +22,7 @@ See live demo in [Snack](https://snack.expo.io/rTUn6wTjW).
 
 See [Example.App.js](./Example.App.js) example in repo for a fully worked example implementation.
 
-In particular, note the following special message strings that can be returned via onMessage:
+In particular, note the following special message strings that can be returned via `onMessage`:
 
 | name | purpose |
 | --- | --- |
@@ -31,8 +31,21 @@ In particular, note the following special message strings that can be returned v
 | cancel | the user closed the challenge, or did not answer before session expired |
 
 
-Any other string returned by onMessage will be a passcode.
+Any other string returned by `onMessage` will be a passcode.
 
+### Handling the post-issuance expiration lifecycle
+
+This extension is a lightweight wrapper, and does not currently attempt to manage post-verification state in the same way as the web JS API, e.g. with an on-expire callback.
+
+In particular, if you do **not** plan to immediately consume the passcode returned by submitting it to your backend, you should start a timer to let your application state know that a new passcode is required when it expires.
+
+By default, this value is 120 seconds. Thus, you would want code similar to the following in your app when handling `onMessage` responses that return a passcode:
+
+```
+this.timeoutCheck = setTimeout(() => {
+   this.setPasscodeExpired();
+   }, 120000);
+```
 
 ## Dependencies
 
