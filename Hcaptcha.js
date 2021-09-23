@@ -1,6 +1,6 @@
-import React, { useMemo, useCallback } from "react";
-import WebView from "react-native-webview";
-import { Linking, StyleSheet, View, ActivityIndicator } from "react-native";
+import React, { useMemo, useCallback } from 'react';
+import WebView from 'react-native-webview';
+import { Linking, StyleSheet, View, ActivityIndicator } from 'react-native';
 
 const patchPostMessageJsCode = `(${String(function () {
   var originalPostMessage = window.ReactNativeWebView.postMessage;
@@ -9,8 +9,8 @@ const patchPostMessageJsCode = `(${String(function () {
   };
   patchedPostMessage.toString = function () {
     return String(Object.hasOwnProperty).replace(
-      "hasOwnProperty",
-      "postMessage"
+      'hasOwnProperty',
+      'postMessage'
     );
   };
   window.ReactNativeWebView.postMessage = patchedPostMessage;
@@ -34,7 +34,7 @@ const Hcaptcha = ({
   style,
   url,
   languageCode,
-  cancelButtonText = "Cancel",
+  cancelButtonText = 'Cancel',
   showLoading = false,
   loadingIndicatorColor = null,
   backgroundColor,
@@ -47,16 +47,16 @@ const Hcaptcha = ({
 				<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 				<meta http-equiv="X-UA-Compatible" content="ie=edge"> 
 				<script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&hl=${
-          languageCode || "en"
+          languageCode || 'en'
         }&host=${
-        siteKey || "missing-sitekey"
+        siteKey || 'missing-sitekey'
       }.react-native.hcaptcha.com" async defer></script> 
 				<script type="text/javascript"> 
 				var onloadCallback = function() {
 			        try {
 			          console.log("challenge onload starting");
 			          hcaptcha.render("submit", {
-			            sitekey: "${siteKey || ""}",
+			            sitekey: "${siteKey || ''}",
 			            size: "invisible",
 			            "callback": onDataCallback,
 			            "close-callback": onCancel,
@@ -110,7 +110,7 @@ const Hcaptcha = ({
   const renderLoading = useCallback(
     () => (
       <View style={[styles.loadingOverlay]}>
-        <ActivityIndicator size="large" color={loadingIndicatorColor} />
+        <ActivityIndicator size='large' color={loadingIndicatorColor} />
       </View>
     ),
     [loadingIndicatorColor]
@@ -118,20 +118,20 @@ const Hcaptcha = ({
 
   return (
     <WebView
-      originWhitelist={["*"]}
+      originWhitelist={['*']}
       onShouldStartLoadWithRequest={(event) => {
-        if (event.url.slice(0, 24) === "https://www.hcaptcha.com") {
+        if (event.url.slice(0, 24) === 'https://www.hcaptcha.com') {
           Linking.openURL(event.url);
           return false;
         }
         return true;
       }}
-      mixedContentMode={"always"}
+      mixedContentMode={'always'}
       onMessage={onMessage}
       javaScriptEnabled
       injectedJavaScript={patchPostMessageJsCode}
       automaticallyAdjustContentInsets
-      style={[{ backgroundColor: "transparent", width: "100%" }, style]}
+      style={[{ backgroundColor: 'transparent', width: '100%' }, style]}
       source={{
         html: generateTheWebViewContent,
         baseUrl: `${url}`,
@@ -145,9 +145,9 @@ const Hcaptcha = ({
 const styles = StyleSheet.create({
   loadingOverlay: {
     bottom: 0,
-    justifyContent: "center",
+    justifyContent: 'center',
     left: 0,
-    position: "absolute",
+    position: 'absolute',
     right: 0,
     top: 0,
   },

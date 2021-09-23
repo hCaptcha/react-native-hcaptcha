@@ -1,10 +1,10 @@
-import React, { PureComponent } from "react";
-import { SafeAreaView, StyleSheet, Dimensions } from "react-native";
-import Modal from "react-native-modal";
-import Hcaptcha from "./Hcaptcha";
-import PropTypes from "prop-types";
+import React, { PureComponent } from 'react';
+import { SafeAreaView, StyleSheet, Dimensions } from 'react-native';
+import Modal from 'react-native-modal';
+import Hcaptcha from './Hcaptcha';
+import PropTypes from 'prop-types';
 
-const { width, height } = Dimensions.get("window");
+const { width, height } = Dimensions.get('window');
 
 class ConfirmHcaptcha extends PureComponent {
   state = {
@@ -16,7 +16,7 @@ class ConfirmHcaptcha extends PureComponent {
   hide = () => {
     const { onMessage } = this.props;
     this.setState({ show: false });
-    onMessage({ nativeEvent: { data: "cancel" } });
+    onMessage({ nativeEvent: { data: 'cancel' } });
   };
   render() {
     let { show } = this.state;
@@ -37,8 +37,8 @@ class ConfirmHcaptcha extends PureComponent {
         deviceHeight={height}
         deviceWidth={width}
         style={styles.modal}
-        animationIn="fadeIn"
-        animationOut="fadeOut"
+        animationIn='fadeIn'
+        animationOut='fadeOut'
         onBackdropPress={this.hide}
         onBackButtonPress={this.hide}
         isVisible={show}
@@ -63,16 +63,16 @@ class ConfirmHcaptcha extends PureComponent {
 const styles = StyleSheet.create({
   text: {
     fontSize: 15,
-    fontWeight: "bold",
-    color: "#fff",
-    textAlign: "center",
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
     marginTop: 10,
   },
   modal: { margin: 0 },
   wrapper: {
     flex: 1,
-    justifyContent: "center",
-    overflow: "hidden",
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
 });
 
@@ -89,7 +89,7 @@ ConfirmHcaptcha.propTypes = {
 
 ConfirmHcaptcha.defaultProps = {
   showLoading: false,
-  backgroundColor: "rgba(0, 0, 0, 0.3)",
+  backgroundColor: 'rgba(0, 0, 0, 0.3)',
   loadingIndicatorColor: null,
 };
 
