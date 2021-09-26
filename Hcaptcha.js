@@ -107,10 +107,11 @@ const Hcaptcha = ({
     [siteKey, languageCode]
   );
 
+  // This shows ActivityIndicator till webview loads hCaptcha images
   const renderLoading = useCallback(
     () => (
       <View style={[styles.loadingOverlay]}>
-        <ActivityIndicator size='large' color={loadingIndicatorColor} />
+        <ActivityIndicator size="large" color={loadingIndicatorColor} />
       </View>
     ),
     [loadingIndicatorColor]
