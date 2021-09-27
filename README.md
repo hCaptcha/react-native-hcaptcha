@@ -72,9 +72,9 @@ You can `import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha';` to cu
 - **`onMessage`** _(Function)_ - The callback function that runs after receiving a response, error, or when user cancels.
 - **`languageCode`** _(String)_ - Default language for hCaptcha. Overrides phone defaults. A complete list of supported
 languages and their codes can be found at [this link](https://docs.hcaptcha.com/languages)
-- ** `showLoading`** _(Bool)_ - show loading indicator for webview till hCaptcha web content loads?
-- ** `loadingIndicatorColor`** _(String)_ - color for the ActivityIndicator
-- ** `backgroundColor`** _(String)_ - background color used in HTML
+- **`showLoading`** _(Bool)_ - show loading indicator for webview till hCaptcha web content loads?
+- **`loadingIndicatorColor`** _(String)_ - color for the ActivityIndicator
+- **`backgroundColor`** _(String)_ - background color used in HTML
 
 
 ## Status
