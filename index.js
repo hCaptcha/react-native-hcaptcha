@@ -1,5 +1,5 @@
 import React, { PureComponent } from 'react';
-import { SafeAreaView, StyleSheet, Dimensions } from 'react-native';
+import { SafeAreaView, StyleSheet, Dimensions, Platform } from 'react-native';
 import Modal from 'react-native-modal';
 import Hcaptcha from './Hcaptcha';
 import PropTypes from 'prop-types';
@@ -17,7 +17,9 @@ class ConfirmHcaptcha extends PureComponent {
     const { onMessage } = this.props;
     this.setState({ show: false });
     // In android on hardware back , emits 'cancel' which can be used to hide hCaptcha modal using ref
-    onMessage({ nativeEvent: { data: 'cancel' } });
+    if (Platform.OS === "android") {
+      onMessage({ nativeEvent: { data: 'cancel' } });
+    }
   };
   render() {
     let { show } = this.state;
