@@ -58,6 +58,35 @@ this.timeoutCheck = setTimeout(() => {
 2. [react-native-webview](https://github.com/react-native-community/react-native-webview)
 
 
+## Building on iOS
+
+### Required frameworks/libraries
+
+Your app must have the following frameworks/libraries linked:
+
+- libswiftWebKit.tbd
+- JavaScriptCore.framework
+
+### Flipper version
+
+You must have a recent version of flipper to build this app. If you have upgraded React Native recently, your Flipper version may be out of date. This will cause compilation errors.
+
+Your Podfile should be updated to something like:
+
+```
+  # Enables Flipper.
+  #
+  # Note that if you have use_frameworks! enabled, Flipper will not work and
+  # you should disable these next few lines.
+  use_flipper!({ 'Flipper-Folly' => '2.5.3', 'Flipper' => '0.87.0', 'Flipper-RSocket' => '1.3.1' })
+  post_install do |installer|
+    flipper_post_install(installer)
+  end
+```
+
+If you encounter build-time errors related to Flipper.
+
+
 ## Localization
 
 Make sure the value you pass to `languageCode` is the one the user has set in your app if you allow them to override the system defaults.
