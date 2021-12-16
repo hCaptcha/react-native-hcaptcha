@@ -22,7 +22,11 @@ See live demo in [Snack](https://snack.expo.io/rTUn6wTjW).
 
 See [Example.App.js](./Example.App.js) example in repo for a fully worked example implementation.
 
-In particular, note the following special message strings that can be returned via `onMessage`:
+For users familiar with the hCaptcha JS API, calling `show()` in this wrapper triggers an `hcaptcha.execute()` call.
+
+This means that if you are an Enterprise user with a 99.9% passive or purely passive sitekey configured, no additional work is required to get the expected behavior: either a visual challenge will be shown or a token will be returned immediately via `onMessage`, in accordance with your configuration.
+
+Also, please note the following special message strings that can be returned via `onMessage`:
 
 | name | purpose |
 | --- | --- |
