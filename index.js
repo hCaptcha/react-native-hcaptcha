@@ -25,6 +25,7 @@ class ConfirmHcaptcha extends PureComponent {
     let { show } = this.state;
     let {
       siteKey,
+      passiveSiteKey,
       baseUrl,
       languageCode,
       onMessage,
@@ -39,12 +40,13 @@ class ConfirmHcaptcha extends PureComponent {
         hideModalContentWhileAnimating
         deviceHeight={height}
         deviceWidth={width}
-        style={styles.modal}
+        style={[styles.modal, {display: passiveSiteKey ? 'none' : undefined}]}
         animationIn="fadeIn"
         animationOut="fadeOut"
         onBackdropPress={this.hide}
         onBackButtonPress={this.hide}
         isVisible={show}
+        hasBackdrop={!passiveSiteKey}
       >
         <SafeAreaView style={[styles.wrapper, { backgroundColor }]}>
           <Hcaptcha
@@ -71,7 +73,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
   },
-  modal: { margin: 0 },
+  modal: { margin: 0, display: 'none' },
   wrapper: {
     flex: 1,
     justifyContent: 'center',
@@ -81,6 +83,7 @@ const styles = StyleSheet.create({
 
 ConfirmHcaptcha.propTypes = {
   siteKey: PropTypes.string.isRequired,
+  passiveSiteKey: PropTypes.bool,
   baseUrl: PropTypes.string,
   onMessage: PropTypes.func,
   languageCode: PropTypes.string,
@@ -91,6 +94,7 @@ ConfirmHcaptcha.propTypes = {
 };
 
 ConfirmHcaptcha.defaultProps = {
+  passiveSiteKey: false,
   showLoading: false,
   backgroundColor: 'rgba(0, 0, 0, 0.3)',
   loadingIndicatorColor: null,
