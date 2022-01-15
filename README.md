@@ -13,6 +13,7 @@ hCaptcha wrapper for React Native (Android and iOS)
 2. Import package:
 `import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';`
 
+Full examples for expo and react-native, as well as debugging guides, are in [MAINTAINER.md](./MAINTAINER.md)
 
 ## Demo
 
