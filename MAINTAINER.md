@@ -47,7 +47,7 @@ https://github.com/facebook/react-native/issues/29977 for more details use `yarn
 
 Problem:
 
-`yarn` starts and never finisehd during last module install like this
+`yarn` starts but never finishes during last module install like this
 ```
 ...
 [2/4] 🚚  Fetching packages...
