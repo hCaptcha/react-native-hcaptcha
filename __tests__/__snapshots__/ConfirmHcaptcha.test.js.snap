@@ -6,14 +6,21 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
   animationOut="fadeOut"
   deviceHeight={1334}
   deviceWidth={750}
+  hasBackdrop={true}
   hideModalContentWhileAnimating={true}
   isVisible={false}
   onBackButtonPress={[Function]}
   onBackdropPress={[Function]}
   style={
-    Object {
-      "margin": 0,
-    }
+    Array [
+      Object {
+        "display": "none",
+        "margin": 0,
+      },
+      Object {
+        "display": undefined,
+      },
+    ]
   }
   useNativeDriver={true}
 >
