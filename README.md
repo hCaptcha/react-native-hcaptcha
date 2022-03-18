@@ -109,7 +109,7 @@ languages and their codes can be found at [this link](https://docs.hcaptcha.com/
 - **`showLoading`** _(Bool)_ - show loading indicator for webview till hCaptcha web content loads?
 - **`loadingIndicatorColor`** _(String)_ - color for the ActivityIndicator
 - **`backgroundColor`** _(String)_ - background color used in HTML
-- **`theme`** _(String|Object)_ - theme for hcaptcha can be 'light', 'dark', 'contrast' or custom theme object (see Enterprise docs)
+- **`theme`** _(String|Object)_ - `theme` parameter can be 'light', 'dark', 'contrast' or custom theme object (see Enterprise docs)
 
 ## Status
 

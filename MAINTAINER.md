@@ -120,4 +120,4 @@ ERROR    Invariant Violation: No callback found with cbID xxxxx and callID yyyyy
 
 Solution: delete `node_modules` in `react-native-hcaptcha`.
 
-Issue related to missmatch `react-native` versions in a test app and `react-native-hcaptcha`
+This issue is related to mismatched `react-native` versions in the test app vs. `react-native-hcaptcha`
