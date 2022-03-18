@@ -27,6 +27,7 @@ const patchPostMessageJsCode = `(${String(function () {
  * @param {*} showLoading: loading indicator for webview till hCaptcha web content loads
  * @param {*} loadingIndicatorColor: color for the ActivityIndicator
  * @param {*} backgroundColor: backgroundColor which can be injected into HTML to alter css backdrop colour
+ * @param {*} theme: can be 'light', 'dark', 'contrast' or custom theme object
  */
 const Hcaptcha = ({
   onMessage,
@@ -35,19 +36,25 @@ const Hcaptcha = ({
   url,
   languageCode,
   cancelButtonText = 'Cancel',
-  showLoading = false,
-  loadingIndicatorColor = null,
+  showLoading,
+  loadingIndicatorColor,
   backgroundColor,
+  theme,
 }) => {
+  const customTheme = typeof theme === 'object';
+  if (!customTheme) {
+    theme = `"${theme}"`;
+  }
+
   const generateTheWebViewContent = useMemo(
     () => 
      `<!DOCTYPE html>
       <html>
       <head>
-        <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&hl=${languageCode || 'en'}&host=${siteKey || 'missing-sitekey'}.react-native.hcaptcha.com" async defer>
-        </script>
+        <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&hl=${languageCode || 'en'}&host=${siteKey || 'missing-sitekey'}.react-native.hcaptcha.com&custom=${customTheme}" async defer></script>
         <script type="text/javascript">
           var onloadCallback = function() {
             try {
@@ -55,6 +62,7 @@ const Hcaptcha = ({
               hcaptcha.render("submit", {
                 sitekey: "${siteKey || ''}",
                 size: "invisible",
+                theme: ${theme},
                 callback: onDataCallback,
                 "close-callback": onCancel,
                 "open-callback": onOpen,
@@ -100,7 +108,7 @@ const Hcaptcha = ({
         <div id="submit"></div>
       </body>
       </html>`,
-    [siteKey, languageCode]
+    [siteKey, languageCode, theme]
   );
 
   // This shows ActivityIndicator till webview loads hCaptcha images
