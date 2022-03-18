@@ -42,7 +42,7 @@ const Hcaptcha = ({
   theme,
 }) => {
   const customTheme = typeof theme === 'object';
-  if (!customTheme) {
+  if (theme && !customTheme) {
     theme = `"${theme}"`;
   }
 
@@ -90,18 +90,18 @@ const Hcaptcha = ({
           };
           var onCancel = function() {
             window.ReactNativeWebView.postMessage("cancel");
-          }
+          };
           var onOpen = function() {
             // NOTE: disabled for simplicity.
             // window.ReactNativeWebView.postMessage("open");
             console.log("challenge opened");
-          }
+          };
           var onDataExpiredCallback = function(error) {  window.ReactNativeWebView.postMessage("expired"); };
           var onChalExpiredCallback = function(error) {  window.ReactNativeWebView.postMessage("cancel"); };
           var onDataErrorCallback = function(error) {
             console.log("challenge error callback fired");
             window.ReactNativeWebView.postMessage("error");
-          }
+          };
         </script>
       </head>
       <body style="background-color: ${backgroundColor};">
