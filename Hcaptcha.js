@@ -16,6 +16,18 @@ const patchPostMessageJsCode = `(${String(function () {
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })})();`;
 
+const buildHcaptchaApiUrl = (siteKey, languageCode, theme) => {
+  var url = 'https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback';
+  url += `&host=${siteKey || 'missing-sitekey'}.react-native.hcaptcha.com`;
+  if (languageCode) {
+    url += '&hl=' + languageCode;
+  }
+  if (typeof theme === 'object') {
+    url += '&custom=true';
+  }
+  return url;
+};
+
 /**
  *
  * @param {*} onMessage: callback after receiving response, error, or when user cancels
@@ -27,6 +39,8 @@ const patchPostMessageJsCode = `(${String(function () {
  * @param {*} showLoading: loading indicator for webview till hCaptcha web content loads
  * @param {*} loadingIndicatorColor: color for the ActivityIndicator
  * @param {*} backgroundColor: backgroundColor which can be injected into HTML to alter css backdrop colour
+ * @param {*} theme: can be 'light', 'dark', 'contrast' or custom theme object
+ * @param {*} rqdata: see Enterprise docs
  */
 const Hcaptcha = ({
   onMessage,
@@ -35,76 +49,98 @@ const Hcaptcha = ({
   url,
   languageCode,
   cancelButtonText = 'Cancel',
-  showLoading = false,
-  loadingIndicatorColor = null,
+  showLoading,
+  loadingIndicatorColor,
   backgroundColor,
+  theme,
+  rqdata,
 }) => {
+  const apiUrl = buildHcaptchaApiUrl(siteKey, languageCode, theme);
+
+  if (theme && typeof theme === 'string') {
+    theme = `"${theme}"`;
+  }
+
+  if (rqdata && typeof rqdata === 'string') {
+    rqdata = `"${rqdata}"`;
+  }
+
   const generateTheWebViewContent = useMemo(
-    () =>
-      `<!DOCTYPE html>
-			<html>
-			<head> 
-				<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-				<meta http-equiv="X-UA-Compatible" content="ie=edge"> 
-				<script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&hl=${
-          languageCode || 'en'
-        }&host=${
-        siteKey || 'missing-sitekey'
-      }.react-native.hcaptcha.com" async defer></script> 
-				<script type="text/javascript"> 
-				var onloadCallback = function() {
-			        try {
-			          console.log("challenge onload starting");
-			          hcaptcha.render("submit", {
-			            sitekey: "${siteKey || ''}",
-			            size: "invisible",
-			            "callback": onDataCallback,
-			            "close-callback": onCancel,
-			            "open-callback": onOpen,
-			            "expired-callback": onDataExpiredCallback,
-			            "chalexpired-callback": onChalExpiredCallback,
-			            "error-callback": onDataErrorCallback
-			          });
-			          // have loaded by this point; render is sync.
-			          console.log("challenge render complete");
-			        } catch (e) {
-			          console.log("challenge failed to render");
-					  window.ReactNativeWebView.postMessage("error");
-			        }
-
-			        try {
-			          console.log("showing challenge");
-			          hcaptcha.execute();
-			        } catch (e) {
-			          console.log("failed to show challenge");
-					  window.ReactNativeWebView.postMessage("error");
-			        }
-
-				};  
-				var onDataCallback = function(response) {
-					window.ReactNativeWebView.postMessage(response);  
-				};  
-				var onCancel = function() {
-					window.ReactNativeWebView.postMessage("cancel"); 
-				}
-				var onOpen = function() {
-					// NOTE: disabled for simplicity.
-					// window.ReactNativeWebView.postMessage("open");
-					console.log("challenge opened");
-				}
-				var onDataExpiredCallback = function(error) {  window.ReactNativeWebView.postMessage("expired"); };
-				var onChalExpiredCallback = function(error) {  window.ReactNativeWebView.postMessage("cancel"); };
-				var onDataErrorCallback = function(error) {
-					console.log("challenge error callback fired");
-					window.ReactNativeWebView.postMessage("error");
-				}
-				</script>
-			</head>
-			<body style="background-color: ${backgroundColor};"> 
-			    <div id="submit"></div>
-			</body>
-	    </html>`,
-    [siteKey, languageCode]
+    () => 
+     `<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <script src="${apiUrl}" async defer></script>
+        <script type="text/javascript">
+          var onloadCallback = function() {
+            try {
+              console.log("challenge onload starting");
+              hcaptcha.render("submit", getRenderConfig("${siteKey || ''}", ${theme}));
+              // have loaded by this point; render is sync.
+              console.log("challenge render complete");
+            } catch (e) {
+              console.log("challenge failed to render");
+              window.ReactNativeWebView.postMessage("error");
+            }
+            try {
+              console.log("showing challenge");
+              hcaptcha.execute(getExecuteOpts());
+            } catch (e) {
+              console.log("failed to show challenge");
+              window.ReactNativeWebView.postMessage("error");
+            }
+          };
+          var onDataCallback = function(response) {
+            window.ReactNativeWebView.postMessage(response);
+          };
+          var onCancel = function() {
+            window.ReactNativeWebView.postMessage("cancel");
+          };
+          var onOpen = function() {
+            // NOTE: disabled for simplicity.
+            // window.ReactNativeWebView.postMessage("open");
+            console.log("challenge opened");
+          };
+          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("cancel"); };
+          var onDataErrorCallback = function(error) {
+            console.log("challenge error callback fired");
+            window.ReactNativeWebView.postMessage("error");
+          };
+          const getRenderConfig = function(siteKey, theme) {
+            var config = {
+              sitekey: siteKey,
+              size: "invisible",
+              callback: onDataCallback,
+              "close-callback": onCancel,
+              "open-callback": onOpen,
+              "expired-callback": onDataExpiredCallback,
+              "chalexpired-callback": onChalExpiredCallback,
+              "error-callback": onDataErrorCallback
+            };
+            if (theme) {
+              config.theme = theme;
+            }
+            return config;
+          };
+          const getExecuteOpts = function() {
+            var opts;
+            const rqdata = ${rqdata};
+            if (rqdata) {
+              opts = {"rqdata": rqdata};
+            }
+            return opts;
+          };
+        </script>
+      </head>
+      <body style="background-color: ${backgroundColor};">
+        <div id="submit"></div>
+      </body>
+      </html>`,
+    [siteKey, backgroundColor, theme]
   );
 
   // This shows ActivityIndicator till webview loads hCaptcha images
