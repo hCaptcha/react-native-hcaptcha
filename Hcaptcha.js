@@ -16,6 +16,18 @@ const patchPostMessageJsCode = `(${String(function () {
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })})();`;
 
+const buildHcaptchaApiUrl = (siteKey, languageCode, theme) => {
+  var url = 'https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback';
+  url += `&host=${siteKey || 'missing-sitekey'}.react-native.hcaptcha.com`;
+  if (languageCode) {
+    url += '&hl=' + languageCode;
+  }
+  if (typeof theme === 'object') {
+    url += '&custom=true';
+  }
+  return url;
+};
+
 /**
  *
  * @param {*} onMessage: callback after receiving response, error, or when user cancels
@@ -41,8 +53,9 @@ const Hcaptcha = ({
   backgroundColor,
   theme,
 }) => {
-  const customTheme = typeof theme === 'object';
-  if (theme && !customTheme) {
+  const apiUrl = buildHcaptchaApiUrl(siteKey, languageCode, theme);
+
+  if (theme && typeof theme === 'string') {
     theme = `"${theme}"`;
   }
 
@@ -54,29 +67,18 @@ const Hcaptcha = ({
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&hl=${languageCode || 'en'}&host=${siteKey || 'missing-sitekey'}.react-native.hcaptcha.com&custom=${customTheme}" async defer></script>
+        <script src="${apiUrl}" async defer></script>
         <script type="text/javascript">
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptcha.render("submit", {
-                sitekey: "${siteKey || ''}",
-                size: "invisible",
-                theme: ${theme},
-                callback: onDataCallback,
-                "close-callback": onCancel,
-                "open-callback": onOpen,
-                "expired-callback": onDataExpiredCallback,
-                "chalexpired-callback": onChalExpiredCallback,
-                "error-callback": onDataErrorCallback
-              });
+              hcaptcha.render("submit", getRenderConfig("${siteKey || ''}", ${theme}));
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
               console.log("challenge failed to render");
               window.ReactNativeWebView.postMessage("error");
             }
-
             try {
               console.log("showing challenge");
               hcaptcha.execute();
@@ -96,11 +98,27 @@ const Hcaptcha = ({
             // window.ReactNativeWebView.postMessage("open");
             console.log("challenge opened");
           };
-          var onDataExpiredCallback = function(error) {  window.ReactNativeWebView.postMessage("expired"); };
-          var onChalExpiredCallback = function(error) {  window.ReactNativeWebView.postMessage("cancel"); };
+          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("cancel"); };
           var onDataErrorCallback = function(error) {
             console.log("challenge error callback fired");
             window.ReactNativeWebView.postMessage("error");
+          };
+          var getRenderConfig = function(siteKey, theme) {
+            var config = {
+              sitekey: siteKey,
+              size: "invisible",
+              callback: onDataCallback,
+              "close-callback": onCancel,
+              "open-callback": onOpen,
+              "expired-callback": onDataExpiredCallback,
+              "chalexpired-callback": onChalExpiredCallback,
+              "error-callback": onDataErrorCallback
+            };
+            if (theme) {
+              config.theme = theme;
+            }
+            return config;
           };
         </script>
       </head>
@@ -108,7 +126,7 @@ const Hcaptcha = ({
         <div id="submit"></div>
       </body>
       </html>`,
-    [siteKey, languageCode, theme]
+    [siteKey, backgroundColor, theme]
   );
 
   // This shows ActivityIndicator till webview loads hCaptcha images
