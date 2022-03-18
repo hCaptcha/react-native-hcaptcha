@@ -40,7 +40,7 @@ const buildHcaptchaApiUrl = (siteKey, languageCode, theme) => {
  * @param {*} loadingIndicatorColor: color for the ActivityIndicator
  * @param {*} backgroundColor: backgroundColor which can be injected into HTML to alter css backdrop colour
  * @param {*} theme: can be 'light', 'dark', 'contrast' or custom theme object
- * @param {*} rqdata: custom supplied challenge data
+ * @param {*} rqdata: see Enterprise docs
  */
 const Hcaptcha = ({
   onMessage,
