@@ -114,14 +114,9 @@ languages and their codes can be found at [this link](https://docs.hcaptcha.com/
 
 ## Status
 
-Fully functional, but additional releases will be made in the near term. 
+Fully functional, but additional releases will be made in the near term.
+
 Changes within the same major release are expected to be additive, i.e. non-breaking.
-
-TODOs:
-
-- Replace `api.js` params with more flexible constructor.
-- Support `rqdata` and other hCaptcha Enterprise features.
-
 
 ## License
 
