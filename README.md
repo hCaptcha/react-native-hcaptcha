@@ -1,3 +1,7 @@
+
+[![npm](https://img.shields.io/npm/v/@hcaptcha/react-native-hcaptcha)](https://www.npmjs.com/package/@hcaptcha/react-native-hcaptcha)
+[![ci](https://github.com/hCaptcha/react-native-hcaptcha/actions/workflows/tests.yaml/badge.svg)](https://github.com/hCaptcha/react-native-hcaptcha/actions/workflows/tests.yaml)
+
 # react-native-hcaptcha
 
 hCaptcha wrapper for React Native (Android and iOS)
