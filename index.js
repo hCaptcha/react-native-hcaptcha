@@ -34,6 +34,7 @@ class ConfirmHcaptcha extends PureComponent {
       backgroundColor,
       loadingIndicatorColor,
       theme,
+      rqdata,
     } = this.props;
     return (
       <Modal
@@ -60,6 +61,7 @@ class ConfirmHcaptcha extends PureComponent {
             loadingIndicatorColor={loadingIndicatorColor}
             backgroundColor={backgroundColor}
             theme={theme}
+            rqdata={rqdata}
           />
         </SafeAreaView>
       </Modal>
@@ -93,6 +95,8 @@ ConfirmHcaptcha.propTypes = {
   backgroundColor: PropTypes.string,
   showLoading: PropTypes.bool,
   loadingIndicatorColor: PropTypes.string,
+  theme: PropTypes.string,
+  rqdata: PropTypes.string,
 };
 
 ConfirmHcaptcha.defaultProps = {
@@ -101,6 +105,7 @@ ConfirmHcaptcha.defaultProps = {
   backgroundColor: 'rgba(0, 0, 0, 0.3)',
   loadingIndicatorColor: null,
   theme: 'light',
+  rqdata: null,
 };
 
 export default ConfirmHcaptcha;

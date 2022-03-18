@@ -40,6 +40,7 @@ const buildHcaptchaApiUrl = (siteKey, languageCode, theme) => {
  * @param {*} loadingIndicatorColor: color for the ActivityIndicator
  * @param {*} backgroundColor: backgroundColor which can be injected into HTML to alter css backdrop colour
  * @param {*} theme: can be 'light', 'dark', 'contrast' or custom theme object
+ * @param {*} rqdata: custom supplied challenge data
  */
 const Hcaptcha = ({
   onMessage,
@@ -52,11 +53,16 @@ const Hcaptcha = ({
   loadingIndicatorColor,
   backgroundColor,
   theme,
+  rqdata,
 }) => {
   const apiUrl = buildHcaptchaApiUrl(siteKey, languageCode, theme);
 
   if (theme && typeof theme === 'string') {
     theme = `"${theme}"`;
+  }
+
+  if (rqdata && typeof rqdata === 'string') {
+    rqdata = `"${rqdata}"`;
   }
 
   const generateTheWebViewContent = useMemo(
@@ -81,7 +87,7 @@ const Hcaptcha = ({
             }
             try {
               console.log("showing challenge");
-              hcaptcha.execute();
+              hcaptcha.execute(getExecuteOpts());
             } catch (e) {
               console.log("failed to show challenge");
               window.ReactNativeWebView.postMessage("error");
@@ -104,7 +110,7 @@ const Hcaptcha = ({
             console.log("challenge error callback fired");
             window.ReactNativeWebView.postMessage("error");
           };
-          var getRenderConfig = function(siteKey, theme) {
+          const getRenderConfig = function(siteKey, theme) {
             var config = {
               sitekey: siteKey,
               size: "invisible",
@@ -119,6 +125,14 @@ const Hcaptcha = ({
               config.theme = theme;
             }
             return config;
+          };
+          const getExecuteOpts = function() {
+            var opts;
+            const rqdata = ${rqdata};
+            if (rqdata) {
+              opts = {"rqdata": rqdata};
+            }
+            return opts;
           };
         </script>
       </head>

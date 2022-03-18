@@ -48,7 +48,7 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with minimum props 1`] = `
             }
             try {
               console.log(\\"showing challenge\\");
-              hcaptcha.execute();
+              hcaptcha.execute(getExecuteOpts());
             } catch (e) {
               console.log(\\"failed to show challenge\\");
               window.ReactNativeWebView.postMessage(\\"error\\");
@@ -71,7 +71,7 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with minimum props 1`] = `
             console.log(\\"challenge error callback fired\\");
             window.ReactNativeWebView.postMessage(\\"error\\");
           };
-          var getRenderConfig = function(siteKey, theme) {
+          const getRenderConfig = function(siteKey, theme) {
             var config = {
               sitekey: siteKey,
               size: \\"invisible\\",
@@ -86,6 +86,14 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with minimum props 1`] = `
               config.theme = theme;
             }
             return config;
+          };
+          const getExecuteOpts = function() {
+            var opts;
+            const rqdata = undefined;
+            if (rqdata) {
+              opts = {\\"rqdata\\": rqdata};
+            }
+            return opts;
           };
         </script>
       </head>
