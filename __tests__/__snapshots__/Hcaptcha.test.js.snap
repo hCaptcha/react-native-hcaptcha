@@ -90,7 +90,6 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with minimum props 1`] = `
       </html>",
     }
   }
-  startInLoadingState={false}
   style={
     Array [
       Object {
