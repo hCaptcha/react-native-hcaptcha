@@ -1,6 +1,10 @@
 import React, { useMemo, useCallback } from 'react';
 import WebView from 'react-native-webview';
 import { Linking, StyleSheet, View, ActivityIndicator } from 'react-native';
+import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
+
+import md5 from './md5';
+import hcaptchaPackage from './package.json';
 
 const patchPostMessageJsCode = `(${String(function () {
   var originalPostMessage = window.ReactNativeWebView.postMessage;
@@ -65,6 +69,23 @@ const Hcaptcha = ({
     rqdata = `"${rqdata}"`;
   }
 
+  const debugInfo = useMemo(
+    () => {
+      var result = [];
+      try {
+        const {major, minor, patch} = ReactNativeVersion.version;
+        result.push(`rnver_${major}_${minor}_${patch}`);
+        result.push('sdk_' + hcaptchaPackage.version.replaceAll('.', '_'));
+        result.push('dep_' + md5(Object.keys(global).join('')));
+      } catch (e) {
+        console.log(e);
+      } finally {
+        return result;
+      }
+    },
+    []
+  );
+
   const generateTheWebViewContent = useMemo(
     () => 
      `<!DOCTYPE html>
@@ -73,6 +94,9 @@ const Hcaptcha = ({
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <script type="text/javascript">
+          ${JSON.stringify(debugInfo)}.forEach(function (value, i) { window[value] = true; });
+        </script>
         <script src="${apiUrl}" async defer></script>
         <script type="text/javascript">
           var onloadCallback = function() {
@@ -140,7 +164,7 @@ const Hcaptcha = ({
         <div id="submit"></div>
       </body>
       </html>`,
-    [siteKey, backgroundColor, theme]
+    [siteKey, backgroundColor, theme, debugInfo]
   );
 
   // This shows ActivityIndicator till webview loads hCaptcha images

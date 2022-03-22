@@ -72,6 +72,9 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
         <meta charset=\\"UTF-8\\">
         <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\">
         <meta http-equiv=\\"X-UA-Compatible\\" content=\\"ie=edge\\">
+        <script type=\\"text/javascript\\">
+          [\\"test_key\\"].forEach(function (value, i) { window[value] = true; });
+        </script>
         <script src=\\"https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en\\" async defer></script>
         <script type=\\"text/javascript\\">
           var onloadCallback = function() {
