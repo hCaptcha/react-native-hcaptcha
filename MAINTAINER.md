@@ -30,7 +30,7 @@ For iOS instead the last step do:
 
 Problem:
 ```
-Error: Unable to resolve module @hcaptcha/react-native-hcaptcha from /Users/camobap/Developers/Projects/hcaptcha/rnexample3/App.js: @hcaptcha/react-native-hcaptcha could not be found within the project or in these directories:
+Error: Unable to resolve module @hcaptcha/react-native-hcaptcha from App.js: @hcaptcha/react-native-hcaptcha could not be found within the project or in these directories:
   node_modules
 ```
 

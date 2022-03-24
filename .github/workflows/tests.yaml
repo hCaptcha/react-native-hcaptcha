@@ -1,11 +1,60 @@
 name: CI
-on: push
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  TEST_APP_DEPS: react-native-modal react-native-webview expo-constants@^10.0.1 @unimodules/core @unimodules/react-native-adapter react-native-unimodules
+  RN_BUNDLE_ARGS: --entry-file index.js --platform android --dev false --bundle-output android/main.jsbundle --assets-dest android
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Install modules
-      run: yarn
-    - name: Run tests
-      run: yarn test
+    - uses: actions/checkout@v3
+    - run: yarn
+    - run: yarn test
+  test-yarn:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        path: react-native-hcaptcha
+    - run: npx react-native init rnexample
+    - name: Run yarn add ...
+      working-directory: rnexample
+      run: |
+        yarn add file:../react-native-hcaptcha
+        yarn add ${{ env.TEST_APP_DEPS }}
+        cp ../react-native-hcaptcha/Example.App.js App.js
+        cp ../react-native-hcaptcha/Example.jest.config.js jest.config.js
+    - run: yarn react-native bundle ${{ env.RN_BUNDLE_ARGS }}
+      working-directory: rnexample
+    - run: cat package.json
+      working-directory: rnexample
+    - run: yarn test
+      working-directory: rnexample
+  test-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - run: npx react-native init rnexample
+    - uses: actions/checkout@v3
+      with:
+        path: rnexample/react-native-hcaptcha
+    - name: Run npm install ...
+      working-directory: rnexample
+      run: |
+        npm i --save file:./react-native-hcaptcha
+        npm i --save ${{ env.TEST_APP_DEPS }}
+        cp ./react-native-hcaptcha/Example.App.js App.js
+        cp ./react-native-hcaptcha/Example.jest.config.js jest.config.js
+    - run: npx react-native bundle ${{ env.RN_BUNDLE_ARGS }}
+      working-directory: rnexample
+    - run: cat package.json
+      working-directory: rnexample
+    - run: npm run test --testPathPattern __tests__/App.test.js
+      working-directory: rnexample
