@@ -1,4 +1,5 @@
 // Source: https://raw.githubusercontent.com/jbt/tiny-hashes/master/md5/md5.js
+// (MIT License)
 var k = [], i = 0;
 
 for (; i < 64;) {
