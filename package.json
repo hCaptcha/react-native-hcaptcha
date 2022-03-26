@@ -8,7 +8,10 @@
   },
   "jest": {
     "preset": "react-native",
-    "verbose": true
+    "verbose": true,
+    "setupFiles": [
+      "<rootDir>/__mocks__/global.js"
+    ]
   },
   "repository": {
     "type": "git",
@@ -31,8 +34,8 @@
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-    "react-native-modal": "^11.5.4",
-    "react-native-webview": "^9.0.1"
+    "react-native-modal": ">=11.5.4",
+    "react-native-webview": ">=9.0.1"
   },
   "contributors": [
     {
@@ -42,11 +45,11 @@
     }
   ],
   "devDependencies": {
+    "jest": "^27.2.2",
     "react": "*",
     "react-native": "*",
-    "react-native-modal": "^11.5.4",
-    "react-native-webview": "^9.0.1",
-    "jest": "^27.2.2",
+    "react-native-modal": "*",
+    "react-native-webview": "*",
     "react-test-renderer": "^17.0.2"
   },
   "dependencies": {

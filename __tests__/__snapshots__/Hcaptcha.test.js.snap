@@ -34,6 +34,9 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with minimum props 1`] = `
         <meta charset=\\"UTF-8\\">
         <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\">
         <meta http-equiv=\\"X-UA-Compatible\\" content=\\"ie=edge\\">
+        <script type=\\"text/javascript\\">
+          [\\"test_key\\"].forEach(function (value, i) { window[value] = true; });
+        </script>
         <script src=\\"https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=missing-sitekey.react-native.hcaptcha.com\\" async defer></script>
         <script type=\\"text/javascript\\">
           var onloadCallback = function() {

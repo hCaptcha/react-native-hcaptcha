@@ -2,9 +2,6 @@ import React from 'react';
 import renderer from 'react-test-renderer';
 import ConfirmHcaptcha from '../index';
 
-jest.mock('react-native-modal', () => 'Modal');
-jest.mock('react-native-webview', () => 'WebView');
-
 describe('ConfirmHcaptcha snapshot tests', () => {
   it('renders ConfirmHcaptcha with minimum props', () => {
     const component = renderer.create(
