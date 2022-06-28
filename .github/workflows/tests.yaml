@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  TEST_APP_DEPS: react-native-modal react-native-webview expo-constants@^10.0.1 @unimodules/core @unimodules/react-native-adapter react-native-unimodules
+  TEST_APP_DEPS: react-native-modal react-native-webview
   TEST_APP_DEV_DEPS: typescript @babel/preset-env
   RN_BUNDLE_ARGS: --entry-file index.js --platform android --dev false --bundle-output android/main.jsbundle --assets-dest android
 
