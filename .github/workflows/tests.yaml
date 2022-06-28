@@ -6,8 +6,8 @@ on:
   workflow_dispatch:
 
 env:
-  TEST_APP_DEPS: react-native-modal react-native-webview expo-constants@^10.0.1 @unimodules/core @unimodules/react-native-adapter react-native-unimodules
-  TEST_APP_DEV_DEPS: typescript @babel/preset-env
+  TEST_APP_DEPS: react-native-modal react-native-webview
+  TEST_APP_DEV_DEPS: typescript @babel/preset-env react-shallow-renderer
   RN_BUNDLE_ARGS: --entry-file index.js --platform android --dev false --bundle-output android/main.jsbundle --assets-dest android
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
       working-directory: rnexample
     - run: yarn test
       working-directory: rnexample
-    - run: npx --yes check-peer-dependencies --yarn
+    - run: npx --yes check-peer-dependencies --yarn --runOnlyOnRootDependencies
       working-directory: rnexample
   test-npm:
     needs: build
@@ -63,5 +63,5 @@ jobs:
       working-directory: rnexample
     - run: npm run test --testPathPattern __tests__/App.test.js
       working-directory: rnexample
-    - run: npx --yes check-peer-dependencies --npm
+    - run: npx --yes check-peer-dependencies --npm --runOnlyOnRootDependencies
       working-directory: rnexample

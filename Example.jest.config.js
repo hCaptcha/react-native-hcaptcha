@@ -8,8 +8,6 @@ module.exports = {
       + "|react-native-modal"
       + "|react-native-webview"
       + "|react-native-animatable"
-      + "|expo-constants"
-      + "|@unimodules"
     + ")/)",
   ],
 }
