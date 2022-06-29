@@ -84,7 +84,7 @@ jobs:
   create-an-issue:
     runs-on: ubuntu-latest
     needs: [test-npm, test-yarn]
-    if: always() && (needs.test-npm.result == 'failure' || needs.test-yarn.result == 'failure')
+    if: always() && github.event == 'schedule' && (needs.test-npm.result == 'failure' || needs.test-yarn.result == 'failure')
     steps:
     - uses: actions/checkout@v3
     - run: |
