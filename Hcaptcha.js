@@ -75,8 +75,8 @@ const Hcaptcha = ({
       try {
         const {major, minor, patch} = ReactNativeVersion.version;
         result.push(`rnver_${major}_${minor}_${patch}`);
-        result.push('sdk_' + hcaptchaPackage.version.replaceAll('.', '_'));
         result.push('dep_' + md5(Object.keys(global).join('')));
+        result.push('sdk_' + hcaptchaPackage.version.toString().replace(/\./g, '_'));
       } catch (e) {
         console.log(e);
       } finally {
