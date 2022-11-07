@@ -25,7 +25,7 @@ For iOS instead the last step do:
 - `pushd ios; pod install; popd`
 - `yarn ios`
 
-To quick update `react-native-hcaptcha` localy just run:
+To quickly update `react-native-hcaptcha` locally just run:
 
 `yarn upgrade file:../react-native-hcaptcha`
 
