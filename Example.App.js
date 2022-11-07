@@ -13,20 +13,15 @@ export default class App extends React.Component {
   onMessage = event => {
     if (event && event.nativeEvent.data) {
       if (['cancel'].includes(event.nativeEvent.data)) {
-        // do not call this.captchaForm.hide(); function in this condition. Otherwise app will crash.
+        this.captchaForm.hide();
         this.setState({ code: event.nativeEvent.data});
-        return;
       } else if (['error', 'expired'].includes(event.nativeEvent.data)) {
         this.captchaForm.hide();
         this.setState({ code: event.nativeEvent.data});
-        return;
       } else {
         console.log('Verified code from hCaptcha', event.nativeEvent.data);
+        this.captchaForm.hide();
         this.setState({ code: event.nativeEvent.data });
-        setTimeout(() => {
-          this.captchaForm.hide();
-          // do whatever you want here
-        }, 1000);
       }
     }
   };
