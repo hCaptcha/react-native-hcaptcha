@@ -10,7 +10,7 @@ on:
 env:
   TEST_APP_DEPS: react-native-modal react-native-webview
   TEST_APP_DEV_DEPS: typescript @babel/preset-env react-shallow-renderer
-  RN_BUNDLE_ARGS: --entry-file index.js --platform android --dev false --bundle-output android/main.jsbundle --assets-dest android
+  RN_BUNDLE_ARGS: --entry-file index.js --platform android --dev false --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
 jobs:
   build:
@@ -42,7 +42,10 @@ jobs:
         yarn add ${{ env.TEST_APP_DEPS }}
         cp ../react-native-hcaptcha/Example.App.js App.js
         cp ../react-native-hcaptcha/Example.jest.config.js jest.config.js
-    - run: yarn react-native bundle ${{ env.RN_BUNDLE_ARGS }}
+    - run: |
+        mkdir -p android/app/src/main/assets
+        mkdir -p android/app/src/main/res
+        yarn react-native bundle ${{ env.RN_BUNDLE_ARGS }}
       working-directory: rnexample
     - run: cat package.json
       working-directory: rnexample
@@ -73,7 +76,10 @@ jobs:
         npm i --save ${{ env.TEST_APP_DEPS }}
         cp ./react-native-hcaptcha/Example.App.js App.js
         cp ./react-native-hcaptcha/Example.jest.config.js jest.config.js
-    - run: npx react-native bundle ${{ env.RN_BUNDLE_ARGS }}
+    - run: |
+        mkdir -p android/app/src/main/assets
+        mkdir -p android/app/src/main/res
+        npx react-native bundle ${{ env.RN_BUNDLE_ARGS }}
       working-directory: rnexample
     - run: cat package.json
       working-directory: rnexample
@@ -81,6 +87,12 @@ jobs:
       working-directory: rnexample
     - run: npx --yes check-peer-dependencies --npm --runOnlyOnRootDependencies
       working-directory: rnexample
+    - run: ./gradlew assemble
+      working-directory: rnexample/android
+    - uses: actions/upload-artifact@v3
+      with:
+        name: apks
+        path: rnexample/android/app/build/outputs/apk
   create-an-issue:
     runs-on: ubuntu-latest
     needs: [test-npm, test-yarn]
