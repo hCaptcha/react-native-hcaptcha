@@ -6,7 +6,7 @@ For `expo` test app
 - `expo init expo-example -t blank`
 - `cd expo-example`
 - `yarn add file:../react-native-hcaptcha`
-- `yarn add react-native-modal react-native-webview expo-constants@^10.0.1 @unimodules/core @unimodules/react-native-adapter`
+- `yarn add react-native-modal react-native-webview`
 - `cp ../react-native-hcaptcha/Example.App.js App.js`
 - `yarn android`
 
@@ -16,7 +16,7 @@ For `react-native` test app
 - `react-native init rnexample` or `react-native init rnexample --version 0.63.4` for specific version
 - `cd rnexample`
 - `yarn add file:../react-native-hcaptcha`
-- `yarn add react-native-modal react-native-webview expo-constants@^10.0.1 @unimodules/core @unimodules/react-native-adapter react-native-unimodules`
+- `yarn add react-native-modal react-native-webview`
 - `cp ../react-native-hcaptcha/Example.App.js App.js`
 - `yarn android`
 
@@ -24,6 +24,10 @@ For iOS instead the last step do:
 
 - `pushd ios; pod install; popd`
 - `yarn ios`
+
+To quick update `react-native-hcaptcha` localy just run:
+
+`yarn upgrade file:../react-native-hcaptcha`
 
 
 ### Known issues
