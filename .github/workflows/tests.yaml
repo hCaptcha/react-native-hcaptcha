@@ -33,7 +33,7 @@ jobs:
       working-directory: rnexample
       run: |
         RN_VERSION=$(cat package.json | jq ".dependencies.\"react-native\"" -r)
-        echo "::set-output name=value::${RN_VERSION}"
+        echo "value=${RN_VERSION}" >> $GITHUB_OUTPUT
     - name: Run yarn add ...
       working-directory: rnexample
       run: |
@@ -64,7 +64,7 @@ jobs:
       working-directory: rnexample
       run: |
         RN_VERSION=$(cat package.json | jq ".dependencies.\"react-native\"" -r)
-        echo "::set-output name=value::${RN_VERSION}"
+        echo "value=${RN_VERSION}" >> $GITHUB_OUTPUT
     - uses: actions/checkout@v3
       with:
         path: rnexample/react-native-hcaptcha
@@ -92,7 +92,7 @@ jobs:
     - uses: actions/upload-artifact@v3
       with:
         name: apks
-        path: rnexample/android/app/build/outputs/apk
+        path: rnexample/android/app/build/outputs/apk/release/app-release.apk
   create-an-issue:
     runs-on: ubuntu-latest
     needs: [test-npm, test-yarn]
