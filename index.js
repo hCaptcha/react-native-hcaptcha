@@ -13,11 +13,10 @@ class ConfirmHcaptcha extends PureComponent {
   show = () => {
     this.setState({ show: true });
   };
-  hide = () => {
+  hide = (source) => {
     const { onMessage } = this.props;
     this.setState({ show: false });
-    // In android on hardware back , emits 'cancel' which can be used to hide hCaptcha modal using ref
-    if (Platform.OS === "android") {
+    if (source) { // if source === undefined => called by the user
       onMessage({ nativeEvent: { data: 'cancel' } });
     }
   };
@@ -45,8 +44,8 @@ class ConfirmHcaptcha extends PureComponent {
         style={[styles.modal, {display: passiveSiteKey ? 'none' : undefined}]}
         animationIn="fadeIn"
         animationOut="fadeOut"
-        onBackdropPress={this.hide}
-        onBackButtonPress={this.hide}
+        onBackdropPress={() => this.hide('backdrop')}
+        onBackButtonPress={() => this.hide('back_button')}
         isVisible={show}
         hasBackdrop={!passiveSiteKey}
       >

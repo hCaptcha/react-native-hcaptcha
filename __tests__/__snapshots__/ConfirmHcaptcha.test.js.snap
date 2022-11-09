@@ -25,7 +25,6 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
   useNativeDriver={true}
 >
   <RCTSafeAreaView
-    emulateUnlessSupported={true}
     style={
       Array [
         Object {
@@ -43,15 +42,12 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
       automaticallyAdjustContentInsets={true}
       injectedJavaScript="(function () {
   var originalPostMessage = window.ReactNativeWebView.postMessage;
-
   var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
     originalPostMessage(message, targetOrigin, transfer);
   };
-
   patchedPostMessage.toString = function () {
     return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
   };
-
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })();"
       javaScriptEnabled={true}
