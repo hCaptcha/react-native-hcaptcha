@@ -28,7 +28,6 @@ class ConfirmHcaptcha extends PureComponent {
       baseUrl,
       languageCode,
       onMessage,
-      cancelButtonText,
       showLoading,
       backgroundColor,
       loadingIndicatorColor,
@@ -55,7 +54,6 @@ class ConfirmHcaptcha extends PureComponent {
             siteKey={siteKey}
             onMessage={onMessage}
             languageCode={languageCode}
-            cancelButtonText={cancelButtonText}
             showLoading={showLoading}
             loadingIndicatorColor={loadingIndicatorColor}
             backgroundColor={backgroundColor}
@@ -90,7 +88,6 @@ ConfirmHcaptcha.propTypes = {
   baseUrl: PropTypes.string,
   onMessage: PropTypes.func,
   languageCode: PropTypes.string,
-  cancelButtonText: PropTypes.string,
   backgroundColor: PropTypes.string,
   showLoading: PropTypes.bool,
   loadingIndicatorColor: PropTypes.string,

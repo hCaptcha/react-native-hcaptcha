@@ -39,7 +39,6 @@ const buildHcaptchaApiUrl = (siteKey, languageCode, theme) => {
  * @param {*} style: custom style
  * @param {*} url: base url
  * @param {*} languageCode: can be found at https://docs.hcaptcha.com/languages
- * @param {*} cancelButtonText: title of cancel button
  * @param {*} showLoading: loading indicator for webview till hCaptcha web content loads
  * @param {*} loadingIndicatorColor: color for the ActivityIndicator
  * @param {*} backgroundColor: backgroundColor which can be injected into HTML to alter css backdrop colour
@@ -52,7 +51,6 @@ const Hcaptcha = ({
   style,
   url,
   languageCode,
-  cancelButtonText = 'Cancel',
   showLoading,
   loadingIndicatorColor,
   backgroundColor,
