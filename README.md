@@ -105,16 +105,20 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 
 ## Properties
 
-- **`siteKey`** _(String)_ - The hCaptcha sitekey
-- **`baseUrl`** _(String)_ The url domain defined on your hCaptcha. You generally will not need to change this.
-- **`onMessage`** _(Function)_ - The callback function that runs after receiving a response, error, or when user cancels.
-- **`languageCode`** _(String)_ - Default language for hCaptcha. Overrides phone defaults. A complete list of supported
-languages and their codes can be found at [this link](https://docs.hcaptcha.com/languages)
-- **`showLoading`** _(Bool)_ - show loading indicator for webview till hCaptcha web content loads?
-- **`loadingIndicatorColor`** _(String)_ - color for the ActivityIndicator
-- **`backgroundColor`** _(String)_ - background color used in HTML
-- **`theme`** _(String|Object)_ - `theme` parameter can be 'light', 'dark', 'contrast' or custom theme object (see Enterprise docs)
-- **`rqdata`** _(String)_ - see Enterprise docs
+| **Name** | **Type** | **Description** |
+|:---|:---|:---|
+| siteKey _(required)_ | string | The hCaptcha siteKey |
+| onMessage | Function (see [here](https://github.com/react-native-webview/react-native-webview/blob/master/src/WebViewTypes.ts#L299)) | The callback function that runs after receiving a response, error, or when user cancels. |
+| languageCode | string | Default language for hCaptcha; overrides phone defaults. A complete list of supported languages and their codes can be found [here](https://docs.hcaptcha.com/languages/) |
+| showLoading | boolean | Whether to show a loading indicator while the hCaptcha web content loads |
+| loadingIndicatorColor | string | Color of the ActivityIndicator |
+| backgroundColor | string | The background color code that will be applied to the main HTML element |
+| theme | string\|object | The theme can be 'light', 'dark', 'contrast' or a custom theme object (see Enterprise docs) |
+| rqdata | string | Hcaptcha execution options (see Enterprise docs) |
+| url _(inline component only)_ | string | The url domain defined on your hCaptcha. You generally will not need to change this. |
+| style _(inline component only)_ | ViewStyle (see [here](https://reactnative.dev/docs/view-style-props)) | The webview style |
+| baseUrl _(modal component only)_ | string | The url domain defined on your hCaptcha. You generally will not need to change this. |
+| passiveSiteKey _(modal component only)_ | boolean | Indicates whether the passive mode is enabled; when true, the modal won't be shown at all |
 
 ## Status
 
