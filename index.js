@@ -35,7 +35,7 @@ class ConfirmHcaptcha extends PureComponent {
       theme,
       rqdata,
       sentry,
-      apiEndpoint,
+      jsSdkPath,
       endpoint,
       reportapi,
       assethost,
@@ -70,7 +70,7 @@ class ConfirmHcaptcha extends PureComponent {
             theme={theme}
             rqdata={rqdata}
             sentry={sentry}
-            apiEndpoint={apiEndpoint}
+            jsSdkPath={jsSdkPath}
             endpoint={endpoint}
             reportapi={reportapi}
             assethost={assethost}
@@ -112,7 +112,7 @@ ConfirmHcaptcha.propTypes = {
   theme: PropTypes.string,
   rqdata: PropTypes.string,
   sentry: PropTypes.bool,
-  apiEndpoint: PropTypes.string,
+  jsSdkPath: PropTypes.string,
   endpoint: PropTypes.string,
   reportapi: PropTypes.string,
   assethost: PropTypes.string,
@@ -129,7 +129,7 @@ ConfirmHcaptcha.defaultProps = {
   theme: 'light',
   rqdata: null,
   sentry: false,
-  apiEndpoint: 'https://hcaptcha.com/1/api.js',
+  jsSdkPath: 'https://js.hcaptcha.com/1/api.js',
   endpoint: undefined,
   reportapi: undefined,
   assethost: undefined,
