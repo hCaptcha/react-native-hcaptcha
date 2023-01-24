@@ -9,3 +9,7 @@ jest.mock('react', () => {
       .mockImplementationOnce(() => ActualReact.useMemo(() => ["test_key"], []))
   }
 });
+jest.mock('react-native/Libraries/Core/ReactNativeVersion', () => {
+  return { version: { major: 0, minor: 0, patch: 0 } };
+});
+jest.mock('../md5', () => () => "mocked-md5");

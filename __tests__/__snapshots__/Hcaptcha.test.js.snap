@@ -32,7 +32,7 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with all props 1`] = `
         <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\">
         <meta http-equiv=\\"X-UA-Compatible\\" content=\\"ie=edge\\">
         <script type=\\"text/javascript\\">
-          [\\"rnver_0_70_5\\",\\"dep_9e9a1d7b73e6c63bab3986cbe830de42\\",\\"sdk_1_5_0\\"].forEach(function (value, i) { window[value] = true; });
+          [\\"rnver_0_0_0\\",\\"dep_mocked-md5\\",\\"sdk_1_5_0\\"].forEach(function (value, i) { window[value] = true; });
         </script>
         <script src=\\"https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=fr&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi\\" async defer></script>
         <script type=\\"text/javascript\\">
