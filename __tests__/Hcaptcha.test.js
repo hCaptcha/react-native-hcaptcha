@@ -3,9 +3,30 @@ import renderer from 'react-test-renderer';
 import Hcaptcha from '../Hcaptcha';
 
 describe('Hcaptcha snapshot tests', () => {
-  let snapshot;
   it('renders Hcaptcha with minimum props', () => {
-    snapshot = renderer.create(<Hcaptcha url="https://hcaptcha.com" />);
-    expect(snapshot).toMatchSnapshot();
+    const component = renderer.create(<Hcaptcha url="https://hcaptcha.com" />);
+    expect(component).toMatchSnapshot();
+  });
+
+  it('renders Hcaptcha with all props', () => {
+    const component = renderer.create(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        size="normal"
+        languageCode="fr"
+        showLoading={true}
+        loadingIndicatorColor="#123456"
+        backgroundColor="rgba(0.1, 0.1, 0.1, 0.4)"
+        theme="contrast"
+        rqdata="{}"
+        sentry={false}
+        apiEndpoint="https://all.props/api-endpoint"
+        endpoint="https://all.props/endpoint"
+        reportapi="https://all.props/reportapi"
+        assethost="https://all.props/assethost"
+        imghost="https://all.props/imghost"
+        host="all-props-host" />);
+    expect(component).toMatchSnapshot();
   });
 });

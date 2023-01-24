@@ -81,7 +81,7 @@ Starting a Gradle Daemon (subsequent builds will be faster)
 java.lang.NoClassDefFoundError: Could not initialize class org.codehaus.groovy.vmplugin.v7.Java7
 ```
 
-Solution: make sure that you use Java 1.8
+Solution: make sure that you use Java 1.8 or above
 
 ---
 

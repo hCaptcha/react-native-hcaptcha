@@ -1,5 +1,160 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1`] = `
+<Modal
+  animationIn="fadeIn"
+  animationOut="fadeOut"
+  deviceHeight={1334}
+  deviceWidth={750}
+  hasBackdrop={true}
+  hideModalContentWhileAnimating={true}
+  isVisible={false}
+  onBackButtonPress={[Function]}
+  onBackdropPress={[Function]}
+  style={
+    Array [
+      Object {
+        "display": "none",
+        "margin": 0,
+      },
+      Object {
+        "display": undefined,
+      },
+    ]
+  }
+  useNativeDriver={true}
+>
+  <RCTSafeAreaView
+    style={
+      Array [
+        Object {
+          "flex": 1,
+          "justifyContent": "center",
+          "overflow": "hidden",
+        },
+        Object {
+          "backgroundColor": "rgba(0.1, 0.1, 0.1, 0.4)",
+        },
+      ]
+    }
+  >
+    <WebView
+      automaticallyAdjustContentInsets={true}
+      injectedJavaScript="(function () {
+  var originalPostMessage = window.ReactNativeWebView.postMessage;
+  var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
+    originalPostMessage(message, targetOrigin, transfer);
+  };
+  patchedPostMessage.toString = function () {
+    return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
+  };
+  window.ReactNativeWebView.postMessage = patchedPostMessage;
+})();"
+      javaScriptEnabled={true}
+      mixedContentMode="always"
+      onShouldStartLoadWithRequest={[Function]}
+      originWhitelist={
+        Array [
+          "*",
+        ]
+      }
+      renderLoading={[Function]}
+      source={
+        Object {
+          "baseUrl": "https://hcaptcha.com",
+          "html": "<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset=\\"UTF-8\\">
+        <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\">
+        <meta http-equiv=\\"X-UA-Compatible\\" content=\\"ie=edge\\">
+        <script type=\\"text/javascript\\">
+          [\\"rnver_0_70_5\\",\\"dep_9e9a1d7b73e6c63bab3986cbe830de42\\",\\"sdk_1_5_0\\"].forEach(function (value, i) { window[value] = true; });
+        </script>
+        <script src=\\"https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=en&sentry=true&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi\\" async defer></script>
+        <script type=\\"text/javascript\\">
+          var onloadCallback = function() {
+            try {
+              console.log(\\"challenge onload starting\\");
+              hcaptcha.render(\\"submit\\", getRenderConfig(\\"00000000-0000-0000-0000-000000000000\\", \\"light\\", \\"compact\\"));
+              // have loaded by this point; render is sync.
+              console.log(\\"challenge render complete\\");
+            } catch (e) {
+              console.log(\\"challenge failed to render\\");
+              window.ReactNativeWebView.postMessage(\\"error\\");
+            }
+            try {
+              console.log(\\"showing challenge\\");
+              hcaptcha.execute(getExecuteOpts());
+            } catch (e) {
+              console.log(\\"failed to show challenge\\");
+              window.ReactNativeWebView.postMessage(\\"error\\");
+            }
+          };
+          var onDataCallback = function(response) {
+            window.ReactNativeWebView.postMessage(response);
+          };
+          var onCancel = function() {
+            window.ReactNativeWebView.postMessage(\\"cancel\\");
+          };
+          var onOpen = function() {
+            // NOTE: disabled for simplicity.
+            // window.ReactNativeWebView.postMessage(\\"open\\");
+            console.log(\\"challenge opened\\");
+          };
+          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(\\"expired\\"); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(\\"cancel\\"); };
+          var onDataErrorCallback = function(error) {
+            console.log(\\"challenge error callback fired\\");
+            window.ReactNativeWebView.postMessage(\\"error\\");
+          };
+          const getRenderConfig = function(siteKey, theme, size) {
+            var config = {
+              sitekey: siteKey,
+              size: size,
+              callback: onDataCallback,
+              \\"close-callback\\": onCancel,
+              \\"open-callback\\": onOpen,
+              \\"expired-callback\\": onDataExpiredCallback,
+              \\"chalexpired-callback\\": onChalExpiredCallback,
+              \\"error-callback\\": onDataErrorCallback
+            };
+            if (theme) {
+              config.theme = theme;
+            }
+            return config;
+          };
+          const getExecuteOpts = function() {
+            var opts;
+            const rqdata = \\"{\\"some\\": \\"data\\"}\\";
+            if (rqdata) {
+              opts = {\\"rqdata\\": rqdata};
+            }
+            return opts;
+          };
+        </script>
+      </head>
+      <body style=\\"background-color: rgba(0.1, 0.1, 0.1, 0.4);\\">
+        <div id=\\"submit\\"></div>
+      </body>
+      </html>",
+        }
+      }
+      startInLoadingState={false}
+      style={
+        Array [
+          Object {
+            "backgroundColor": "transparent",
+            "width": "100%",
+          },
+          undefined,
+        ]
+      }
+    />
+  </RCTSafeAreaView>
+</Modal>
+`;
+
 exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum props 1`] = `
 <Modal
   animationIn="fadeIn"
@@ -76,7 +231,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
           var onloadCallback = function() {
             try {
               console.log(\\"challenge onload starting\\");
-              hcaptcha.render(\\"submit\\", getRenderConfig(\\"00000000-0000-0000-0000-000000000000\\", \\"light\\"));
+              hcaptcha.render(\\"submit\\", getRenderConfig(\\"00000000-0000-0000-0000-000000000000\\", \\"light\\", \\"invisible\\"));
               // have loaded by this point; render is sync.
               console.log(\\"challenge render complete\\");
             } catch (e) {
@@ -108,10 +263,10 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
             console.log(\\"challenge error callback fired\\");
             window.ReactNativeWebView.postMessage(\\"error\\");
           };
-          const getRenderConfig = function(siteKey, theme) {
+          const getRenderConfig = function(siteKey, theme, size) {
             var config = {
               sitekey: siteKey,
-              size: \\"invisible\\",
+              size: size,
               callback: onDataCallback,
               \\"close-callback\\": onCancel,
               \\"open-callback\\": onOpen,
