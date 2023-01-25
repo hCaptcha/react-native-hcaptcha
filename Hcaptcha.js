@@ -20,8 +20,8 @@ const patchPostMessageJsCode = `(${String(function () {
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })})();`;
 
-const buildHcaptchaApiUrl = (jsSdkPath, siteKey, hl, theme, host, sentry, endpoint, assethost, imghost, reportapi) => {
-  var url = `${jsSdkPath || "https://hcaptcha.com/1/api.js"}?render=explicit&onload=onloadCallback`;
+const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, assethost, imghost, reportapi) => {
+  var url = `${jsSrc || "https://hcaptcha.com/1/api.js"}?render=explicit&onload=onloadCallback`;
 
   let effectiveHost;
   if (host) {
@@ -53,7 +53,7 @@ const buildHcaptchaApiUrl = (jsSdkPath, siteKey, hl, theme, host, sentry, endpoi
  * @param {string|object} theme: can be 'light', 'dark', 'contrast' or custom theme object
  * @param {string} rqdata: see Enterprise docs
  * @param {boolean} sentry: sentry error reporting
- * @param {string} jsSdkPath: The url of api.js. Default: https://js.hcaptcha.com/1/api.js (Override only if using first-party hosting feature.)
+ * @param {string} jsSrc: The url of api.js. Default: https://js.hcaptcha.com/1/api.js (Override only if using first-party hosting feature.)
  * @param {string} endpoint: Point hCaptcha JS Ajax Requests to alternative API Endpoint. Default: https://api.hcaptcha.com (Override only if using first-party hosting feature.)
  * @param {string} reportapi: Point hCaptcha Bug Reporting Request to alternative API Endpoint. Default: https://accounts.hcaptcha.com (Override only if using first-party hosting feature.)
  * @param {string} assethost: Points loaded hCaptcha assets to a user defined asset location, used for proxies. Default: https://newassets.hcaptcha.com (Override only if using first-party hosting feature.)
@@ -73,14 +73,14 @@ const Hcaptcha = ({
   theme,
   rqdata,
   sentry,
-  jsSdkPath,
+  jsSrc,
   endpoint,
   reportapi,
   assethost,
   imghost,
   host,
 }) => {
-  const apiUrl = buildHcaptchaApiUrl(jsSdkPath, siteKey, languageCode, theme, host, sentry, endpoint, assethost, imghost, reportapi);
+  const apiUrl = buildHcaptchaApiUrl(jsSrc, siteKey, languageCode, theme, host, sentry, endpoint, assethost, imghost, reportapi);
 
   if (theme && typeof theme === 'string') {
     theme = `"${theme}"`;

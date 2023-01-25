@@ -56,7 +56,7 @@ type HcaptchaProps = {
    * The url of api.js
    * Default: https://js.hcaptcha.com/1/api.js (Override only if using first-party hosting feature.)
    */
-  jsSdkPath?: string;
+  jsSrc?: string;
   /**
    * Point hCaptcha JS Ajax Requests to alternative API Endpoint.
    * Default: https://api.hcaptcha.com (Override only if using first-party hosting feature.)

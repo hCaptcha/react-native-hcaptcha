@@ -117,7 +117,7 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 | theme | string\|object | The theme can be 'light', 'dark', 'contrast' or a custom theme object (see Enterprise docs) |
 | rqdata | string | Hcaptcha execution options (see Enterprise docs) |
 | sentry | boolean | sentry error reporting (see Enterprise docs) |
-| jsSdkPath | string | The url of api.js. Default: https://js.hcaptcha.com/1/api.js (Override only if using first-party hosting feature.) |
+| jsSrc | string | The url of api.js. Default: https://js.hcaptcha.com/1/api.js (Override only if using first-party hosting feature.) |
 | endpoint | string | Point hCaptcha JS Ajax Requests to alternative API Endpoint. Default: https://api.hcaptcha.com (Override only if using first-party hosting feature.) |
 | reportapi | string | Point hCaptcha Bug Reporting Request to alternative API Endpoint. Default: https://accounts.hcaptcha.com (Override only if using first-party hosting feature.) |
 | assethost | string | Points loaded hCaptcha assets to a user defined asset location, used for proxies. Default: https://newassets.hcaptcha.com (Override only if using first-party hosting feature.) |
