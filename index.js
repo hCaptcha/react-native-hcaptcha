@@ -23,6 +23,7 @@ class ConfirmHcaptcha extends PureComponent {
   render() {
     let { show } = this.state;
     let {
+      size,
       siteKey,
       passiveSiteKey,
       baseUrl,
@@ -33,7 +34,15 @@ class ConfirmHcaptcha extends PureComponent {
       loadingIndicatorColor,
       theme,
       rqdata,
+      sentry,
+      jsSrc,
+      endpoint,
+      reportapi,
+      assethost,
+      imghost,
+      host,
     } = this.props;
+
     return (
       <Modal
         useNativeDriver
@@ -51,6 +60,7 @@ class ConfirmHcaptcha extends PureComponent {
         <SafeAreaView style={[styles.wrapper, { backgroundColor }]}>
           <Hcaptcha
             url={baseUrl}
+            size={size}
             siteKey={siteKey}
             onMessage={onMessage}
             languageCode={languageCode}
@@ -59,6 +69,13 @@ class ConfirmHcaptcha extends PureComponent {
             backgroundColor={backgroundColor}
             theme={theme}
             rqdata={rqdata}
+            sentry={sentry}
+            jsSrc={jsSrc}
+            endpoint={endpoint}
+            reportapi={reportapi}
+            assethost={assethost}
+            imghost={imghost}
+            host={host}
           />
         </SafeAreaView>
       </Modal>
@@ -83,6 +100,7 @@ const styles = StyleSheet.create({
 });
 
 ConfirmHcaptcha.propTypes = {
+  size: PropTypes.string,
   siteKey: PropTypes.string.isRequired,
   passiveSiteKey: PropTypes.bool,
   baseUrl: PropTypes.string,
@@ -93,15 +111,30 @@ ConfirmHcaptcha.propTypes = {
   loadingIndicatorColor: PropTypes.string,
   theme: PropTypes.string,
   rqdata: PropTypes.string,
+  sentry: PropTypes.bool,
+  jsSrc: PropTypes.string,
+  endpoint: PropTypes.string,
+  reportapi: PropTypes.string,
+  assethost: PropTypes.string,
+  imghost: PropTypes.string,
+  host: PropTypes.string,
 };
 
 ConfirmHcaptcha.defaultProps = {
+  size: 'invisible',
   passiveSiteKey: false,
   showLoading: false,
   backgroundColor: 'rgba(0, 0, 0, 0.3)',
   loadingIndicatorColor: null,
   theme: 'light',
   rqdata: null,
+  sentry: false,
+  jsSrc: 'https://js.hcaptcha.com/1/api.js',
+  endpoint: undefined,
+  reportapi: undefined,
+  assethost: undefined,
+  imghost: undefined,
+  host: undefined,
 };
 
 export default ConfirmHcaptcha;
