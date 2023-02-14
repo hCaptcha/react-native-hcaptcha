@@ -56,6 +56,7 @@ class ConfirmHcaptcha extends PureComponent {
         onBackButtonPress={() => this.hide('back_button')}
         isVisible={show}
         hasBackdrop={!passiveSiteKey}
+        coverScreen={!passiveSiteKey}
       >
         <SafeAreaView style={[styles.wrapper, { backgroundColor }]}>
           <Hcaptcha
