@@ -112,13 +112,13 @@ jobs:
         update_existing: true
         filename: .github/examples-issue-template.md
   release:
-    if: startsWith(github.ref, 'refs/tags')
+    if: startsWith(github.ref, 'refs/tags') && github.event_name == 'push'
     needs: [test-npm, test-yarn]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
 
-      - name: npm elease
+      - name: npm release
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
