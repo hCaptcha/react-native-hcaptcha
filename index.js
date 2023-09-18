@@ -41,6 +41,7 @@ class ConfirmHcaptcha extends PureComponent {
       assethost,
       imghost,
       host,
+      hasBackdrop,
     } = this.props;
 
     return (
@@ -55,7 +56,7 @@ class ConfirmHcaptcha extends PureComponent {
         onBackdropPress={() => this.hide('backdrop')}
         onBackButtonPress={() => this.hide('back_button')}
         isVisible={show}
-        hasBackdrop={!passiveSiteKey}
+        hasBackdrop={hasBackdrop}
         coverScreen={!passiveSiteKey}
       >
         <SafeAreaView style={[styles.wrapper, { backgroundColor }]}>
@@ -119,6 +120,7 @@ ConfirmHcaptcha.propTypes = {
   assethost: PropTypes.string,
   imghost: PropTypes.string,
   host: PropTypes.string,
+  hasBackdrop: PropTypes.bool,
 };
 
 ConfirmHcaptcha.defaultProps = {
@@ -136,6 +138,7 @@ ConfirmHcaptcha.defaultProps = {
   assethost: undefined,
   imghost: undefined,
   host: undefined,
+  hasBackdrop: true,
 };
 
 export default ConfirmHcaptcha;
