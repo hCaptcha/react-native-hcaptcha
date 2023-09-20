@@ -127,6 +127,7 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 | style _(inline component only)_ | ViewStyle (see [here](https://reactnative.dev/docs/view-style-props)) | The webview style |
 | baseUrl _(modal component only)_ | string | The url domain defined on your hCaptcha. You generally will not need to change this. |
 | passiveSiteKey _(modal component only)_ | boolean | Indicates whether the passive mode is enabled; when true, the modal won't be shown at all |
+| hasBackdrop _(modal component only)_ | boolean | To hide the modal backDrop; when true, the backDrop modal won’t be displayed |
 
 
 ## Status
