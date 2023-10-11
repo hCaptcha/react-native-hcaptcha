@@ -43,6 +43,7 @@ class ConfirmHcaptcha extends PureComponent {
       host,
       hasBackdrop,
       style,
+      footerComponent,
     } = this.props;
 
     return (
@@ -81,6 +82,7 @@ class ConfirmHcaptcha extends PureComponent {
             host={host}
             style={style}
           />
+          {footerComponent}
         </SafeAreaView>
       </Modal>
     );
