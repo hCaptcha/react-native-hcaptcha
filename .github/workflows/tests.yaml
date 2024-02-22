@@ -16,7 +16,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: npm install
     - run: npm test
   test-yarn:
@@ -25,7 +25,7 @@ jobs:
     outputs:
       rn-version: ${{ steps.rn-version.outputs.value }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         path: react-native-hcaptcha
     - run: npx react-native init rnexample
@@ -65,7 +65,7 @@ jobs:
       run: |
         RN_VERSION=$(cat package.json | jq ".dependencies.\"react-native\"" -r)
         echo "value=${RN_VERSION}" >> $GITHUB_OUTPUT
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         path: rnexample/react-native-hcaptcha
     - name: Run npm install ...
@@ -89,7 +89,7 @@ jobs:
       working-directory: rnexample
     - run: ./gradlew assemble
       working-directory: rnexample/android
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: apks
         path: rnexample/android/app/build/outputs/apk/release/app-release.apk
@@ -98,7 +98,7 @@ jobs:
     needs: [test-npm, test-yarn]
     if: always() && github.event == 'schedule' && (needs.test-npm.result == 'failure' || needs.test-yarn.result == 'failure')
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - run: |
         RN_VERSION="${{ needs.test-npm.outputs.rn-version || needs.test-yarn.outputs.rn-version }}"
         GHA_RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
