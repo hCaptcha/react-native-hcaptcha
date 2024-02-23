@@ -19,7 +19,7 @@ export default class App extends React.Component {
         this.captchaForm.hide();
         this.setState({ code: event.nativeEvent.data});
       } else if (event.nativeEvent.data === 'open') {
-        console.log('Visual challenge must be solved to get the code');
+        console.log('Visual challenge opened');
       } else {
         console.log('Verified code from hCaptcha', event.nativeEvent.data);
         this.captchaForm.hide();
