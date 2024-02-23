@@ -38,6 +38,7 @@ Also, please note the following special message strings that can be returned via
 | expired | passcode response expired and the user must re-verify |
 | error | there was an error displaying the challenge |
 | cancel | the user closed the challenge, or did not answer before session expired |
+| open | the visual challenge was open |
 
 
 Any other string returned by `onMessage` will be a passcode.
