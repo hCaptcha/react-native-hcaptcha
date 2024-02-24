@@ -145,8 +145,7 @@ const Hcaptcha = ({
             window.ReactNativeWebView.postMessage("cancel");
           };
           var onOpen = function() {
-            // NOTE: disabled for simplicity.
-            // window.ReactNativeWebView.postMessage("open");
+            window.ReactNativeWebView.postMessage("open");
             console.log("challenge opened");
           };
           var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
