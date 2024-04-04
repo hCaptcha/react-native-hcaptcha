@@ -1,6 +1,6 @@
 ### Release steps
 
-1. Decived about next version:
+1. Pick the right version number:
 
 **Note:** we use [SemVer format](https://semver.org/):
 
@@ -13,10 +13,11 @@ PATCH: bugfix only.
 - bump [`package.json's`](./package.json) version
 - run `npm i` to update `package-lock.json`
 - commit `package.json` and `package-lock.json`
-- do tag git tag vM.M.P
-- open the PR to review
-- once the PR approved and merged create a new release https://github.com/hCaptcha/react-native-hcaptcha/releases
-- wait for CI to release new version to https://www.npmjs.com/package/@hcaptcha/react-native-hcaptcha?activeTab=versions
+- open the PR for review
+- once the PR is approved and merged to master:
+ - set the tag on master matching your version: git tag `vM.M.P`
+ - draft a new release https://github.com/hCaptcha/react-native-hcaptcha/releases
+- once the release is created, CI will release the new version to https://www.npmjs.com/package/@hcaptcha/react-native-hcaptcha?activeTab=versions
 
 ### Generate test app
 
