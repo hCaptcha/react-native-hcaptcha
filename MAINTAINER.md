@@ -1,18 +1,23 @@
 ### Release steps
 
-**Note:** we use [SemVer format](https://semver.org/).
+1. Pick the right version number:
+
+**Note:** we use [SemVer format](https://semver.org/):
 
 MAJOR: breaking change.
 MINOR: new feature(s), backwards compatible.
 PATCH: bugfix only.
 
-Prepare a PR:
+2. Prepare a PR:
 
 - bump [`package.json's`](./package.json) version
 - run `npm i` to update `package-lock.json`
 - commit `package.json` and `package-lock.json`
-
-After merging PR and tests pass CI will do `npm publish`:
+- open the PR for review
+- once the PR is approved and merged to master:
+ - set the tag on master matching your version: git tag `vM.M.P`
+ - draft a new release https://github.com/hCaptcha/react-native-hcaptcha/releases
+- once the release is created, CI will release the new version to https://www.npmjs.com/package/@hcaptcha/react-native-hcaptcha?activeTab=versions
 
 ### Generate test app
 
