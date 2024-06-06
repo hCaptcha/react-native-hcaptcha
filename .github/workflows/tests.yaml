@@ -9,6 +9,7 @@ on:
     - cron: '0 0 * * 0' # https://crontab.guru/every-week
 
 env:
+  GRADLE_OPTS: -Xmx2048m
   TEST_APP_DEPS: react-native-modal react-native-webview
   TEST_APP_DEV_DEPS: typescript @babel/preset-env react-shallow-renderer
   RN_BUNDLE_ARGS: --entry-file index.js --platform android --dev false --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
@@ -42,7 +43,7 @@ jobs:
     - name: Run yarn add ...
       working-directory: rnexample
       run: |
-        yarn add file:../react-native-hcaptcha
+        yarn add @hcaptcha/react-native-hcaptcha@file:../react-native-hcaptcha
         yarn add --dev ${{ env.TEST_APP_DEV_DEPS }}
         yarn add ${{ env.TEST_APP_DEPS }}
         cp ../react-native-hcaptcha/Example.App.js App.js
