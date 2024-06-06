@@ -9,7 +9,7 @@ on:
     - cron: '0 0 * * 0' # https://crontab.guru/every-week
 
 env:
-  GRADLE_OPTS: -Xmx2048m
+  GRADLE_OPTS: -Xmx4096m
   TEST_APP_DEPS: react-native-modal react-native-webview
   TEST_APP_DEV_DEPS: typescript @babel/preset-env react-shallow-renderer
   RN_BUNDLE_ARGS: --entry-file index.js --platform android --dev false --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
