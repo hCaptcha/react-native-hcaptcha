@@ -42,6 +42,7 @@ class ConfirmHcaptcha extends PureComponent {
       imghost,
       host,
       hasBackdrop,
+      debug,
     } = this.props;
 
     return (
@@ -78,6 +79,7 @@ class ConfirmHcaptcha extends PureComponent {
             assethost={assethost}
             imghost={imghost}
             host={host}
+            debug={debug}
           />
         </SafeAreaView>
       </Modal>
@@ -121,6 +123,7 @@ ConfirmHcaptcha.propTypes = {
   imghost: PropTypes.string,
   host: PropTypes.string,
   hasBackdrop: PropTypes.bool,
+  debug: PropTypes.object,
 };
 
 ConfirmHcaptcha.defaultProps = {
@@ -139,6 +142,7 @@ ConfirmHcaptcha.defaultProps = {
   imghost: undefined,
   host: undefined,
   hasBackdrop: true,
+  debug: {},
 };
 
 export default ConfirmHcaptcha;

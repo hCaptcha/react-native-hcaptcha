@@ -29,4 +29,16 @@ describe('Hcaptcha snapshot tests', () => {
         host="all-props-host" />);
     expect(component).toMatchSnapshot();
   });
+  it('test debug', () => {
+    const component = renderer.create(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        languageCode="en"
+        debug={{a: 1}}
+      />
+    );
+    expect(component).toMatchSnapshot();
+  });
 });
+
