@@ -42,7 +42,7 @@ jobs:
     - name: Run yarn add ...
       working-directory: rnexample
       run: |
-        yarn add file:../react-native-hcaptcha
+        yarn add @hcaptcha/react-native-hcaptcha@file:../react-native-hcaptcha
         yarn add --dev ${{ env.TEST_APP_DEV_DEPS }}
         yarn add ${{ env.TEST_APP_DEPS }}
         cp ../react-native-hcaptcha/Example.App.js App.js
@@ -96,7 +96,9 @@ jobs:
       working-directory: rnexample
     - run: npx --yes check-peer-dependencies --npm --runOnlyOnRootDependencies
       working-directory: rnexample
-    - run: ./gradlew assemble
+    - run: |
+        echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> gradle.properties
+        ./gradlew assemble
       working-directory: rnexample/android
     - uses: actions/upload-artifact@v4
       with:

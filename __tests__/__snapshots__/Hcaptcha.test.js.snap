@@ -17,69 +17,69 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with all props 1`] = `
   mixedContentMode="always"
   onShouldStartLoadWithRequest={[Function]}
   originWhitelist={
-    Array [
+    [
       "*",
     ]
   }
   renderLoading={[Function]}
   source={
-    Object {
+    {
       "baseUrl": "https://hcaptcha.com",
       "html": "<!DOCTYPE html>
       <html>
       <head>
-        <meta charset=\\"UTF-8\\">
-        <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\">
-        <meta http-equiv=\\"X-UA-Compatible\\" content=\\"ie=edge\\">
-        <script type=\\"text/javascript\\">
-          [\\"rnver_0_0_0\\",\\"dep_mocked-md5\\",\\"sdk_1_7_1\\"].forEach(function (value, i) { window[value] = true; });
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <script type="text/javascript">
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_1_7_1":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
         </script>
-        <script src=\\"https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=fr&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi\\" async defer></script>
-        <script type=\\"text/javascript\\">
+        <script src="https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=fr&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi" async defer></script>
+        <script type="text/javascript">
           var onloadCallback = function() {
             try {
-              console.log(\\"challenge onload starting\\");
-              hcaptcha.render(\\"submit\\", getRenderConfig(\\"00000000-0000-0000-0000-000000000000\\", \\"contrast\\", \\"normal\\"));
+              console.log("challenge onload starting");
+              hcaptcha.render("submit", getRenderConfig("00000000-0000-0000-0000-000000000000", "contrast", "normal"));
               // have loaded by this point; render is sync.
-              console.log(\\"challenge render complete\\");
+              console.log("challenge render complete");
             } catch (e) {
-              console.log(\\"challenge failed to render\\");
-              window.ReactNativeWebView.postMessage(\\"error\\");
+              console.log("challenge failed to render");
+              window.ReactNativeWebView.postMessage("error");
             }
             try {
-              console.log(\\"showing challenge\\");
+              console.log("showing challenge");
               hcaptcha.execute(getExecuteOpts());
             } catch (e) {
-              console.log(\\"failed to show challenge\\");
-              window.ReactNativeWebView.postMessage(\\"error\\");
+              console.log("failed to show challenge");
+              window.ReactNativeWebView.postMessage("error");
             }
           };
           var onDataCallback = function(response) {
             window.ReactNativeWebView.postMessage(response);
           };
           var onCancel = function() {
-            window.ReactNativeWebView.postMessage(\\"cancel\\");
+            window.ReactNativeWebView.postMessage("cancel");
           };
           var onOpen = function() {
-            window.ReactNativeWebView.postMessage(\\"open\\");
-            console.log(\\"challenge opened\\");
+            window.ReactNativeWebView.postMessage("open");
+            console.log("challenge opened");
           };
-          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(\\"expired\\"); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(\\"cancel\\"); };
+          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("cancel"); };
           var onDataErrorCallback = function(error) {
-            console.log(\\"challenge error callback fired\\");
-            window.ReactNativeWebView.postMessage(\\"error\\");
+            console.log("challenge error callback fired");
+            window.ReactNativeWebView.postMessage("error");
           };
           const getRenderConfig = function(siteKey, theme, size) {
             var config = {
               sitekey: siteKey,
               size: size,
               callback: onDataCallback,
-              \\"close-callback\\": onCancel,
-              \\"open-callback\\": onOpen,
-              \\"expired-callback\\": onDataExpiredCallback,
-              \\"chalexpired-callback\\": onChalExpiredCallback,
-              \\"error-callback\\": onDataErrorCallback
+              "close-callback": onCancel,
+              "open-callback": onOpen,
+              "expired-callback": onDataExpiredCallback,
+              "chalexpired-callback": onChalExpiredCallback,
+              "error-callback": onDataErrorCallback
             };
             if (theme) {
               config.theme = theme;
@@ -88,24 +88,24 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with all props 1`] = `
           };
           const getExecuteOpts = function() {
             var opts;
-            const rqdata = \\"{}\\";
+            const rqdata = "{}";
             if (rqdata) {
-              opts = {\\"rqdata\\": rqdata};
+              opts = {"rqdata": rqdata};
             }
             return opts;
           };
         </script>
       </head>
-      <body style=\\"background-color: rgba(0.1, 0.1, 0.1, 0.4);\\">
-        <div id=\\"submit\\"></div>
+      <body style="background-color: rgba(0.1, 0.1, 0.1, 0.4);">
+        <div id="submit"></div>
       </body>
       </html>",
     }
   }
   startInLoadingState={true}
   style={
-    Array [
-      Object {
+    [
+      {
         "backgroundColor": "transparent",
         "width": "100%",
       },
@@ -132,69 +132,69 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with minimum props 1`] = `
   mixedContentMode="always"
   onShouldStartLoadWithRequest={[Function]}
   originWhitelist={
-    Array [
+    [
       "*",
     ]
   }
   renderLoading={[Function]}
   source={
-    Object {
+    {
       "baseUrl": "https://hcaptcha.com",
       "html": "<!DOCTYPE html>
       <html>
       <head>
-        <meta charset=\\"UTF-8\\">
-        <meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1.0\\">
-        <meta http-equiv=\\"X-UA-Compatible\\" content=\\"ie=edge\\">
-        <script type=\\"text/javascript\\">
-          [\\"test_key\\"].forEach(function (value, i) { window[value] = true; });
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <script type="text/javascript">
+          Object.entries(["test_key"]).forEach(function (entry) { window[entry[0]] = entry[1] })
         </script>
-        <script src=\\"https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=missing-sitekey.react-native.hcaptcha.com\\" async defer></script>
-        <script type=\\"text/javascript\\">
+        <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=missing-sitekey.react-native.hcaptcha.com" async defer></script>
+        <script type="text/javascript">
           var onloadCallback = function() {
             try {
-              console.log(\\"challenge onload starting\\");
-              hcaptcha.render(\\"submit\\", getRenderConfig(\\"\\", undefined, \\"invisible\\"));
+              console.log("challenge onload starting");
+              hcaptcha.render("submit", getRenderConfig("", undefined, "invisible"));
               // have loaded by this point; render is sync.
-              console.log(\\"challenge render complete\\");
+              console.log("challenge render complete");
             } catch (e) {
-              console.log(\\"challenge failed to render\\");
-              window.ReactNativeWebView.postMessage(\\"error\\");
+              console.log("challenge failed to render");
+              window.ReactNativeWebView.postMessage("error");
             }
             try {
-              console.log(\\"showing challenge\\");
+              console.log("showing challenge");
               hcaptcha.execute(getExecuteOpts());
             } catch (e) {
-              console.log(\\"failed to show challenge\\");
-              window.ReactNativeWebView.postMessage(\\"error\\");
+              console.log("failed to show challenge");
+              window.ReactNativeWebView.postMessage("error");
             }
           };
           var onDataCallback = function(response) {
             window.ReactNativeWebView.postMessage(response);
           };
           var onCancel = function() {
-            window.ReactNativeWebView.postMessage(\\"cancel\\");
+            window.ReactNativeWebView.postMessage("cancel");
           };
           var onOpen = function() {
-            window.ReactNativeWebView.postMessage(\\"open\\");
-            console.log(\\"challenge opened\\");
+            window.ReactNativeWebView.postMessage("open");
+            console.log("challenge opened");
           };
-          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(\\"expired\\"); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(\\"cancel\\"); };
+          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("cancel"); };
           var onDataErrorCallback = function(error) {
-            console.log(\\"challenge error callback fired\\");
-            window.ReactNativeWebView.postMessage(\\"error\\");
+            console.log("challenge error callback fired");
+            window.ReactNativeWebView.postMessage("error");
           };
           const getRenderConfig = function(siteKey, theme, size) {
             var config = {
               sitekey: siteKey,
               size: size,
               callback: onDataCallback,
-              \\"close-callback\\": onCancel,
-              \\"open-callback\\": onOpen,
-              \\"expired-callback\\": onDataExpiredCallback,
-              \\"chalexpired-callback\\": onChalExpiredCallback,
-              \\"error-callback\\": onDataErrorCallback
+              "close-callback": onCancel,
+              "open-callback": onOpen,
+              "expired-callback": onDataExpiredCallback,
+              "chalexpired-callback": onChalExpiredCallback,
+              "error-callback": onDataErrorCallback
             };
             if (theme) {
               config.theme = theme;
@@ -205,21 +205,135 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with minimum props 1`] = `
             var opts;
             const rqdata = undefined;
             if (rqdata) {
-              opts = {\\"rqdata\\": rqdata};
+              opts = {"rqdata": rqdata};
             }
             return opts;
           };
         </script>
       </head>
-      <body style=\\"background-color: undefined;\\">
-        <div id=\\"submit\\"></div>
+      <body style="background-color: undefined;">
+        <div id="submit"></div>
       </body>
       </html>",
     }
   }
   style={
-    Array [
-      Object {
+    [
+      {
+        "backgroundColor": "transparent",
+        "width": "100%",
+      },
+      undefined,
+    ]
+  }
+/>
+`;
+
+exports[`Hcaptcha snapshot tests test debug 1`] = `
+<WebView
+  automaticallyAdjustContentInsets={true}
+  injectedJavaScript="(function () {
+  var originalPostMessage = window.ReactNativeWebView.postMessage;
+  var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
+    originalPostMessage(message, targetOrigin, transfer);
+  };
+  patchedPostMessage.toString = function () {
+    return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
+  };
+  window.ReactNativeWebView.postMessage = patchedPostMessage;
+})();"
+  javaScriptEnabled={true}
+  mixedContentMode="always"
+  onShouldStartLoadWithRequest={[Function]}
+  originWhitelist={
+    [
+      "*",
+    ]
+  }
+  renderLoading={[Function]}
+  source={
+    {
+      "baseUrl": "https://hcaptcha.com",
+      "html": "<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <script type="text/javascript">
+          Object.entries({"a":1,"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_1_7_1":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+        </script>
+        <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en" async defer></script>
+        <script type="text/javascript">
+          var onloadCallback = function() {
+            try {
+              console.log("challenge onload starting");
+              hcaptcha.render("submit", getRenderConfig("00000000-0000-0000-0000-000000000000", undefined, "invisible"));
+              // have loaded by this point; render is sync.
+              console.log("challenge render complete");
+            } catch (e) {
+              console.log("challenge failed to render");
+              window.ReactNativeWebView.postMessage("error");
+            }
+            try {
+              console.log("showing challenge");
+              hcaptcha.execute(getExecuteOpts());
+            } catch (e) {
+              console.log("failed to show challenge");
+              window.ReactNativeWebView.postMessage("error");
+            }
+          };
+          var onDataCallback = function(response) {
+            window.ReactNativeWebView.postMessage(response);
+          };
+          var onCancel = function() {
+            window.ReactNativeWebView.postMessage("cancel");
+          };
+          var onOpen = function() {
+            window.ReactNativeWebView.postMessage("open");
+            console.log("challenge opened");
+          };
+          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("cancel"); };
+          var onDataErrorCallback = function(error) {
+            console.log("challenge error callback fired");
+            window.ReactNativeWebView.postMessage("error");
+          };
+          const getRenderConfig = function(siteKey, theme, size) {
+            var config = {
+              sitekey: siteKey,
+              size: size,
+              callback: onDataCallback,
+              "close-callback": onCancel,
+              "open-callback": onOpen,
+              "expired-callback": onDataExpiredCallback,
+              "chalexpired-callback": onChalExpiredCallback,
+              "error-callback": onDataErrorCallback
+            };
+            if (theme) {
+              config.theme = theme;
+            }
+            return config;
+          };
+          const getExecuteOpts = function() {
+            var opts;
+            const rqdata = undefined;
+            if (rqdata) {
+              opts = {"rqdata": rqdata};
+            }
+            return opts;
+          };
+        </script>
+      </head>
+      <body style="background-color: undefined;">
+        <div id="submit"></div>
+      </body>
+      </html>",
+    }
+  }
+  style={
+    [
+      {
         "backgroundColor": "transparent",
         "width": "100%",
       },
