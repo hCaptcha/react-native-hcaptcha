@@ -15,9 +15,11 @@ export default class App extends React.Component {
       if (['cancel'].includes(event.nativeEvent.data)) {
         this.captchaForm.hide();
         this.setState({ code: event.nativeEvent.data});
-      } else if (['error', 'expired'].includes(event.nativeEvent.data)) {
+      } else if (['error'].includes(event.nativeEvent.data)) {
         this.captchaForm.hide();
         this.setState({ code: event.nativeEvent.data});
+      } else if (event.nativeEvent.data === 'expired') {
+        event.reset();
       } else if (event.nativeEvent.data === 'open') {
         console.log('Visual challenge opened');
       } else {

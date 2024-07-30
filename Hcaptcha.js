@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useRef } from 'react';
 import WebView from 'react-native-webview';
 import { Linking, StyleSheet, View, ActivityIndicator } from 'react-native';
 import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
@@ -153,7 +153,7 @@ const Hcaptcha = ({
             console.log("challenge opened");
           };
           var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("cancel"); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
           var onDataErrorCallback = function(error) {
             console.log("challenge error callback fired");
             window.ReactNativeWebView.postMessage("error");
@@ -201,8 +201,17 @@ const Hcaptcha = ({
     [loadingIndicatorColor]
   );
 
+  const webViewRef = useRef(null);
+
+  const reset = () => {
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript('onloadCallback();');
+    }
+  };
+
   return (
     <WebView
+      ref={webViewRef}
       originWhitelist={['*']}
       onShouldStartLoadWithRequest={(event) => {
         if (event.url.slice(0, 24) === 'https://www.hcaptcha.com') {
@@ -212,7 +221,10 @@ const Hcaptcha = ({
         return true;
       }}
       mixedContentMode={'always'}
-      onMessage={onMessage}
+      onMessage={(e) => {
+        e.reset = reset;
+        onMessage(e);
+      }}
       javaScriptEnabled
       injectedJavaScript={patchPostMessageJsCode}
       automaticallyAdjustContentInsets
