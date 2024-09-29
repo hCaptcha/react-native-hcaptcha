@@ -85,6 +85,7 @@ const Hcaptcha = ({
   orientation,
 }) => {
   const apiUrl = buildHcaptchaApiUrl(jsSrc, siteKey, languageCode, theme, host, sentry, endpoint, assethost, imghost, reportapi, orientation);
+  const tokenTimeout = 120000;
 
   if (theme && typeof theme === 'string') {
     theme = `"${theme}"`;
@@ -223,6 +224,10 @@ const Hcaptcha = ({
       mixedContentMode={'always'}
       onMessage={(e) => {
         e.reset = reset;
+        if (e.nativeEvent.data.length > 16) {
+          const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, reset }), tokenTimeout);
+          e.markUsed = () => clearTimeout(expiredTokenTimerId);
+        }
         onMessage(e);
       }}
       javaScriptEnabled
