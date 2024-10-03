@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "example": "node __scripts__/generate-example.js --name react-native-hcaptcha-example"
+    "example": "node __scripts__/generate-example.js"
   },
   "jest": {
     "preset": "react-native",

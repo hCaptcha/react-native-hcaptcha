@@ -12,4 +12,5 @@ module.exports = {
       + "|react-native-animatable"
     + ")/)",
   ],
+  setupFiles: ['./jest.setup.js'],
 }

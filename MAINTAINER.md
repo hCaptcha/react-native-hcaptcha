@@ -153,6 +153,6 @@ Problem:
 Usage Error: The file:../react-native-hcaptcha string didn't match the required format (package-name@range). Did you perhaps forget to explicitly reference the package name?
 ```
 
-Solution: `yarn add ../react-native-hcaptcha`
+Solution: `yarn add @hcaptcha/react-native-hcaptcha@file:../react-native-hcaptcha`
 
 Yarn 2.10.x and above doesn't require `file:` scheme prefix https://stackoverflow.com/questions/40102686/how-to-install-package-with-local-path-by-yarn-it-couldnt-find-package
