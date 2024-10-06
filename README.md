@@ -52,11 +52,36 @@ In particular, if you do **not** plan to immediately consume the passcode return
 
 By default, this value is 120 seconds. So, an `expired` error will be emitted to `onMessage` if you haven't called `event.markUsed()`.
 
-Once you've utilized hCaptcha's token, call `markUsed` on the event object in `onMessage`, like `event.markUsed()`.
+Once you've utilized hCaptcha's token, call `markUsed` on the event object in `onMessage`:
+
+```js
+  onMessage = event => {
+    if (event && event.nativeEvent.data) {
+      if (['cancel'].includes(event.nativeEvent.data)) {
+        this.captchaForm.hide();
+      } else if (['error'].includes(event.nativeEvent.data)) {
+        this.captchaForm.hide();
+        // handle error
+      } else {
+        this.captchaForm.hide();
+        const token = event.nativeEvent.data;
+        // utlize token and call markUsed once you done with it
+        event.markUsed();
+      }
+    }
+  };
+  ...
+  <ConfirmHcaptcha
+    ref={_ref => (this.captchaForm = _ref)}
+    siteKey={siteKey}
+    languageCode="en"
+    onMessage={this.onMessage}
+  />
+```
 
 ### Handling errors and retry
 
-In case of an `error`, you can `reset` hCaptcha by calling `event.reset()`` to perform another attempt at verification.
+If your app encounters an `error` event, you can reset the hCaptcha SDK flow by calling `event.reset()`` to perform another attempt at verification.
 
 ## Dependencies
 
@@ -130,6 +155,7 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 | baseUrl _(modal component only)_ | string | The url domain defined on your hCaptcha. You generally will not need to change this. |
 | passiveSiteKey _(modal component only)_ | boolean | Indicates whether the passive mode is enabled; when true, the modal won't be shown at all |
 | hasBackdrop _(modal component only)_ | boolean | Defines if the modal backdrop is shown (true by default) |
+| orientation | string | This specifies the "orientation" of the challenge. It can be `portrait`, `landscape`. Default: `portrait` |
 
 
 ## Status
