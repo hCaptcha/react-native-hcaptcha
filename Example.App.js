@@ -14,15 +14,20 @@ export default class App extends React.Component {
     if (event && event.nativeEvent.data) {
       if (['cancel'].includes(event.nativeEvent.data)) {
         this.captchaForm.hide();
-        this.setState({ code: event.nativeEvent.data});
-      } else if (['error', 'expired'].includes(event.nativeEvent.data)) {
+        this.setState({ code: event.nativeEvent.data });
+      } else if (['error'].includes(event.nativeEvent.data)) {
         this.captchaForm.hide();
-        this.setState({ code: event.nativeEvent.data});
+        this.setState({ code: event.nativeEvent.data });
+        console.log('Verification failed', event.nativeEvent.data);
+      } else if (event.nativeEvent.data === 'expired') {
+        event.reset();
+        console.log('Visual challenge expired, reset...', event.nativeEvent.data);
       } else if (event.nativeEvent.data === 'open') {
         console.log('Visual challenge opened');
       } else {
         console.log('Verified code from hCaptcha', event.nativeEvent.data);
         this.captchaForm.hide();
+        event.markUsed();
         this.setState({ code: event.nativeEvent.data });
       }
     }

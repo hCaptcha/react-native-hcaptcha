@@ -35,13 +35,14 @@ Also, please note the following special message strings that can be returned via
 
 | name | purpose |
 | --- | --- |
-| expired | passcode response expired and the user must re-verify |
+| expired | passcode response expired and the user must re-verify, or did not answer before session expired |
 | error | there was an error displaying the challenge |
-| cancel | the user closed the challenge, or did not answer before session expired |
+| cancel | the user closed the challenge |
 | open | the visual challenge was opened |
 
 
 Any other string returned by `onMessage` will be a passcode.
+
 
 ### Handling the post-issuance expiration lifecycle
 
@@ -49,13 +50,38 @@ This extension is a lightweight wrapper, and does not currently attempt to manag
 
 In particular, if you do **not** plan to immediately consume the passcode returned by submitting it to your backend, you should start a timer to let your application state know that a new passcode is required when it expires.
 
-By default, this value is 120 seconds. Thus, you would want code similar to the following in your app when handling `onMessage` responses that return a passcode:
+By default, this value is 120 seconds. So, an `expired` error will be emitted to `onMessage` if you haven't called `event.markUsed()`.
 
+Once you've utilized hCaptcha's token, call `markUsed` on the event object in `onMessage`:
+
+```js
+  onMessage = event => {
+    if (event && event.nativeEvent.data) {
+      if (['cancel'].includes(event.nativeEvent.data)) {
+        this.captchaForm.hide();
+      } else if (['error'].includes(event.nativeEvent.data)) {
+        this.captchaForm.hide();
+        // handle error
+      } else {
+        this.captchaForm.hide();
+        const token = event.nativeEvent.data;
+        // utlize token and call markUsed once you done with it
+        event.markUsed();
+      }
+    }
+  };
+  ...
+  <ConfirmHcaptcha
+    ref={_ref => (this.captchaForm = _ref)}
+    siteKey={siteKey}
+    languageCode="en"
+    onMessage={this.onMessage}
+  />
 ```
-this.timeoutCheck = setTimeout(() => {
-   this.setPasscodeExpired();
-   }, 120000);
-```
+
+### Handling errors and retry
+
+If your app encounters an `error` event, you can reset the hCaptcha SDK flow by calling `event.reset()`` to perform another attempt at verification.
 
 ## Dependencies
 
@@ -129,6 +155,7 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 | baseUrl _(modal component only)_ | string | The url domain defined on your hCaptcha. You generally will not need to change this. |
 | passiveSiteKey _(modal component only)_ | boolean | Indicates whether the passive mode is enabled; when true, the modal won't be shown at all |
 | hasBackdrop _(modal component only)_ | boolean | Defines if the modal backdrop is shown (true by default) |
+| orientation | string | This specifies the "orientation" of the challenge. It can be `portrait`, `landscape`. Default: `portrait` |
 
 
 ## Status

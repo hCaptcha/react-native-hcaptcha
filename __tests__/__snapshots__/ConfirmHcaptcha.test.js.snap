@@ -53,6 +53,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1
 })();"
       javaScriptEnabled={true}
       mixedContentMode="always"
+      onMessage={[Function]}
       onShouldStartLoadWithRequest={[Function]}
       originWhitelist={
         [
@@ -103,7 +104,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1
             console.log("challenge opened");
           };
           var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("cancel"); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
           var onDataErrorCallback = function(error) {
             console.log("challenge error callback fired");
             window.ReactNativeWebView.postMessage("error");
@@ -208,6 +209,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
 })();"
       javaScriptEnabled={true}
       mixedContentMode="always"
+      onMessage={[Function]}
       onShouldStartLoadWithRequest={[Function]}
       originWhitelist={
         [
@@ -258,7 +260,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
             console.log("challenge opened");
           };
           var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("cancel"); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
           var onDataErrorCallback = function(error) {
             console.log("challenge error callback fired");
             window.ReactNativeWebView.postMessage("error");
