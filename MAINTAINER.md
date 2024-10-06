@@ -23,33 +23,20 @@ PATCH: bugfix only.
 
 For `expo` test app
 
-- `cd ..` 
-- `expo init expo-example -t blank`
-- `cd expo-example`
-- `yarn add file:../react-native-hcaptcha`
-- `yarn add react-native-modal react-native-webview`
-- `cp ../react-native-hcaptcha/Example.App.js App.js`
-- `yarn android`
+- `cd react-native-hcaptcha`
+- `yarn example --expo
+- `yarn android` or `npm run android`
 
 For `react-native` test app
 
-- `cd ..` 
-- `react-native init rnexample` or `react-native init rnexample --version 0.63.4` for specific version
-- `cd rnexample`
-- `yarn add file:../react-native-hcaptcha`
-- `yarn add react-native-modal react-native-webview`
-- `cp ../react-native-hcaptcha/Example.App.js App.js`
-- `yarn android`
+- `cd react-native-hcaptcha`
+- `yarn example`
+- `yarn android` or `npm run android`
 
 For iOS instead the last step do:
 
-- `pushd ios; pod install; popd`
-- `yarn ios`
-
-To quickly update `react-native-hcaptcha` locally just run:
-
-`yarn upgrade file:../react-native-hcaptcha`
-
+- `pushd ios; env USE_HERMES=0 pod install; popd`
+- `yarn ios` or `npm run ios`
 
 ### Known issues
 
@@ -146,3 +133,26 @@ ERROR    Invariant Violation: No callback found with cbID xxxxx and callID yyyyy
 Solution: delete `node_modules` in `react-native-hcaptcha`.
 
 This issue is related to mismatched `react-native` versions in the test app vs. `react-native-hcaptcha`
+
+---
+
+Problem:
+
+Xcode failed to build with:
+
+> ...
+> Framework 'hermes' not found
+
+Solution: `env USE_HERMES=0 pod install` or add `:hermes_enabled => false` into `use_react_native!` call in `ios/Podfile`
+
+---
+
+Problem:
+```
+> yarn add file:../react-native-hcaptcha
+Usage Error: The file:../react-native-hcaptcha string didn't match the required format (package-name@range). Did you perhaps forget to explicitly reference the package name?
+```
+
+Solution: `yarn add @hcaptcha/react-native-hcaptcha@file:../react-native-hcaptcha`
+
+Yarn 2.10.x and above doesn't require `file:` scheme prefix https://stackoverflow.com/questions/40102686/how-to-install-package-with-local-path-by-yarn-it-couldnt-find-package

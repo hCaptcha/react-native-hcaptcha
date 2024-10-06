@@ -9,11 +9,6 @@ on:
   schedule:
     - cron: '0 0 * * 0' # https://crontab.guru/every-week
 
-env:
-  TEST_APP_DEPS: react-native-modal react-native-webview
-  TEST_APP_DEV_DEPS: typescript @babel/preset-env react-shallow-renderer
-  RN_BUNDLE_ARGS: --entry-file index.js --platform android --dev false --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -21,11 +16,29 @@ jobs:
     - uses: actions/checkout@v4
     - run: npm install
     - run: npm test
-  test-yarn:
+
+  test:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     outputs:
       rn-version: ${{ steps.rn-version.outputs.value }}
+    concurrency:
+      group: '${{ github.workflow }}-${{ matrix.platform }}-${{ matrix.pm }}-${{ github.head_ref || github.ref_name }}'
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        os: [ ubuntu-latest ]
+        platform: [ android ]
+        pm: [ npm, yarn ]
+        include:
+        - os: macos-latest
+          platform: ios
+          pm: npm
+        - os: macos-latest
+          platform: ios
+          pm: yarn
     steps:
     - uses: actions/checkout@v4
       with:
@@ -34,85 +47,32 @@ jobs:
       with:
         java-version: 17
         distribution: adopt
-    - run: npx react-native init rnexample
+    - run: |
+        # npm install -g ${{ matrix.pm }} react-native
+        npm run example -- --pm ${{ matrix.pm }}
+      working-directory: react-native-hcaptcha
     - id: rn-version
-      working-directory: rnexample
+      working-directory: react-native-hcaptcha-example
       run: |
         RN_VERSION=$(cat package.json | jq ".dependencies.\"react-native\"" -r)
         echo "value=${RN_VERSION}" >> $GITHUB_OUTPUT
-    - name: Run yarn add ...
-      working-directory: rnexample
-      run: |
-        yarn add @hcaptcha/react-native-hcaptcha@file:../react-native-hcaptcha
-        yarn add --dev ${{ env.TEST_APP_DEV_DEPS }}
-        yarn add ${{ env.TEST_APP_DEPS }}
-        cp ../react-native-hcaptcha/Example.App.js App.js
-        cp ../react-native-hcaptcha/Example.jest.config.js jest.config.js
-    - run: |
-        mkdir -p android/app/src/main/assets
-        mkdir -p android/app/src/main/res
-        yarn react-native bundle ${{ env.RN_BUNDLE_ARGS }}
-      working-directory: rnexample
     - run: cat package.json
-      working-directory: rnexample
+      working-directory: react-native-hcaptcha-example
     - run: yarn test --config ./jest.config.js
-      working-directory: rnexample
+      working-directory: react-native-hcaptcha-example
+    - run: npx react-native build-${{ matrix.platform }}
+      working-directory: react-native-hcaptcha-example
     - run: npx --yes check-peer-dependencies --yarn --runOnlyOnRootDependencies
-      working-directory: rnexample
-  test-npm:
-    needs: build
-    runs-on: ubuntu-latest
-    outputs:
-      rn-version: ${{ steps.rn-version.outputs.value }}
-    steps:
-    - uses: actions/setup-java@v4
-      with:
-        java-version: 17
-        distribution: adopt
-    - run: npx react-native init rnexample
-    - id: rn-version
-      working-directory: rnexample
-      run: |
-        RN_VERSION=$(cat package.json | jq ".dependencies.\"react-native\"" -r)
-        echo "value=${RN_VERSION}" >> $GITHUB_OUTPUT
-    - uses: actions/checkout@v4
-      with:
-        path: rnexample/react-native-hcaptcha
-    - name: Run npm install ...
-      working-directory: rnexample
-      run: |
-        npm i --save file:./react-native-hcaptcha
-        npm i --save --include=dev ${{ env.TEST_APP_DEV_DEPS }}
-        npm i --save ${{ env.TEST_APP_DEPS }}
-        cp ./react-native-hcaptcha/Example.App.js App.js
-        cp ./react-native-hcaptcha/Example.jest.config.js jest.config.js
-    - run: |
-        mkdir -p android/app/src/main/assets
-        mkdir -p android/app/src/main/res
-        npx react-native bundle ${{ env.RN_BUNDLE_ARGS }}
-      working-directory: rnexample
-    - run: cat package.json
-      working-directory: rnexample
-    - run: npm run test -- --config ./jest.config.js
-      working-directory: rnexample
-    - run: npx --yes check-peer-dependencies --npm --runOnlyOnRootDependencies
-      working-directory: rnexample
-    - run: |
-        echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> gradle.properties
-        ./gradlew assemble
-      working-directory: rnexample/android
-    - uses: actions/upload-artifact@v4
-      with:
-        name: apks
-        path: rnexample/android/app/build/outputs/apk/release/app-release.apk
+      working-directory: react-native-hcaptcha-example
+
   create-an-issue:
     runs-on: ubuntu-latest
-    needs: [test-npm, test-yarn]
-    if: always() && github.event == 'schedule' && (needs.test-npm.result == 'failure' || needs.test-yarn.result == 'failure')
+    needs: test
+    if: always() && github.event == 'schedule' && needs.test.result == 'failure'
     steps:
     - uses: actions/checkout@v4
     - run: |
-        RN_VERSION="${{ needs.test-npm.outputs.rn-version || needs.test-yarn.outputs.rn-version }}"
+        RN_VERSION="${{ needs.test.outputs.rn-version }}"
         GHA_RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         echo "RN_VERSION=${RN_VERSION}" >> $GITHUB_ENV
         echo "GHA_RUN_URL=${GHA_RUN_URL}" >> $GITHUB_ENV
@@ -123,9 +83,10 @@ jobs:
         assignees: CAMOBAP
         update_existing: true
         filename: .github/examples-issue-template.md
+
   release:
     if: github.event_name == 'release'
-    needs: [test-npm, test-yarn]
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

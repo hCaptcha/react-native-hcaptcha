@@ -4,7 +4,8 @@
   "description": "hCaptcha Library for React Native (both Android and iOS)",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "example": "node __scripts__/generate-example.js"
   },
   "jest": {
     "preset": "react-native",
