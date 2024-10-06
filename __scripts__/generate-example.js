@@ -11,10 +11,13 @@ function showHelp() {
 Usage: ${path.basename(process.argv[1])} [options]
 
 Options:
-  --expo        Use expo-cli (default: false)
+  --expo              Use expo-cli (default: false)
   --template <value>  Specify the project template
-  --name <value>    Specify the project name (required)
-  -h, --help      Show this help message
+  --name <name>       Specify the project name (required)
+  --path <path>       Specify the project path (default: ../<name>)
+  --pm <pm>           Specify the package manager to use (default: yarn)
+  --verbose           Enable verbose logging
+  -h, --help          Show this help message
 `);
   process.exit(1);
 }
@@ -26,6 +29,7 @@ function parseArgs(args) {
     projectName: 'react_native_hcaptcha_example',
     projectRelativeProjectPath: '../react-native-hcaptcha-example',
     packageManager: 'yarn',
+    verbose: false,
     projectTemplate: undefined,
     frameworkVersion: undefined,
   };
@@ -41,6 +45,7 @@ function parseArgs(args) {
       options.projectRelativeProjectPath = value;
     },
     '--pm': (value) => options.packageManager = value,
+    '--verbose': () => options.verbose = true,
     '-h': showHelp,
     '--help': showHelp
   };
@@ -77,15 +82,14 @@ function parseArgs(args) {
   return options;
 }
 
-function cleanupEnvPathNode() {
-  process.env.PATH = process.env.PATH.split(':')
+function cleanPathEnv() {
+  return process.env.PATH.split(':')
     .filter(dir => !dir.includes('node_modules/.bin'))
     .join(':');
-  console.log(`env=${JSON.stringify(process.env)}`);
 }
 
 // Function to build the create command
-function buildCreateCommand({ cliName, projectRelativeProjectPath, projectName, projectTemplate, packageManager, frameworkVersion }) {
+function buildCreateCommand({ cliName, projectRelativeProjectPath, projectName, projectTemplate, packageManager, frameworkVersion, verbose }) {
   let createCommand = ['npx', cliName, 'init', projectName, '--directory', projectRelativeProjectPath];
 
   if (projectTemplate) {
@@ -100,14 +104,14 @@ function buildCreateCommand({ cliName, projectRelativeProjectPath, projectName, 
     if (frameworkVersion) {
       createCommand.push('--version', frameworkVersion);
     }
-
-    // createCommand.push('--skip-install');
   } else {
     console.error('Error: unsupporte cliName');
     showHelp();
   }
 
-  createCommand.push('--verbose');
+  if (verbose) {
+    createCommand.push('--verbose');
+  }
 
   return createCommand;
 }
@@ -117,17 +121,15 @@ function checkHcaptchaLinked() {
 }
 
 // Main function that takes parsed arguments and runs the necessary setup
-function main({ cliName, projectRelativeProjectPath, projectName, projectTemplate, packageManager, frameworkVersion }) {
-  cleanupEnvPathNode();
-
-  console.warn(`Warning! Example project will be generated in '${path.dirname(process.cwd())}' os='${platform()}'`);
+function main({ cliName, projectRelativeProjectPath, projectName, projectTemplate, packageManager, frameworkVersion, verbose }) {
+  console.warn(`Warning! Example project will be generated in '${path.dirname(process.cwd())}'`);
 
   // Build the command to initialize the project
   const createCommand = buildCreateCommand({ cliName, projectRelativeProjectPath, projectName, projectTemplate, packageManager, frameworkVersion });
 
   // Run the project initialization command
   console.log(`Running command: ${createCommand}`);
-  execSync(createCommand.join(' '), { stdio: 'inherit', shell: true, env: { ...process.env, USE_HERMES: 0 } });
+  execSync(createCommand.join(' '), { stdio: 'inherit', shell: true, env: { ...process.env, PATH: cleanPathEnv(), USE_HERMES: 0 } });
 
   const projectPath = path.join(process.cwd(), projectRelativeProjectPath);
   const packageManagerOptions = { stdio: 'inherit', cwd: projectPath };
