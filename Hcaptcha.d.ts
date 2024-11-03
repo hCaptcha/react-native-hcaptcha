@@ -33,6 +33,10 @@ type HcaptchaProps = {
    */
   showLoading?: boolean;
   /**
+   * Allow user to cancel hcaptcha during loading by touch loader overlay
+   */
+  closableLoading?: boolean;
+  /**
    * Color of the ActivityIndicator
    */
   loadingIndicatorColor?: string;
