@@ -1,6 +1,6 @@
-import React, { useMemo, useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import WebView from 'react-native-webview';
-import { Linking, StyleSheet, View, ActivityIndicator, TouchableWithoutFeedback } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
 
 import md5 from './md5';
@@ -88,6 +88,7 @@ const Hcaptcha = ({
 }) => {
   const apiUrl = buildHcaptchaApiUrl(jsSrc, siteKey, languageCode, theme, host, sentry, endpoint, assethost, imghost, reportapi, orientation);
   const tokenTimeout = 120000;
+  const loadingTimeout = 15000;
   const [isLoading, setIsLoading] = useState(true);
 
   if (theme && typeof theme === 'string') {
@@ -196,6 +197,18 @@ const Hcaptcha = ({
     [siteKey, backgroundColor, theme, debugInfo]
   );
 
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        onMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } });
+      }
+    }, loadingTimeout);
+
+    return () => clearTimeout(timeoutId);
+  }, [isLoading, onMessage]);
+
+  const webViewRef = useRef(null);
+
   // This shows ActivityIndicator till webview loads hCaptcha images
   const renderLoading = () => (
     <TouchableWithoutFeedback onPress={() => closableLoading && onMessage({ nativeEvent: { data: 'cancel' } })}>
@@ -204,8 +217,6 @@ const Hcaptcha = ({
       </View>
     </TouchableWithoutFeedback>
   );
-
-  const webViewRef = useRef(null);
 
   const reset = () => {
     if (webViewRef.current) {
