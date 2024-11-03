@@ -51,6 +51,8 @@ jobs:
         # npm install -g ${{ matrix.pm }} react-native
         npm run example -- --pm ${{ matrix.pm }}
       working-directory: react-native-hcaptcha
+      env:
+        YARN_ENABLE_IMMUTABLE_INSTALLS: false
     - id: rn-version
       working-directory: react-native-hcaptcha-example
       run: |
