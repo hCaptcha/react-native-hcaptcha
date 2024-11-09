@@ -39,9 +39,16 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1
       ]
     }
   >
-    <WebView
-      automaticallyAdjustContentInsets={true}
-      injectedJavaScript="(function () {
+    <View
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <WebView
+        automaticallyAdjustContentInsets={true}
+        injectedJavaScript="(function () {
   var originalPostMessage = window.ReactNativeWebView.postMessage;
   var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
     originalPostMessage(message, targetOrigin, transfer);
@@ -51,34 +58,33 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1
   };
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })();"
-      javaScriptEnabled={true}
-      mixedContentMode="always"
-      onMessage={[Function]}
-      onShouldStartLoadWithRequest={[Function]}
-      originWhitelist={
-        [
-          "*",
-        ]
-      }
-      renderLoading={[Function]}
-      source={
-        {
-          "baseUrl": "https://hcaptcha.com",
-          "html": "<!DOCTYPE html>
+        javaScriptEnabled={true}
+        mixedContentMode="always"
+        onMessage={[Function]}
+        onShouldStartLoadWithRequest={[Function]}
+        originWhitelist={
+          [
+            "*",
+          ]
+        }
+        source={
+          {
+            "baseUrl": "https://hcaptcha.com",
+            "html": "<!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_1_7_2":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_1_8_2":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
         </script>
-        <script src="https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=en&sentry=true&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi" async defer></script>
+        <script src="https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=en&sentry=true&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi&orientation=portrait" async defer></script>
         <script type="text/javascript">
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptcha.render("submit", getRenderConfig("00000000-0000-0000-0000-000000000000", "light", "compact"));
+              hcaptcha.render("hcaptcha-container", getRenderConfig("00000000-0000-0000-0000-000000000000", "light", "compact"));
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
@@ -100,6 +106,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1
             window.ReactNativeWebView.postMessage("cancel");
           };
           var onOpen = function() {
+            document.body.style.backgroundColor = 'rgba(0.1, 0.1, 0.1, 0.4)';
             window.ReactNativeWebView.postMessage("open");
             console.log("challenge opened");
           };
@@ -135,23 +142,23 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1
           };
         </script>
       </head>
-      <body style="background-color: rgba(0.1, 0.1, 0.1, 0.4);">
-        <div id="submit"></div>
+      <body>
+        <div id="hcaptcha-container"></div>
       </body>
       </html>",
+          }
         }
-      }
-      startInLoadingState={false}
-      style={
-        [
-          {
-            "backgroundColor": "transparent",
-            "width": "100%",
-          },
-          undefined,
-        ]
-      }
-    />
+        style={
+          [
+            {
+              "backgroundColor": "transparent",
+              "width": "100%",
+            },
+            undefined,
+          ]
+        }
+      />
+    </View>
   </RCTSafeAreaView>
 </Modal>
 `;
@@ -195,9 +202,16 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
       ]
     }
   >
-    <WebView
-      automaticallyAdjustContentInsets={true}
-      injectedJavaScript="(function () {
+    <View
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <WebView
+        automaticallyAdjustContentInsets={true}
+        injectedJavaScript="(function () {
   var originalPostMessage = window.ReactNativeWebView.postMessage;
   var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
     originalPostMessage(message, targetOrigin, transfer);
@@ -207,20 +221,19 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
   };
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })();"
-      javaScriptEnabled={true}
-      mixedContentMode="always"
-      onMessage={[Function]}
-      onShouldStartLoadWithRequest={[Function]}
-      originWhitelist={
-        [
-          "*",
-        ]
-      }
-      renderLoading={[Function]}
-      source={
-        {
-          "baseUrl": "https://hcaptcha.com",
-          "html": "<!DOCTYPE html>
+        javaScriptEnabled={true}
+        mixedContentMode="always"
+        onMessage={[Function]}
+        onShouldStartLoadWithRequest={[Function]}
+        originWhitelist={
+          [
+            "*",
+          ]
+        }
+        source={
+          {
+            "baseUrl": "https://hcaptcha.com",
+            "html": "<!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
@@ -229,12 +242,12 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
         <script type="text/javascript">
           Object.entries(["test_key"]).forEach(function (entry) { window[entry[0]] = entry[1] })
         </script>
-        <script src="https://js.hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en" async defer></script>
+        <script src="https://js.hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en&orientation=portrait" async defer></script>
         <script type="text/javascript">
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptcha.render("submit", getRenderConfig("00000000-0000-0000-0000-000000000000", "light", "invisible"));
+              hcaptcha.render("hcaptcha-container", getRenderConfig("00000000-0000-0000-0000-000000000000", "light", "invisible"));
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
@@ -256,6 +269,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
             window.ReactNativeWebView.postMessage("cancel");
           };
           var onOpen = function() {
+            document.body.style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
             window.ReactNativeWebView.postMessage("open");
             console.log("challenge opened");
           };
@@ -291,23 +305,23 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
           };
         </script>
       </head>
-      <body style="background-color: rgba(0, 0, 0, 0.3);">
-        <div id="submit"></div>
+      <body>
+        <div id="hcaptcha-container"></div>
       </body>
       </html>",
+          }
         }
-      }
-      startInLoadingState={false}
-      style={
-        [
-          {
-            "backgroundColor": "transparent",
-            "width": "100%",
-          },
-          undefined,
-        ]
-      }
-    />
+        style={
+          [
+            {
+              "backgroundColor": "transparent",
+              "width": "100%",
+            },
+            undefined,
+          ]
+        }
+      />
+    </View>
   </RCTSafeAreaView>
 </Modal>
 `;

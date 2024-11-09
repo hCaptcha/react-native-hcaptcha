@@ -127,8 +127,10 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 
 
 ### Notes
+
 - The UI defaults to the "invisible" mode of the JS SDK, i.e. no checkbox is displayed.
-- You can `import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha';` to customize the UI yourself. 
+- You can `import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha';` to customize the UI yourself.
+- hCaptcha loading is restricted to a 15-second timeout; an `error` will be sent via `onMessage` if it fails to load due to network issues.
 
 ## Properties
 
@@ -139,6 +141,7 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 | onMessage | Function (see [here](https://github.com/react-native-webview/react-native-webview/blob/master/src/WebViewTypes.ts#L299)) | The callback function that runs after receiving a response, error, or when user cancels. |
 | languageCode | string | Default language for hCaptcha; overrides phone defaults. A complete list of supported languages and their codes can be found [here](https://docs.hcaptcha.com/languages/) |
 | showLoading | boolean | Whether to show a loading indicator while the hCaptcha web content loads |
+| closableLoading | boolean | Allow user to cancel hcaptcha during loading by touch loader overlay |
 | loadingIndicatorColor | string | Color of the ActivityIndicator |
 | backgroundColor | string | The background color code that will be applied to the main HTML element |
 | theme | string\|object | The theme can be 'light', 'dark', 'contrast' or a custom theme object (see Enterprise docs) |
@@ -154,7 +157,7 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 | style _(inline component only)_ | ViewStyle (see [here](https://reactnative.dev/docs/view-style-props)) | The webview style |
 | baseUrl _(modal component only)_ | string | The url domain defined on your hCaptcha. You generally will not need to change this. |
 | passiveSiteKey _(modal component only)_ | boolean | Indicates whether the passive mode is enabled; when true, the modal won't be shown at all |
-| hasBackdrop _(modal component only)_ | boolean | Defines if the modal backdrop is shown (true by default) |
+| hasBackdrop _(modal component only)_ | boolean | Defines if the modal backdrop is shown (true by default). If `hasBackdrop=false`, `backgroundColor` will apply only after the hCaptcha visual challenge is presented. |
 | orientation | string | This specifies the "orientation" of the challenge. It can be `portrait`, `landscape`. Default: `portrait` |
 
 

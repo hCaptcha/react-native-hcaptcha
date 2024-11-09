@@ -31,6 +31,7 @@ class ConfirmHcaptcha extends PureComponent {
       orientation,
       onMessage,
       showLoading,
+      closableLoading,
       backgroundColor,
       loadingIndicatorColor,
       theme,
@@ -61,7 +62,7 @@ class ConfirmHcaptcha extends PureComponent {
         hasBackdrop={!passiveSiteKey && hasBackdrop}
         coverScreen={!passiveSiteKey}
       >
-        <SafeAreaView style={[styles.wrapper, { backgroundColor }]}>
+        <SafeAreaView style={[styles.wrapper, hasBackdrop ? { backgroundColor } : {}]}>
           <Hcaptcha
             url={baseUrl}
             size={size}
@@ -69,6 +70,7 @@ class ConfirmHcaptcha extends PureComponent {
             onMessage={onMessage}
             languageCode={languageCode}
             showLoading={showLoading}
+            closableLoading={closableLoading}
             loadingIndicatorColor={loadingIndicatorColor}
             backgroundColor={backgroundColor}
             theme={theme}
@@ -80,6 +82,7 @@ class ConfirmHcaptcha extends PureComponent {
             assethost={assethost}
             imghost={imghost}
             host={host}
+            orientation={orientation}
             debug={debug}
           />
         </SafeAreaView>
@@ -114,6 +117,7 @@ ConfirmHcaptcha.propTypes = {
   orientation: PropTypes.string,
   backgroundColor: PropTypes.string,
   showLoading: PropTypes.bool,
+  closableLoading: PropTypes.bool,
   loadingIndicatorColor: PropTypes.string,
   theme: PropTypes.string,
   rqdata: PropTypes.string,
@@ -132,6 +136,7 @@ ConfirmHcaptcha.defaultProps = {
   size: 'invisible',
   passiveSiteKey: false,
   showLoading: false,
+  closableLoading: false,
   orientation: 'portrait',
   backgroundColor: 'rgba(0, 0, 0, 0.3)',
   loadingIndicatorColor: null,

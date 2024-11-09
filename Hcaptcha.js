@@ -1,6 +1,6 @@
-import React, { useMemo, useCallback, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import WebView from 'react-native-webview';
-import { Linking, StyleSheet, View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Linking, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
 
 import md5 from './md5';
@@ -48,6 +48,7 @@ const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, 
  * @param {*} url: base url
  * @param {*} languageCode: can be found at https://docs.hcaptcha.com/languages
  * @param {*} showLoading: loading indicator for webview till hCaptcha web content loads
+ * @param {*} closableLoading: allow user to cancel hcaptcha during loading by touch loader overlay
  * @param {*} loadingIndicatorColor: color for the ActivityIndicator
  * @param {*} backgroundColor: backgroundColor which can be injected into HTML to alter css backdrop colour
  * @param {string|object} theme: can be 'light', 'dark', 'contrast' or custom theme object
@@ -70,6 +71,7 @@ const Hcaptcha = ({
   url,
   languageCode,
   showLoading,
+  closableLoading,
   loadingIndicatorColor,
   backgroundColor,
   theme,
@@ -86,6 +88,8 @@ const Hcaptcha = ({
 }) => {
   const apiUrl = buildHcaptchaApiUrl(jsSrc, siteKey, languageCode, theme, host, sentry, endpoint, assethost, imghost, reportapi, orientation);
   const tokenTimeout = 120000;
+  const loadingTimeout = 15000;
+  const [isLoading, setIsLoading] = useState(true);
 
   if (theme && typeof theme === 'string') {
     theme = `"${theme}"`;
@@ -128,7 +132,7 @@ const Hcaptcha = ({
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptcha.render("submit", getRenderConfig("${siteKey || ''}", ${theme}, "${size || 'invisible'}"));
+              hcaptcha.render("hcaptcha-container", getRenderConfig("${siteKey || ''}", ${theme}, "${size || 'invisible'}"));
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
@@ -150,6 +154,7 @@ const Hcaptcha = ({
             window.ReactNativeWebView.postMessage("cancel");
           };
           var onOpen = function() {
+            document.body.style.backgroundColor = '${backgroundColor}';
             window.ReactNativeWebView.postMessage("open");
             console.log("challenge opened");
           };
@@ -185,24 +190,33 @@ const Hcaptcha = ({
           };
         </script>
       </head>
-      <body style="background-color: ${backgroundColor};">
-        <div id="submit"></div>
+      <body>
+        <div id="hcaptcha-container"></div>
       </body>
       </html>`,
     [siteKey, backgroundColor, theme, debugInfo]
   );
 
-  // This shows ActivityIndicator till webview loads hCaptcha images
-  const renderLoading = useCallback(
-    () => (
-      <View style={[styles.loadingOverlay]}>
-        <ActivityIndicator size="large" color={loadingIndicatorColor} />
-      </View>
-    ),
-    [loadingIndicatorColor]
-  );
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        onMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } });
+      }
+    }, loadingTimeout);
+
+    return () => clearTimeout(timeoutId);
+  }, [isLoading, onMessage]);
 
   const webViewRef = useRef(null);
+
+  // This shows ActivityIndicator till webview loads hCaptcha images
+  const renderLoading = () => (
+    <TouchableWithoutFeedback onPress={() => closableLoading && onMessage({ nativeEvent: { data: 'cancel' } })}>
+      <View style={styles.loadingOverlay}>
+        <ActivityIndicator size="large" color={loadingIndicatorColor} />
+      </View>
+    </TouchableWithoutFeedback>
+  );
 
   const reset = () => {
     if (webViewRef.current) {
@@ -211,47 +225,46 @@ const Hcaptcha = ({
   };
 
   return (
-    <WebView
-      ref={webViewRef}
-      originWhitelist={['*']}
-      onShouldStartLoadWithRequest={(event) => {
-        if (event.url.slice(0, 24) === 'https://www.hcaptcha.com') {
-          Linking.openURL(event.url);
-          return false;
-        }
-        return true;
-      }}
-      mixedContentMode={'always'}
-      onMessage={(e) => {
-        e.reset = reset;
-        if (e.nativeEvent.data.length > 16) {
-          const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, reset }), tokenTimeout);
-          e.markUsed = () => clearTimeout(expiredTokenTimerId);
-        }
-        onMessage(e);
-      }}
-      javaScriptEnabled
-      injectedJavaScript={patchPostMessageJsCode}
-      automaticallyAdjustContentInsets
-      style={[{ backgroundColor: 'transparent', width: '100%' }, style]}
-      source={{
-        html: generateTheWebViewContent,
-        baseUrl: `${url}`,
-      }}
-      renderLoading={renderLoading}
-      startInLoadingState={showLoading}
-    />
+    <View style={{ flex: 1 }}>
+      <WebView
+        ref={webViewRef}
+        originWhitelist={['*']}
+        onShouldStartLoadWithRequest={(event) => {
+          if (event.url.slice(0, 24) === 'https://www.hcaptcha.com') {
+            Linking.openURL(event.url);
+            return false;
+          }
+          return true;
+        }}
+        mixedContentMode={'always'}
+        onMessage={(e) => {
+          e.reset = reset;
+          if (e.nativeEvent.data === 'open') {
+            setIsLoading(false);
+          } else if (e.nativeEvent.data.length > 16) {
+            const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, reset }), tokenTimeout);
+            e.markUsed = () => clearTimeout(expiredTokenTimerId);
+          }
+          onMessage(e);
+        }}
+        javaScriptEnabled
+        injectedJavaScript={patchPostMessageJsCode}
+        automaticallyAdjustContentInsets
+        style={[{ backgroundColor: 'transparent', width: '100%' }, style]}
+        source={{
+          html: generateTheWebViewContent,
+          baseUrl: `${url}`,
+        }}
+      />
+      {showLoading && isLoading && renderLoading()}
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   loadingOverlay: {
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
   },
 });
 
