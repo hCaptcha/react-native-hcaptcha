@@ -51,6 +51,7 @@ const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, 
  * @param {*} closableLoading: allow user to cancel hcaptcha during loading by touch loader overlay
  * @param {*} loadingIndicatorColor: color for the ActivityIndicator
  * @param {*} backgroundColor: backgroundColor which can be injected into HTML to alter css backdrop colour
+ * @param {boolean} hasBackdrop: Defines if the modal backdrop is shown (true by default). If `hasBackdrop=false`, `backgroundColor` will apply only after the hCaptcha visual challenge is presented.
  * @param {string|object} theme: can be 'light', 'dark', 'contrast' or custom theme object
  * @param {string} rqdata: see Enterprise docs
  * @param {boolean} sentry: sentry error reporting

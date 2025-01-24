@@ -10,6 +10,11 @@ type ConfirmHcaptchaProps = Omit<HcaptchaProps, 'url' | 'style'> & {
    * The url domain defined on your hCaptcha. You generally will not need to change this.
    */
   baseUrl?: string;
+  /**
+   * Defines if the modal backdrop is shown (true by default). If `hasBackdrop=false`,
+   * `backgroundColor` will apply only after the hCaptcha visual challenge is presented.
+   */
+  hasBackdrop?: boolean;
 }
 
 export default class ConfirmHcaptcha extends React.Component<ConfirmHcaptchaProps> {
