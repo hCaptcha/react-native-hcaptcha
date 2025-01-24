@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React, { useState, useRef } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity } from 'react-native';
 import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 
@@ -6,18 +6,18 @@ import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 const siteKey = '00000000-0000-0000-0000-000000000000';
 const baseUrl = 'https://hcaptcha.com';
 
-export default class App extends React.Component {
-  state = {
-    code: null,
-  };
-  onMessage = event => {
+const App = () => {
+  const [code, setCode] = useState(null);
+  const captchaForm = useRef(null);
+
+  const onMessage = event => {
     if (event && event.nativeEvent.data) {
       if (['cancel'].includes(event.nativeEvent.data)) {
-        this.captchaForm.hide();
-        this.setState({ code: event.nativeEvent.data });
+        captchaForm.current.hide();
+        setCode(event.nativeEvent.data);
       } else if (['error'].includes(event.nativeEvent.data)) {
-        this.captchaForm.hide();
-        this.setState({ code: event.nativeEvent.data });
+        captchaForm.current.hide();
+        setCode(event.nativeEvent.data);
         console.log('Verification failed', event.nativeEvent.data);
       } else if (event.nativeEvent.data === 'expired') {
         event.reset();
@@ -26,42 +26,39 @@ export default class App extends React.Component {
         console.log('Visual challenge opened');
       } else {
         console.log('Verified code from hCaptcha', event.nativeEvent.data);
-        this.captchaForm.hide();
+        captchaForm.current.hide();
         event.markUsed();
-        this.setState({ code: event.nativeEvent.data });
+        setCode(event.nativeEvent.data);
       }
     }
   };
 
-  render() {
-    let { code } = this.state;
-    return (
-      <View style={styles.container}>
-        <ConfirmHcaptcha
-          ref={_ref => (this.captchaForm = _ref)}
-          siteKey={siteKey}
-          baseUrl={baseUrl}
-          languageCode="en"
-          onMessage={this.onMessage}
-        />
-        <TouchableOpacity
-          onPress={() => {
-            this.captchaForm.show();
-          }}>
-          <Text style={styles.paragraph}>Click to launch</Text>
-        </TouchableOpacity>
-        {code && (
-          <Text style={{ alignSelf: 'center' }}>
-            {'passcode or status: '}
-            <Text style={{ color: 'darkviolet', fontWeight: 'bold', fontSize: 6 }}>
-              {code}
-            </Text>
+  return (
+    <View style={styles.container}>
+      <ConfirmHcaptcha
+        ref={captchaForm}
+        siteKey={siteKey}
+        baseUrl={baseUrl}
+        languageCode="en"
+        onMessage={onMessage}
+      />
+      <TouchableOpacity
+        onPress={() => {
+          captchaForm.current.show();
+        }}>
+        <Text style={styles.paragraph}>Click to launch</Text>
+      </TouchableOpacity>
+      {code && (
+        <Text style={{ alignSelf: 'center' }}>
+          {`passcode or status: `}
+          <Text style={{ color: 'darkviolet', fontWeight: 'bold', fontSize: 6 }}>
+            {code}
           </Text>
-        )}
-      </View>
-    );
-  }
-}
+        </Text>
+      )}
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -78,3 +75,4 @@ const styles = StyleSheet.create({
   },
 });
 
+export default App;
