@@ -25,7 +25,7 @@ Options:
 // Simple argument parser function
 function parseArgs(args) {
   const options = {
-    cliName: 'react-native',
+    cliName: '@react-native-community/cli',
     projectName: 'react_native_hcaptcha_example',
     projectRelativeProjectPath: '../react-native-hcaptcha-example',
     packageManager: 'yarn',
@@ -35,7 +35,7 @@ function parseArgs(args) {
   };
 
   const argHandlers = {
-    '--expo': () => options.cliName = 'expo',
+    '--expo': () => options.cliName = 'create-expo-app@latest',
     '--template': (value) => options.projectTemplate = value,
     '--name': (value) => {
       options.projectName = value.replace(/[^a-zA-Z0-9]/g, '_');

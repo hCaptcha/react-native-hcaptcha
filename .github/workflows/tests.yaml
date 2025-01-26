@@ -48,7 +48,6 @@ jobs:
         java-version: 17
         distribution: adopt
     - run: |
-        # npm install -g ${{ matrix.pm }} react-native
         npm run example -- --pm ${{ matrix.pm }}
       working-directory: react-native-hcaptcha
       env:
