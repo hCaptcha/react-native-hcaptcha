@@ -52,7 +52,8 @@
     "react": "*",
     "react-native": "*",
     "react-native-modal": "*",
-    "react-native-webview": "*"
+    "react-native-webview": "*",
+    "react-test-renderer": "*"
   },
   "dependencies": {
     "@babel/core": "^7.26.5",
