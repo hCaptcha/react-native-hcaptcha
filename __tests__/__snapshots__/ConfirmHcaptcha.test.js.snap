@@ -67,6 +67,11 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1
             "*",
           ]
         }
+        ref={
+          {
+            "current": null,
+          }
+        }
         source={
           {
             "baseUrl": "https://hcaptcha.com",
@@ -229,6 +234,11 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
           [
             "*",
           ]
+        }
+        ref={
+          {
+            "current": null,
+          }
         }
         source={
           {

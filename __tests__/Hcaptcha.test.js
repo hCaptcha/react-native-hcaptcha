@@ -1,15 +1,15 @@
 import React from 'react';
-import renderer from 'react-test-renderer';
+import { render } from '@testing-library/react-native';
 import Hcaptcha from '../Hcaptcha';
 
 describe('Hcaptcha snapshot tests', () => {
   it('renders Hcaptcha with minimum props', () => {
-    const component = renderer.create(<Hcaptcha url="https://hcaptcha.com" />);
+    const component = render(<Hcaptcha url="https://hcaptcha.com" />);
     expect(component).toMatchSnapshot();
   });
 
   it('renders Hcaptcha with all props', () => {
-    const component = renderer.create(
+    const component = render(
       <Hcaptcha
         siteKey="00000000-0000-0000-0000-000000000000"
         url="https://hcaptcha.com"
@@ -26,11 +26,14 @@ describe('Hcaptcha snapshot tests', () => {
         reportapi="https://all.props/reportapi"
         assethost="https://all.props/assethost"
         imghost="https://all.props/imghost"
-        host="all-props-host" />);
+        host="all-props-host"
+      />
+    );
     expect(component).toMatchSnapshot();
   });
+
   it('test debug', () => {
-    const component = renderer.create(
+    const component = render(
       <Hcaptcha
         siteKey="00000000-0000-0000-0000-000000000000"
         url="https://hcaptcha.com"
