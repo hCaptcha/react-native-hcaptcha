@@ -1,10 +1,10 @@
 import React from 'react';
-import renderer from 'react-test-renderer';
+import { render } from '@testing-library/react-native';
 import ConfirmHcaptcha from '../index';
 
 describe('ConfirmHcaptcha snapshot tests', () => {
   it('renders ConfirmHcaptcha with minimum props', () => {
-    const component = renderer.create(
+    const component = render(
       <ConfirmHcaptcha
         siteKey="00000000-0000-0000-0000-000000000000"
         baseUrl="https://hcaptcha.com"
@@ -15,7 +15,7 @@ describe('ConfirmHcaptcha snapshot tests', () => {
   });
 
   it('renders ConfirmHcaptcha with all props', () => {
-    const component = renderer.create(
+    const component = render(
       <ConfirmHcaptcha
         size="compact"
         siteKey="00000000-0000-0000-0000-000000000000"

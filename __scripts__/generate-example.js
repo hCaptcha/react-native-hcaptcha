@@ -145,7 +145,7 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
   const mainPackage = '@hcaptcha/react-native-hcaptcha'
   const mainPackagePath = `${path.dirname(projectRelativeProjectPath)}/react-native-hcaptcha`
   const peerPackages = 'react-native-modal react-native-webview';
-  const devPackages = 'typescript @babel/preset-env react-shallow-renderer';
+  const devPackages = 'typescript @babel/preset-env';
 
   console.warn('Installing dependencies...');
   if (packageManager === 'yarn') {
