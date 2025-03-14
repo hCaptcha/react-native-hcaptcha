@@ -55,28 +55,33 @@ By default, this value is 120 seconds. So, an `expired` error will be emitted to
 Once you've utilized hCaptcha's token, call `markUsed` on the event object in `onMessage`:
 
 ```js
-  onMessage = event => {
+  const onMessage = event => {
     if (event && event.nativeEvent.data) {
       if (['cancel'].includes(event.nativeEvent.data)) {
-        this.captchaForm.hide();
+        captchaForm.current.hide();
       } else if (['error'].includes(event.nativeEvent.data)) {
-        this.captchaForm.hide();
+        captchaForm.current.hide();
         // handle error
       } else {
-        this.captchaForm.hide();
+        captchaForm.current.hide();
         const token = event.nativeEvent.data;
-        // utlize token and call markUsed once you done with it
+        // utilize token and call markUsed once you are done with it
         event.markUsed();
       }
     }
   };
-  ...
-  <ConfirmHcaptcha
-    ref={_ref => (this.captchaForm = _ref)}
-    siteKey={siteKey}
-    languageCode="en"
-    onMessage={this.onMessage}
-  />
+
+  const captchaForm = useRef(null);
+
+  return (
+    <ConfirmHcaptcha
+      ref={captchaForm}
+      siteKey={siteKey}
+      languageCode="en"
+      onMessage={onMessage}
+    />
+  );
+```
 ```
 
 ### Handling errors and retry
