@@ -52,7 +52,7 @@ export default class App extends React.Component {
         </TouchableOpacity>
         {code && (
           <Text style={{ alignSelf: 'center' }}>
-            {`passcode or status: `}
+            {'passcode or status: '}
             <Text style={{ color: 'darkviolet', fontWeight: 'bold', fontSize: 6 }}>
               {code}
             </Text>
