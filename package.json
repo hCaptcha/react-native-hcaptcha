@@ -4,6 +4,7 @@
   "description": "hCaptcha Library for React Native (both Android and iOS)",
   "main": "index.js",
   "scripts": {
+    "prepare": "husky init",
     "test": "jest",
     "example": "node __scripts__/generate-example.js"
   },
@@ -47,6 +48,7 @@
   ],
   "devDependencies": {
     "@testing-library/react-native": "^13.2.0",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "react": "*",
