@@ -1,4 +1,4 @@
-import jest from 'jest';
+import { jest } from '@jest/globals';
 
 jest.mock('react-native-webview', () => {
   return {
