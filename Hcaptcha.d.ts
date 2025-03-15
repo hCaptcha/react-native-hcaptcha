@@ -1,6 +1,6 @@
-import React from "react"
-import { StyleProp, ViewStyle } from "react-native";
-import { WebViewMessageEvent } from "react-native-webview";
+import React from 'react';
+import { StyleProp, ViewStyle } from 'react-native';
+import { WebViewMessageEvent } from 'react-native-webview';
 
 type HcaptchaProps = {
   /**

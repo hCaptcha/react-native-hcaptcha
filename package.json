@@ -4,7 +4,9 @@
   "description": "hCaptcha Library for React Native (both Android and iOS)",
   "main": "index.js",
   "scripts": {
+    "prepare": "husky",
     "test": "jest",
+    "lint": "eslint .",
     "example": "node __scripts__/generate-example.js"
   },
   "jest": {
@@ -46,9 +48,12 @@
     }
   ],
   "devDependencies": {
+    "@react-native/eslint-config": "^0.78.0",
     "@testing-library/react-native": "^13.2.0",
+    "eslint": "^8.19.0",
+    "eslint-plugin-react-native": "^5.0.0",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
     "react": "*",
     "react-native": "*",
     "react-native-modal": "*",
@@ -56,9 +61,8 @@
   },
   "dependencies": {
     "@babel/core": "^7.26.5",
+    "@babel/preset-env": "^7.26.5",
     "@babel/runtime": "^7.26.5",
-    "@react-native/babel-preset": "*",
-    "babel-eslint": "^10.1.0",
-    "babel-jest": "^29.7.0"
+    "@react-native/babel-preset": "*"
   }
 }

@@ -38,24 +38,24 @@ export default function md5(s) {
               b & c | ~b & d,
               d & b | ~d & c,
               b ^ c ^ d,
-              c ^ (b | ~d)
+              c ^ (b | ~d),
             ][a = j >> 4] +
             k[j] +
             ~~words[i | [
               j,
               5 * j + 1,
               3 * j + 5,
-              7 * j
+              7 * j,
             ][a] & 15]
           ) << (a = [
             7, 12, 17, 22,
             5,  9, 14, 20,
             4, 11, 16, 23,
-            6, 10, 15, 21
+            6, 10, 15, 21,
           ][4 * a + j++ % 4]) | d >>> -a)
         ),
         b,
-        c
+        c,
       ]
     ) {
       b = a[1] | 0;
@@ -63,7 +63,7 @@ export default function md5(s) {
     }
 
     // See "Integer safety" in notes
-    for (j = 4; j;) h[--j] += a[j];
+    for (j = 4; j;) {h[--j] += a[j];}
 
     // j === 0
   }

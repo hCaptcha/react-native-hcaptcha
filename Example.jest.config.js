@@ -4,13 +4,13 @@ module.exports = {
   testPathIgnorePatterns: ['/node_modules/'],
   modulePathIgnorePatterns: ['<rootDir>/react-native-hcaptcha/'],
   transformIgnorePatterns: [
-    "node_modules/(?!(react-native"
-      + "|@react-native"
-      + "|@hcaptcha"
-      + "|react-native-modal"
-      + "|react-native-webview"
-      + "|react-native-animatable"
-    + ")/)",
+    'node_modules/(?!(react-native'
+      + '|@react-native'
+      + '|@hcaptcha'
+      + '|react-native-modal'
+      + '|react-native-webview'
+      + '|react-native-animatable'
+    + ')/)',
   ],
   setupFiles: ['./jest.setup.js'],
-}
+};
