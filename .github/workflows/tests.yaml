@@ -78,7 +78,7 @@ jobs:
         GHA_RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         echo "RN_VERSION=${RN_VERSION}" >> $GITHUB_ENV
         echo "GHA_RUN_URL=${GHA_RUN_URL}" >> $GITHUB_ENV
-    - uses: JasonEtco/create-an-issue@1b14a70e4d8dc185e5cc76d3bec9eab20257b2c5
+    - uses: hCaptcha/create-an-issue@56fdd2d6f960e970fa9d5ca3cf3884b6ba5af477
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
