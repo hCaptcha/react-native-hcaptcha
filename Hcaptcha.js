@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import WebView from 'react-native-webview';
 import { ActivityIndicator, Linking, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
@@ -21,18 +21,18 @@ const patchPostMessageJsCode = `(${String(function () {
 })})();`;
 
 const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, assethost, imghost, reportapi, orientation) => {
-  var url = `${jsSrc || "https://hcaptcha.com/1/api.js"}?render=explicit&onload=onloadCallback`;
+  var url = `${jsSrc || 'https://hcaptcha.com/1/api.js'}?render=explicit&onload=onloadCallback`;
 
   let effectiveHost;
   if (host) {
-    host = encodeURIComponent(host);
+    effectiveHost = encodeURIComponent(host);
   } else {
-    host = (siteKey || 'missing-sitekey') + '.react-native.hcaptcha.com';
+    effectiveHost = (siteKey || 'missing-sitekey') + '.react-native.hcaptcha.com';
   }
 
-  for (let [key, value] of Object.entries({ host, hl, custom: typeof theme === 'object', sentry, endpoint, assethost, imghost, reportapi, orientation })) {
+  for (let [key, value] of Object.entries({ host: effectiveHost, hl, custom: typeof theme === 'object', sentry, endpoint, assethost, imghost, reportapi, orientation })) {
     if (value) {
-      url += `&${key}=${encodeURIComponent(value)}`
+      url += `&${key}=${encodeURIComponent(value)}`;
     }
   }
 
@@ -113,11 +113,11 @@ const Hcaptcha = ({
         return result;
       }
     },
-    []
+    [debug]
   );
 
   const generateTheWebViewContent = useMemo(
-    () => 
+    () =>
      `<!DOCTYPE html>
       <html>
       <head>
@@ -194,7 +194,7 @@ const Hcaptcha = ({
         <div id="hcaptcha-container"></div>
       </body>
       </html>`,
-    [siteKey, backgroundColor, theme, debugInfo]
+    [debugInfo, apiUrl, siteKey, theme, size, backgroundColor, rqdata]
   );
 
   useEffect(() => {

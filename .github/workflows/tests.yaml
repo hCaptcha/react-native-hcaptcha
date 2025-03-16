@@ -16,6 +16,7 @@ jobs:
     - uses: actions/checkout@v4
     - run: npm install
     - run: npm test
+    - run: npm run lint
 
   test:
     needs: build
@@ -77,7 +78,7 @@ jobs:
         GHA_RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         echo "RN_VERSION=${RN_VERSION}" >> $GITHUB_ENV
         echo "GHA_RUN_URL=${GHA_RUN_URL}" >> $GITHUB_ENV
-    - uses: JasonEtco/create-an-issue@v2
+    - uses: hCaptcha/create-an-issue@56fdd2d6f960e970fa9d5ca3cf3884b6ba5af477
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:

@@ -1,5 +1,5 @@
-import React from "react"
-import { HcaptchaProps } from './Hcaptcha'
+import React from 'react';
+import { HcaptchaProps } from './Hcaptcha';
 
 type ConfirmHcaptchaProps = Omit<HcaptchaProps, 'url' | 'style'> & {
   /**

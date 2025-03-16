@@ -1,5 +1,5 @@
 import React, { PureComponent } from 'react';
-import { SafeAreaView, StyleSheet, Dimensions, Platform } from 'react-native';
+import { SafeAreaView, StyleSheet, Dimensions } from 'react-native';
 import Modal from 'react-native-modal';
 import Hcaptcha from './Hcaptcha';
 import PropTypes from 'prop-types';

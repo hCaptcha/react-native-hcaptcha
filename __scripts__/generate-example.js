@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { execSync, spawnSync } = require('child_process');
+const { execSync } = require('child_process');
 const { platform } = require('os');
 const fs = require('fs');
 const path = require('path');
@@ -35,8 +35,8 @@ function parseArgs(args) {
   };
 
   const argHandlers = {
-    '--expo': () => options.cliName = 'create-expo-app@latest',
-    '--template': (value) => options.projectTemplate = value,
+    '--expo': () => { options.cliName = 'create-expo-app@latest'; },
+    '--template': (value) => { options.projectTemplate = value; },
     '--name': (value) => {
       options.projectName = value.replace(/[^a-zA-Z0-9]/g, '_');
       options.projectRelativeProjectPath = path.join('..', value);
@@ -44,10 +44,10 @@ function parseArgs(args) {
     '--path': (value) => {
       options.projectRelativeProjectPath = value;
     },
-    '--pm': (value) => options.packageManager = value,
-    '--verbose': () => options.verbose = true,
+    '--pm': (value) => { options.packageManager = value; },
+    '--verbose': () => { options.verbose = true; },
     '-h': showHelp,
-    '--help': showHelp
+    '--help': showHelp,
   };
 
   for (let i = 2; i < args.length; i++) {
@@ -135,15 +135,15 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
   const packageManagerOptions = { stdio: 'inherit', cwd: projectPath };
 
   // Copy App.js
-  fs.unlinkSync(path.join(projectPath, 'App.tsx'))
+  fs.unlinkSync(path.join(projectPath, 'App.tsx'));
   fs.copyFileSync('Example.App.js', path.join(projectPath, 'App.js'));
   fs.copyFileSync('Example.jest.config.js', path.join(projectPath, 'jest.config.js'));
   fs.copyFileSync('Example.jest.setup.js', path.join(projectPath, 'jest.setup.js'));
 
   // Install dependencies
   const isHcaptchaLinked = checkHcaptchaLinked();
-  const mainPackage = '@hcaptcha/react-native-hcaptcha'
-  const mainPackagePath = `${path.dirname(projectRelativeProjectPath)}/react-native-hcaptcha`
+  const mainPackage = '@hcaptcha/react-native-hcaptcha';
+  const mainPackagePath = `${path.dirname(projectRelativeProjectPath)}/react-native-hcaptcha`;
   const peerPackages = 'react-native-modal react-native-webview';
   const devPackages = 'typescript @babel/preset-env';
 
@@ -156,7 +156,7 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
     // https://github.com/facebook/react-native/issues/29977 - react-native doesn't work with symlinks so `cp` instead
     // fs.symlinkSync(mainPackagePath, path.join(projectPath, 'react-native-hcaptcha'), 'dir');
     execSync(`cp -r ${mainPackagePath} ${projectPath}`);
-    execSync(`npm i --save file:./react-native-hcaptcha`, packageManagerOptions);
+    execSync('npm i --save file:./react-native-hcaptcha', packageManagerOptions);
     execSync(`npm i --save --dev ${devPackages}`, packageManagerOptions);
     execSync(`npm i --save ${peerPackages}`, packageManagerOptions);
   }
@@ -175,7 +175,7 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
   // Android
   const gradleOptions = {
     stdio: 'inherit', cwd: path.join(projectPath, 'android'),
-    env: { ...process.env, GRADLE_OPTS: '-Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"' }
+    env: { ...process.env, GRADLE_OPTS: '-Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"' },
   };
   execSync('./gradlew assemble', gradleOptions);
 
