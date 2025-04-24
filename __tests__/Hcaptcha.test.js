@@ -1,6 +1,7 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 import Hcaptcha from '../Hcaptcha';
+import { setWebViewMessageData } from 'react-native-webview';
 
 describe('Hcaptcha snapshot tests', () => {
   it('renders Hcaptcha with minimum props', () => {
@@ -32,7 +33,7 @@ describe('Hcaptcha snapshot tests', () => {
     expect(component).toMatchSnapshot();
   });
 
-  it('test debug', () => {
+  it('renders Hcaptcha with debug', () => {
     const component = render(
       <Hcaptcha
         siteKey="00000000-0000-0000-0000-000000000000"
@@ -42,6 +43,51 @@ describe('Hcaptcha snapshot tests', () => {
       />
     );
     expect(component).toMatchSnapshot();
+  });
+
+  [
+    {
+      data: 'open',
+      expectedSuccess: true,
+    },
+    {
+      data: '10000000-aaaa-bbbb-cccc-000000000001',
+      expectedSuccess: true,
+    },
+    {
+      data: 'webview-error',
+      expectedSuccess: false,
+    },
+  ].forEach(({ data, expectedSuccess }) => {
+    it(`test ${data} forwarding`, async () => {
+      jest.useFakeTimers();
+      let setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+      setWebViewMessageData(data);
+      const onMessageMock = jest.fn();
+
+      render(
+        <Hcaptcha
+          siteKey="00000000-0000-0000-0000-000000000000"
+          url="https://hcaptcha.com"
+          languageCode="en"
+          onMessage={onMessageMock}
+        />
+      );
+
+      await waitFor(() => {
+        expect(onMessageMock).toHaveBeenCalledTimes(1);
+        expect(onMessageMock).toHaveBeenCalledWith(
+          expect.objectContaining({
+            success: expectedSuccess,
+            nativeEvent: expect.objectContaining({ data }),
+          })
+        );
+
+        if (data === 'token') {
+          expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+        }
+      });
+    });
   });
 });
 
