@@ -48,16 +48,17 @@ Once you've utilized hCaptcha's token, call `markUsed` on the event object in `o
 ```js
   const onMessage = event => {
     if (event && event.nativeEvent.data) {
-      if (['cancel'].includes(event.nativeEvent.data)) {
-        captchaForm.current.hide();
-      } else if (['error'].includes(event.nativeEvent.data)) {
-        captchaForm.current.hide();
-        // handle error
-      } else {
+      if (event.nativeEvent.data === 'open') {
+        // hCaptcha shown
+      } else if (event.success) {
         captchaForm.current.hide();
         const token = event.nativeEvent.data;
         // utilize token and call markUsed once you are done with it
         event.markUsed();
+      } else if (event.nativeEvent.data === 'challenge-closed') {
+        captchaForm.current.hide();
+      } else {
+        // handle rest errors
       }
     }
   };
