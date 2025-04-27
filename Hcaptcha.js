@@ -136,33 +136,33 @@ const Hcaptcha = ({
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
-              console.log("challenge failed to render");
-              window.ReactNativeWebView.postMessage("error");
+              console.log("challenge failed to render:", e);
+              window.ReactNativeWebView.postMessage(e.name);
             }
             try {
               console.log("showing challenge");
               hcaptcha.execute(getExecuteOpts());
             } catch (e) {
-              console.log("failed to show challenge");
-              window.ReactNativeWebView.postMessage("error");
+              console.log("failed to show challenge:", e);
+              window.ReactNativeWebView.postMessage(e.name);
             }
           };
           var onDataCallback = function(response) {
             window.ReactNativeWebView.postMessage(response);
           };
           var onCancel = function() {
-            window.ReactNativeWebView.postMessage("cancel");
+            window.ReactNativeWebView.postMessage("challenge-closed");
           };
           var onOpen = function() {
             document.body.style.backgroundColor = '${backgroundColor}';
             window.ReactNativeWebView.postMessage("open");
             console.log("challenge opened");
           };
-          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage("expired"); };
+          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
           var onDataErrorCallback = function(error) {
-            console.log("challenge error callback fired");
-            window.ReactNativeWebView.postMessage("error");
+            console.warn("challenge error callback fired");
+            window.ReactNativeWebView.postMessage(error);
           };
           const getRenderConfig = function(siteKey, theme, size) {
             var config = {
@@ -239,11 +239,14 @@ const Hcaptcha = ({
         mixedContentMode={'always'}
         onMessage={(e) => {
           e.reset = reset;
+          e.success = true;
           if (e.nativeEvent.data === 'open') {
             setIsLoading(false);
-          } else if (e.nativeEvent.data.length > 16) {
-            const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, reset }), tokenTimeout);
+          } else if (e.nativeEvent.data.length > 35) {
+            const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
             e.markUsed = () => clearTimeout(expiredTokenTimerId);
+          } else /* error */ {
+            e.success = false;
           }
           onMessage(e);
         }}

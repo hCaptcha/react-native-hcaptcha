@@ -31,18 +31,9 @@ For users familiar with the hCaptcha JS API, calling `show()` in this wrapper tr
 
 This means that if you are an Enterprise user with a 99.9% passive or purely passive sitekey configured, no additional work is required to get the expected behavior: either a visual challenge will be shown or a token will be returned immediately via `onMessage`, in accordance with your configuration.
 
-Also, please note the following special message strings that can be returned via `onMessage`:
+Also, please note the following special message strings that can be returned via `onMessage` for [error cases](https://docs.hcaptcha.com/configuration#error-codes)
 
-| name | purpose |
-| --- | --- |
-| expired | passcode response expired and the user must re-verify, or did not answer before session expired |
-| error | there was an error displaying the challenge |
-| cancel | the user closed the challenge |
-| open | the visual challenge was opened |
-
-
-Any other string returned by `onMessage` will be a passcode.
-
+The even returned by `onMessage` with `success === true` will be a passcode.
 
 ### Handling the post-issuance expiration lifecycle
 
@@ -57,16 +48,17 @@ Once you've utilized hCaptcha's token, call `markUsed` on the event object in `o
 ```js
   const onMessage = event => {
     if (event && event.nativeEvent.data) {
-      if (['cancel'].includes(event.nativeEvent.data)) {
-        captchaForm.current.hide();
-      } else if (['error'].includes(event.nativeEvent.data)) {
-        captchaForm.current.hide();
-        // handle error
-      } else {
+      if (event.nativeEvent.data === 'open') {
+        // hCaptcha shown
+      } else if (event.success) {
         captchaForm.current.hide();
         const token = event.nativeEvent.data;
         // utilize token and call markUsed once you are done with it
         event.markUsed();
+      } else if (event.nativeEvent.data === 'challenge-closed') {
+        captchaForm.current.hide();
+      } else {
+        // handle rest errors
       }
     }
   };
