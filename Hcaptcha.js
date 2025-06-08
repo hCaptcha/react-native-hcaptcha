@@ -92,7 +92,15 @@ const Hcaptcha = ({
   const [isLoading, setIsLoading] = useState(true);
 
   if (theme && typeof theme === 'string') {
-    theme = `"${theme}"`;
+    try {
+      JSON.parse(theme);
+    } catch (_) {
+      theme = `"${theme}"`;
+    }
+  }
+
+  if (theme && typeof theme === 'object') {
+    theme = `${JSON.stringify(theme)}`;
   }
 
   if (rqdata && typeof rqdata === 'string') {

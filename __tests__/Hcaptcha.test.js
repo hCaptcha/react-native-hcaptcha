@@ -45,49 +45,127 @@ describe('Hcaptcha snapshot tests', () => {
     expect(component).toMatchSnapshot();
   });
 
-  [
-    {
-      data: 'open',
-      expectedSuccess: true,
-    },
-    {
-      data: '10000000-aaaa-bbbb-cccc-000000000001',
-      expectedSuccess: true,
-    },
-    {
-      data: 'webview-error',
-      expectedSuccess: false,
-    },
-  ].forEach(({ data, expectedSuccess }) => {
-    it(`test ${data} forwarding`, async () => {
-      jest.useFakeTimers();
-      let setTimeoutSpy = jest.spyOn(global, 'setTimeout');
-      setWebViewMessageData(data);
-      const onMessageMock = jest.fn();
+  describe('onMessage', () => {
+    [
+      {
+        data: 'open',
+        expectedSuccess: true,
+      },
+      {
+        data: '10000000-aaaa-bbbb-cccc-000000000001',
+        expectedSuccess: true,
+      },
+      {
+        data: 'webview-error',
+        expectedSuccess: false,
+      },
+    ].forEach(({ data, expectedSuccess }) => {
+      it(`test ${data} forwarding`, async () => {
+        jest.useFakeTimers();
+        let setTimeoutSpy = jest.spyOn(global, 'setTimeout');
+        setWebViewMessageData(data);
+        const onMessageMock = jest.fn();
 
-      render(
-        <Hcaptcha
-          siteKey="00000000-0000-0000-0000-000000000000"
-          url="https://hcaptcha.com"
-          languageCode="en"
-          onMessage={onMessageMock}
-        />
-      );
-
-      await waitFor(() => {
-        expect(onMessageMock).toHaveBeenCalledTimes(1);
-        expect(onMessageMock).toHaveBeenCalledWith(
-          expect.objectContaining({
-            success: expectedSuccess,
-            nativeEvent: expect.objectContaining({ data }),
-          })
+        render(
+          <Hcaptcha
+            siteKey="00000000-0000-0000-0000-000000000000"
+            url="https://hcaptcha.com"
+            languageCode="en"
+            onMessage={onMessageMock}
+          />
         );
 
-        if (data === 'token') {
-          expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+        await waitFor(() => {
+          expect(onMessageMock).toHaveBeenCalledTimes(1);
+          expect(onMessageMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+              success: expectedSuccess,
+              nativeEvent: expect.objectContaining({ data }),
+            })
+          );
+
+          if (data === 'token') {
+            expect(setTimeoutSpy).toHaveBeenCalledTimes(1);
+          }
+        });
+      });
+    });
+  });
+
+  describe('Theme', () => {
+    const theme = {
+      "palette": {
+        "mode": "dark",
+        "primary": {
+          "main": "#26C6DA"
+        },
+        "warn": {
+          "main": "#FF8A80"
+        },
+        "text": {
+          "heading": "#FAFAFA",
+          "body": "#E0E0E0"
         }
+      },
+      "component": {
+        "checkbox": {
+          "main": {
+            "fill": "#333333",
+            "border": "#F5F5F5"
+          },
+          "hover": {
+            "fill": "#222222"
+          }
+        },
+        "modal": {
+          "main": {
+            "fill": "#222222"
+          },
+          "hover": {
+            "fill": "#333333"
+          },
+          "focus": {
+            "outline": "#80DEEA"
+          }
+        },
+        "textarea": {
+          "main": {
+            "fill": "#4F4F4F",
+            "border": "#828282"
+          },
+          "focus": {
+            "fill": "#4F4F4F",
+            "outline": "#80DEEA"
+          },
+          "disabled": {
+            "fill": "#828282"
+          }
+        }
+      }
+    };
+
+    [
+      {
+        data: theme,
+      },
+      {
+        data: JSON.stringify(theme),
+      },
+      {
+        data: undefined,
+      },
+    ].forEach(({ data }) => {
+      it(`test ${typeof data}`, async () => {
+        const component = render(
+          <Hcaptcha
+            siteKey="00000000-0000-0000-0000-000000000000"
+            url="https://hcaptcha.com"
+            languageCode="en"
+            theme={data}
+          />
+        );
+        expect(component).toMatchSnapshot();
       });
     });
   });
 });
-

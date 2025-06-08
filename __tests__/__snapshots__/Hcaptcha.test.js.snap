@@ -1,5 +1,389 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
+exports[`Hcaptcha snapshot tests Theme test object 1`] = `
+<View
+  style={
+    {
+      "flex": 1,
+    }
+  }
+>
+  <WebView
+    automaticallyAdjustContentInsets={true}
+    injectedJavaScript="(function () {
+  var originalPostMessage = window.ReactNativeWebView.postMessage;
+  var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
+    originalPostMessage(message, targetOrigin, transfer);
+  };
+  patchedPostMessage.toString = function () {
+    return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
+  };
+  window.ReactNativeWebView.postMessage = patchedPostMessage;
+})();"
+    javaScriptEnabled={true}
+    mixedContentMode="always"
+    onMessage={[Function]}
+    onShouldStartLoadWithRequest={[Function]}
+    originWhitelist={
+      [
+        "*",
+      ]
+    }
+    ref={
+      {
+        "current": null,
+      }
+    }
+    source={
+      {
+        "baseUrl": "https://hcaptcha.com",
+        "html": "<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <script type="text/javascript">
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_0":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+        </script>
+        <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en&custom=true" async defer></script>
+        <script type="text/javascript">
+          var onloadCallback = function() {
+            try {
+              console.log("challenge onload starting");
+              hcaptcha.render("hcaptcha-container", getRenderConfig("00000000-0000-0000-0000-000000000000", {"palette":{"mode":"dark","primary":{"main":"#26C6DA"},"warn":{"main":"#FF8A80"},"text":{"heading":"#FAFAFA","body":"#E0E0E0"}},"component":{"checkbox":{"main":{"fill":"#333333","border":"#F5F5F5"},"hover":{"fill":"#222222"}},"modal":{"main":{"fill":"#222222"},"hover":{"fill":"#333333"},"focus":{"outline":"#80DEEA"}},"textarea":{"main":{"fill":"#4F4F4F","border":"#828282"},"focus":{"fill":"#4F4F4F","outline":"#80DEEA"},"disabled":{"fill":"#828282"}}}}, "invisible"));
+              // have loaded by this point; render is sync.
+              console.log("challenge render complete");
+            } catch (e) {
+              console.log("challenge failed to render:", e);
+              window.ReactNativeWebView.postMessage(e.name);
+            }
+            try {
+              console.log("showing challenge");
+              hcaptcha.execute(getExecuteOpts());
+            } catch (e) {
+              console.log("failed to show challenge:", e);
+              window.ReactNativeWebView.postMessage(e.name);
+            }
+          };
+          var onDataCallback = function(response) {
+            window.ReactNativeWebView.postMessage(response);
+          };
+          var onCancel = function() {
+            window.ReactNativeWebView.postMessage("challenge-closed");
+          };
+          var onOpen = function() {
+            document.body.style.backgroundColor = 'undefined';
+            window.ReactNativeWebView.postMessage("open");
+            console.log("challenge opened");
+          };
+          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onDataErrorCallback = function(error) {
+            console.warn("challenge error callback fired");
+            window.ReactNativeWebView.postMessage(error);
+          };
+          const getRenderConfig = function(siteKey, theme, size) {
+            var config = {
+              sitekey: siteKey,
+              size: size,
+              callback: onDataCallback,
+              "close-callback": onCancel,
+              "open-callback": onOpen,
+              "expired-callback": onDataExpiredCallback,
+              "chalexpired-callback": onChalExpiredCallback,
+              "error-callback": onDataErrorCallback
+            };
+            if (theme) {
+              config.theme = theme;
+            }
+            return config;
+          };
+          const getExecuteOpts = function() {
+            var opts;
+            const rqdata = undefined;
+            if (rqdata) {
+              opts = {"rqdata": rqdata};
+            }
+            return opts;
+          };
+        </script>
+      </head>
+      <body>
+        <div id="hcaptcha-container"></div>
+      </body>
+      </html>",
+      }
+    }
+    style={
+      [
+        {
+          "backgroundColor": "transparent",
+          "width": "100%",
+        },
+        undefined,
+      ]
+    }
+  />
+</View>
+`;
+
+exports[`Hcaptcha snapshot tests Theme test string 1`] = `
+<View
+  style={
+    {
+      "flex": 1,
+    }
+  }
+>
+  <WebView
+    automaticallyAdjustContentInsets={true}
+    injectedJavaScript="(function () {
+  var originalPostMessage = window.ReactNativeWebView.postMessage;
+  var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
+    originalPostMessage(message, targetOrigin, transfer);
+  };
+  patchedPostMessage.toString = function () {
+    return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
+  };
+  window.ReactNativeWebView.postMessage = patchedPostMessage;
+})();"
+    javaScriptEnabled={true}
+    mixedContentMode="always"
+    onMessage={[Function]}
+    onShouldStartLoadWithRequest={[Function]}
+    originWhitelist={
+      [
+        "*",
+      ]
+    }
+    ref={
+      {
+        "current": null,
+      }
+    }
+    source={
+      {
+        "baseUrl": "https://hcaptcha.com",
+        "html": "<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <script type="text/javascript">
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_0":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+        </script>
+        <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en" async defer></script>
+        <script type="text/javascript">
+          var onloadCallback = function() {
+            try {
+              console.log("challenge onload starting");
+              hcaptcha.render("hcaptcha-container", getRenderConfig("00000000-0000-0000-0000-000000000000", {"palette":{"mode":"dark","primary":{"main":"#26C6DA"},"warn":{"main":"#FF8A80"},"text":{"heading":"#FAFAFA","body":"#E0E0E0"}},"component":{"checkbox":{"main":{"fill":"#333333","border":"#F5F5F5"},"hover":{"fill":"#222222"}},"modal":{"main":{"fill":"#222222"},"hover":{"fill":"#333333"},"focus":{"outline":"#80DEEA"}},"textarea":{"main":{"fill":"#4F4F4F","border":"#828282"},"focus":{"fill":"#4F4F4F","outline":"#80DEEA"},"disabled":{"fill":"#828282"}}}}, "invisible"));
+              // have loaded by this point; render is sync.
+              console.log("challenge render complete");
+            } catch (e) {
+              console.log("challenge failed to render:", e);
+              window.ReactNativeWebView.postMessage(e.name);
+            }
+            try {
+              console.log("showing challenge");
+              hcaptcha.execute(getExecuteOpts());
+            } catch (e) {
+              console.log("failed to show challenge:", e);
+              window.ReactNativeWebView.postMessage(e.name);
+            }
+          };
+          var onDataCallback = function(response) {
+            window.ReactNativeWebView.postMessage(response);
+          };
+          var onCancel = function() {
+            window.ReactNativeWebView.postMessage("challenge-closed");
+          };
+          var onOpen = function() {
+            document.body.style.backgroundColor = 'undefined';
+            window.ReactNativeWebView.postMessage("open");
+            console.log("challenge opened");
+          };
+          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onDataErrorCallback = function(error) {
+            console.warn("challenge error callback fired");
+            window.ReactNativeWebView.postMessage(error);
+          };
+          const getRenderConfig = function(siteKey, theme, size) {
+            var config = {
+              sitekey: siteKey,
+              size: size,
+              callback: onDataCallback,
+              "close-callback": onCancel,
+              "open-callback": onOpen,
+              "expired-callback": onDataExpiredCallback,
+              "chalexpired-callback": onChalExpiredCallback,
+              "error-callback": onDataErrorCallback
+            };
+            if (theme) {
+              config.theme = theme;
+            }
+            return config;
+          };
+          const getExecuteOpts = function() {
+            var opts;
+            const rqdata = undefined;
+            if (rqdata) {
+              opts = {"rqdata": rqdata};
+            }
+            return opts;
+          };
+        </script>
+      </head>
+      <body>
+        <div id="hcaptcha-container"></div>
+      </body>
+      </html>",
+      }
+    }
+    style={
+      [
+        {
+          "backgroundColor": "transparent",
+          "width": "100%",
+        },
+        undefined,
+      ]
+    }
+  />
+</View>
+`;
+
+exports[`Hcaptcha snapshot tests Theme test undefined 1`] = `
+<View
+  style={
+    {
+      "flex": 1,
+    }
+  }
+>
+  <WebView
+    automaticallyAdjustContentInsets={true}
+    injectedJavaScript="(function () {
+  var originalPostMessage = window.ReactNativeWebView.postMessage;
+  var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
+    originalPostMessage(message, targetOrigin, transfer);
+  };
+  patchedPostMessage.toString = function () {
+    return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
+  };
+  window.ReactNativeWebView.postMessage = patchedPostMessage;
+})();"
+    javaScriptEnabled={true}
+    mixedContentMode="always"
+    onMessage={[Function]}
+    onShouldStartLoadWithRequest={[Function]}
+    originWhitelist={
+      [
+        "*",
+      ]
+    }
+    ref={
+      {
+        "current": null,
+      }
+    }
+    source={
+      {
+        "baseUrl": "https://hcaptcha.com",
+        "html": "<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <script type="text/javascript">
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_0":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+        </script>
+        <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en" async defer></script>
+        <script type="text/javascript">
+          var onloadCallback = function() {
+            try {
+              console.log("challenge onload starting");
+              hcaptcha.render("hcaptcha-container", getRenderConfig("00000000-0000-0000-0000-000000000000", undefined, "invisible"));
+              // have loaded by this point; render is sync.
+              console.log("challenge render complete");
+            } catch (e) {
+              console.log("challenge failed to render:", e);
+              window.ReactNativeWebView.postMessage(e.name);
+            }
+            try {
+              console.log("showing challenge");
+              hcaptcha.execute(getExecuteOpts());
+            } catch (e) {
+              console.log("failed to show challenge:", e);
+              window.ReactNativeWebView.postMessage(e.name);
+            }
+          };
+          var onDataCallback = function(response) {
+            window.ReactNativeWebView.postMessage(response);
+          };
+          var onCancel = function() {
+            window.ReactNativeWebView.postMessage("challenge-closed");
+          };
+          var onOpen = function() {
+            document.body.style.backgroundColor = 'undefined';
+            window.ReactNativeWebView.postMessage("open");
+            console.log("challenge opened");
+          };
+          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onDataErrorCallback = function(error) {
+            console.warn("challenge error callback fired");
+            window.ReactNativeWebView.postMessage(error);
+          };
+          const getRenderConfig = function(siteKey, theme, size) {
+            var config = {
+              sitekey: siteKey,
+              size: size,
+              callback: onDataCallback,
+              "close-callback": onCancel,
+              "open-callback": onOpen,
+              "expired-callback": onDataExpiredCallback,
+              "chalexpired-callback": onChalExpiredCallback,
+              "error-callback": onDataErrorCallback
+            };
+            if (theme) {
+              config.theme = theme;
+            }
+            return config;
+          };
+          const getExecuteOpts = function() {
+            var opts;
+            const rqdata = undefined;
+            if (rqdata) {
+              opts = {"rqdata": rqdata};
+            }
+            return opts;
+          };
+        </script>
+      </head>
+      <body>
+        <div id="hcaptcha-container"></div>
+      </body>
+      </html>",
+      }
+    }
+    style={
+      [
+        {
+          "backgroundColor": "transparent",
+          "width": "100%",
+        },
+        undefined,
+      ]
+    }
+  />
+</View>
+`;
+
 exports[`Hcaptcha snapshot tests renders Hcaptcha with all props 1`] = `
 <View
   style={
