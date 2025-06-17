@@ -74,7 +74,6 @@ Once you've utilized hCaptcha's token, call `markUsed` on the event object in `o
     />
   );
 ```
-```
 
 ### Handling errors and retry
 
@@ -126,6 +125,7 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 ### Notes
 
 - The UI defaults to the "invisible" mode of the JS SDK, i.e. no checkbox is displayed.
+- If you need to test displaying the challenge modal, set your sitekey to "Always Challenge" mode in the hCaptcha dashboard.
 - You can `import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha';` to customize the UI yourself.
 - hCaptcha loading is restricted to a 15-second timeout; an `error` will be sent via `onMessage` if it fails to load due to network issues.
 
