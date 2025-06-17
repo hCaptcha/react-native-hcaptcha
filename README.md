@@ -122,7 +122,7 @@ Make sure the value you pass to `languageCode` is the one the user has set in yo
 Otherwise, you should pass in the preferred device locale, e.g. fetched from `getLocales()` if using [react-native-localize](https://github.com/zoontek/react-native-localize).
 
 
-### Notes
+## Notes
 
 - The UI defaults to the "invisible" mode of the JS SDK, i.e. no checkbox is displayed.
 - If you need to test displaying the challenge modal, set your sitekey to "Always Challenge" mode in the hCaptcha dashboard.
