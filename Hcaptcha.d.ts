@@ -6,7 +6,7 @@ type HcaptchaProps = {
   /**
    * The callback function that runs after receiving a response, error, or when user cancels.
    */
-  onMessage?: (event: WebViewMessageEvent) => void;
+  onMessage?: (event: CustomWebViewMessageEvent) => void;
   /**
    * The size of the checkbox.
    */
@@ -90,6 +90,12 @@ type HcaptchaProps = {
    * Default: portrait
    */
   orientation?: 'portrait' | 'landscape';
+}
+
+interface CustomWebViewMessageEvent extends WebViewMessageEvent {
+  success: boolean;
+  reset: () => void;
+  markUsed?: () => void;
 }
 
 export default class Hcaptcha extends React.Component<HcaptchaProps> {}
