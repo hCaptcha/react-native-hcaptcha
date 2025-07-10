@@ -6,6 +6,97 @@ import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
 import md5 from './md5';
 import hcaptchaPackage from './package.json';
 
+import { useMemo, useState, useEffect, useRef } from 'react';
+import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
+import md5 from './md5';
+import hcaptchaPackage from './package.json';
+
+// Patch for window.ReactNativeWebView.postMessage
+export const patchPostMessageJsCode = `(${String(function () {
+  var original = window.ReactNativeWebView.postMessage;
+  var patched = function (msg) { original(msg); };
+  patched.toString = () => String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
+  window.ReactNativeWebView.postMessage = patched;
+})})();`;
+
+// Hook: debugInfo
+export function useHCaptchaDebug(debug) {
+  return useMemo(() => {
+    const info = { ...debug };
+    try {
+      const { major, minor, patch } = ReactNativeVersion.version;
+      info[`rnver_${major}_${minor}_${patch}`] = true;
+      info['dep_' + md5(Object.keys(global).join(''))] = true;
+      info['sdk_' + hcaptchaPackage.version.replace(/\./g, '_')] = true;
+    } catch {
+      // ignore
+    }
+    return info;
+  }, [debug]);
+}
+
+// Hook: build html & baseUrl
+export function useHCaptchaHtml(props, debugInfo) {
+  return useMemo(() => {
+    const {
+      jsSrc, siteKey, languageCode: hl, theme, host,
+      sentry, endpoint, assethost, imghost, reportapi,
+      orientation, backgroundColor = 'transparent', rqdata, url
+    } = props;
+
+    // Build API URL
+    let apiUrl = `${jsSrc || 'https://hcaptcha.com/1/api.js'}?render=explicit&onload=onloadCallback`;
+    const effectiveHost = host
+      ? encodeURIComponent(host)
+      : `${siteKey || 'missing-sitekey'}.react-native.hcaptcha.com`;
+    const params = { host: effectiveHost, hl, custom: typeof theme === 'object', sentry, endpoint, assethost, imghost, reportapi, orientation };
+    Object.entries(params).forEach(([k, v]) => v != null && (apiUrl += `&${k}=${encodeURIComponent(v)}`));
+
+    const themeArg = typeof theme === 'string' ? `"${theme}"` : theme;
+    const rqArg = typeof rqdata === 'string' ? `"${rqdata}"` : rqdata;
+
+    // Generate HTML
+    const html = `<!DOCTYPE html><html><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<script>Object.entries(${JSON.stringify(debugInfo)}).forEach(([k,v])=>window[k]=v);
+window.onloadCallback=function(){
+  try{hcaptcha.render('hcaptcha-container',{sitekey:'${siteKey}',size:'${props.size||'invisible'}',callback:onData,onError:onErr,onClose:onClose,onOpen:onOpen,onExpire:onExpire});hcaptcha.execute(${rqArg||'{ }'});}catch(e){window.ReactNativeWebView.postMessage('error:'+e.message);} };
+function onData(r){window.ReactNativeWebView.postMessage(r);}function onErr(e){window.ReactNativeWebView.postMessage('error:'+e);}function onClose(){window.ReactNativeWebView.postMessage('challenge-closed');}function onOpen(){window.ReactNativeWebView.postMessage('open');}function onExpire(){window.ReactNativeWebView.postMessage('expired');}
+</script>
+<script src="${apiUrl}" async defer></script>
+</head><body style="margin:0;background:${backgroundColor}"><div id="hcaptcha-container"></div></body></html>`;
+
+    return { html, baseUrl: url };
+  }, [props, debugInfo]);
+}
+
+// Hook: handlers & loading state
+export function useHCaptchaHandlers(onMessage, showLoading) {
+  const [isLoading, setIsLoading] = useState(true);
+  const webRef = useRef(null);
+  const reset = () => webRef.current?.injectJavaScript('window.onloadCallback();');
+
+  const handleMessage = (e) => {
+    const data = e.nativeEvent.data;
+    if (data === 'open') {
+      setIsLoading(false);
+      return;
+    }
+    const ev = { ...e, reset, success: !(data.startsWith('error') || data === 'challenge-closed') };
+    onMessage?.(ev);
+  };
+
+  useEffect(() => {
+    if (!showLoading) return;
+    const id = setTimeout(() => {
+      isLoading && onMessage?.({ nativeEvent: { data: 'error:timeout' } });
+    }, 15000);
+    return () => clearTimeout(id);
+  }, [isLoading, showLoading, onMessage]);
+
+  return { webRef, isLoading, reset, handleMessage };
+}
+
 const patchPostMessageJsCode = `(${String(function () {
   var originalPostMessage = window.ReactNativeWebView.postMessage;
   var patchedPostMessage = function (message, targetOrigin, transfer) {
