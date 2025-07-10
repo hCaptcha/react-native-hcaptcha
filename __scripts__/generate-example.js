@@ -25,12 +25,12 @@ Options:
 // Simple argument parser function
 function parseArgs(args) {
   const options = {
-    cliName: '@react-native-community/cli',
+    cliName: '@react-native-community/cli@latest',
     projectName: 'react_native_hcaptcha_example',
     projectRelativeProjectPath: '../react-native-hcaptcha-example',
     packageManager: 'yarn',
     verbose: false,
-    projectTemplate: undefined,
+    projectTemplate: undefined, // default
     frameworkVersion: undefined,
   };
 
@@ -92,6 +92,7 @@ function cleanPathEnv() {
 function buildCreateCommand({ cliName, projectRelativeProjectPath, projectName, projectTemplate, packageManager, frameworkVersion, verbose }) {
   let createCommand = ['npx', cliName, 'init', projectName, '--directory', projectRelativeProjectPath];
 
+  // Only add template if explicitly specified (TypeScript is default since RN 0.71)
   if (projectTemplate) {
     createCommand.push('--template', projectTemplate);
   }
@@ -128,7 +129,7 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
   const createCommand = buildCreateCommand({ cliName, projectRelativeProjectPath, projectName, projectTemplate, packageManager, frameworkVersion });
 
   // Run the project initialization command
-  console.log(`Running command: ${createCommand}`);
+  console.log(`Running command: ${createCommand.join(' ')}`);
   execSync(createCommand.join(' '), { stdio: 'inherit', shell: true, env: { ...process.env, PATH: cleanPathEnv(), USE_HERMES: 0 } });
 
   const projectPath = path.join(process.cwd(), projectRelativeProjectPath);

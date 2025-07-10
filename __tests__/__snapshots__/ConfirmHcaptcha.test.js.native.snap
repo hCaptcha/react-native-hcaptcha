@@ -1,0 +1,273 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1`] = `
+<div
+  animationIn="fadeIn"
+  animationOut="fadeOut"
+  coverScreen={true}
+  hasBackdrop={true}
+  hideModalContentWhileAnimating={true}
+  isVisible={false}
+  onBackButtonPress={[Function]}
+  onBackdropPress={[Function]}
+  style={
+    {
+      "display": "none",
+      "margin": 0,
+    }
+  }
+  useNativeDriver={true}
+>
+  <div
+    style={
+      {
+        "backgroundColor": "rgba(0.1, 0.1, 0.1, 0.4)",
+        "flex": 1,
+        "justifyContent": "center",
+        "overflow": "hidden",
+      }
+    }
+  >
+    <div
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <div
+        injectedJavaScript="(function () {
+        var originalPostMessage = window.ReactNativeWebView.postMessage;
+        var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
+          originalPostMessage(message, targetOrigin, transfer);
+        };
+        patchedPostMessage.toString = function () {
+          return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
+        };
+        window.ReactNativeWebView.postMessage = patchedPostMessage;
+      })();"
+        javaScriptEnabled={true}
+        mixedContentMode="always"
+        onMessage={[Function]}
+        onShouldStartLoadWithRequest={[Function]}
+        originWhitelist={
+          [
+            "*",
+          ]
+        }
+        source={
+          {
+            "baseUrl": "https://hcaptcha.com",
+            "html": "<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width,initial-scale=1"/>
+        <script>
+          Object.entries({"rnver_0_73_0":true,"dep_mocked-md5":true,"sdk_1_8_2":true}).forEach(([k,v]) => window[k] = v);
+          
+          // Platform-specific postMessage function
+          function postMessage(message) {
+            // React Native environment  
+        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+          window.ReactNativeWebView.postMessage(message);
+        } else {
+          console.warn('No ReactNativeWebView postMessage available:', message);
+        }
+          }
+          
+          window.onloadCallback = function() {
+            try {
+              const renderConfig = {
+                sitekey: '00000000-0000-0000-0000-000000000000',
+                size: 'compact',
+                callback: onData,
+                'error-callback': onErr,
+                'close-callback': onClose,
+                'open-callback': onOpen,
+                'expired-callback': onExpire
+              };
+              renderConfig.theme = "light";
+              
+              hcaptcha.render('hcaptcha-container', renderConfig);
+              
+              hcaptcha.execute({ rqdata: "{"some": "data"}" });
+            } catch(e) {
+              postMessage('error:' + e.message);
+            }
+          };
+          
+          function onData(response) { 
+            postMessage(response); 
+          }
+          function onErr(error) { 
+            postMessage('error:' + error); 
+          }
+          function onClose() { 
+            postMessage('challenge-closed'); 
+          }
+          function onOpen() { 
+            postMessage('open'); 
+          }
+          function onExpire() { 
+            postMessage('expired'); 
+          }
+        </script>
+        <script src="https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=en&custom=false&sentry=true&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi&orientation=portrait" async defer></script>
+      </head>
+      <body style="margin:0;background:rgba(0.1, 0.1, 0.1, 0.4)">
+        <div id="hcaptcha-container"></div>
+      </body>
+      </html>",
+          }
+        }
+        style={
+          [
+            {
+              "backgroundColor": "transparent",
+              "width": "100%",
+            },
+            {},
+          ]
+        }
+      />
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum props 1`] = `
+<div
+  animationIn="fadeIn"
+  animationOut="fadeOut"
+  coverScreen={true}
+  hasBackdrop={true}
+  hideModalContentWhileAnimating={true}
+  isVisible={false}
+  onBackButtonPress={[Function]}
+  onBackdropPress={[Function]}
+  style={
+    {
+      "display": "none",
+      "margin": 0,
+    }
+  }
+  useNativeDriver={true}
+>
+  <div
+    style={
+      {
+        "backgroundColor": "rgba(0, 0, 0, 0.3)",
+        "flex": 1,
+        "justifyContent": "center",
+        "overflow": "hidden",
+      }
+    }
+  >
+    <div
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <div
+        injectedJavaScript="(function () {
+        var originalPostMessage = window.ReactNativeWebView.postMessage;
+        var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
+          originalPostMessage(message, targetOrigin, transfer);
+        };
+        patchedPostMessage.toString = function () {
+          return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
+        };
+        window.ReactNativeWebView.postMessage = patchedPostMessage;
+      })();"
+        javaScriptEnabled={true}
+        mixedContentMode="always"
+        onMessage={[Function]}
+        onShouldStartLoadWithRequest={[Function]}
+        originWhitelist={
+          [
+            "*",
+          ]
+        }
+        source={
+          {
+            "baseUrl": "https://hcaptcha.com",
+            "html": "<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width,initial-scale=1"/>
+        <script>
+          Object.entries({"rnver_0_73_0":true,"dep_mocked-md5":true,"sdk_1_8_2":true}).forEach(([k,v]) => window[k] = v);
+          
+          // Platform-specific postMessage function
+          function postMessage(message) {
+            // React Native environment  
+        if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+          window.ReactNativeWebView.postMessage(message);
+        } else {
+          console.warn('No ReactNativeWebView postMessage available:', message);
+        }
+          }
+          
+          window.onloadCallback = function() {
+            try {
+              const renderConfig = {
+                sitekey: '00000000-0000-0000-0000-000000000000',
+                size: 'invisible',
+                callback: onData,
+                'error-callback': onErr,
+                'close-callback': onClose,
+                'open-callback': onOpen,
+                'expired-callback': onExpire
+              };
+              renderConfig.theme = "light";
+              
+              hcaptcha.render('hcaptcha-container', renderConfig);
+              
+              hcaptcha.execute();
+            } catch(e) {
+              postMessage('error:' + e.message);
+            }
+          };
+          
+          function onData(response) { 
+            postMessage(response); 
+          }
+          function onErr(error) { 
+            postMessage('error:' + error); 
+          }
+          function onClose() { 
+            postMessage('challenge-closed'); 
+          }
+          function onOpen() { 
+            postMessage('open'); 
+          }
+          function onExpire() { 
+            postMessage('expired'); 
+          }
+        </script>
+        <script src="https://js.hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en&custom=false&sentry=false&orientation=portrait" async defer></script>
+      </head>
+      <body style="margin:0;background:rgba(0, 0, 0, 0.3)">
+        <div id="hcaptcha-container"></div>
+      </body>
+      </html>",
+          }
+        }
+        style={
+          [
+            {
+              "backgroundColor": "transparent",
+              "width": "100%",
+            },
+            {},
+          ]
+        }
+      />
+    </div>
+  </div>
+</div>
+`;

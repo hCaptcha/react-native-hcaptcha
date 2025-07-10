@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1`] = `null`;
+
+exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum props 1`] = `null`;

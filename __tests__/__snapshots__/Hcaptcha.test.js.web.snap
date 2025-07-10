@@ -1,0 +1,136 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Hcaptcha snapshot tests renders Hcaptcha with all props 1`] = `
+<div
+  style={
+    {
+      "flex": 1,
+    }
+  }
+>
+  <div
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "transparent",
+        "border": "1px solid #ccc",
+        "display": "flex",
+        "height": "100%",
+        "justifyContent": "center",
+        "width": "100%",
+      }
+    }
+  >
+    hCaptcha WebView (Mock)
+  </div>
+  <div
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "rgba(255, 255, 255, 0.8)",
+        "bottom": 0,
+        "justifyContent": "center",
+        "left": 0,
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+  >
+    <div
+      color="#123456"
+      size="large"
+    />
+  </div>
+</div>
+`;
+
+exports[`Hcaptcha snapshot tests renders Hcaptcha with minimum props 1`] = `
+<div
+  style={
+    {
+      "flex": 1,
+    }
+  }
+>
+  <div
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "transparent",
+        "border": "1px solid #ccc",
+        "display": "flex",
+        "height": "100%",
+        "justifyContent": "center",
+        "width": "100%",
+      }
+    }
+  >
+    hCaptcha WebView (Mock)
+  </div>
+  <div
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "rgba(255, 255, 255, 0.8)",
+        "bottom": 0,
+        "justifyContent": "center",
+        "left": 0,
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+  >
+    <div
+      color="#000000"
+      size="large"
+    />
+  </div>
+</div>
+`;
+
+exports[`Hcaptcha snapshot tests test debug 1`] = `
+<div
+  style={
+    {
+      "flex": 1,
+    }
+  }
+>
+  <div
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "transparent",
+        "border": "1px solid #ccc",
+        "display": "flex",
+        "height": "100%",
+        "justifyContent": "center",
+        "width": "100%",
+      }
+    }
+  >
+    hCaptcha WebView (Mock)
+  </div>
+  <div
+    style={
+      {
+        "alignItems": "center",
+        "backgroundColor": "rgba(255, 255, 255, 0.8)",
+        "bottom": 0,
+        "justifyContent": "center",
+        "left": 0,
+        "position": "absolute",
+        "right": 0,
+        "top": 0,
+      }
+    }
+  >
+    <div
+      color="#000000"
+      size="large"
+    />
+  </div>
+</div>
+`;

@@ -53,7 +53,10 @@ class ConfirmHcaptcha extends PureComponent {
         hideModalContentWhileAnimating
         deviceHeight={height}
         deviceWidth={width}
-        style={[styles.modal, {display: passiveSiteKey ? 'none' : undefined}]}
+        style={{
+          ...styles.modal,
+          ...(passiveSiteKey ? { display: 'none' } : {})
+        }}
         animationIn="fadeIn"
         animationOut="fadeOut"
         onBackdropPress={() => this.hide('backdrop')}
@@ -62,7 +65,10 @@ class ConfirmHcaptcha extends PureComponent {
         hasBackdrop={!passiveSiteKey && hasBackdrop}
         coverScreen={!passiveSiteKey}
       >
-        <SafeAreaView style={[styles.wrapper, hasBackdrop ? { backgroundColor } : {}]}>
+        <SafeAreaView style={{
+          ...styles.wrapper,
+          ...(hasBackdrop ? { backgroundColor } : {})
+        }}>
           <Hcaptcha
             url={baseUrl}
             size={size}
