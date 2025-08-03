@@ -7,7 +7,7 @@ export const setWebViewMessageData = (data) => {
   messageDataToSend = data;
 };
 
-const WebView = (props) => {
+const WebView = React.forwardRef((props, ref) => {
   const { onMessage } = props;
 
   React.useEffect(() => {
@@ -17,7 +17,7 @@ const WebView = (props) => {
     }
   }, [onMessage]);
 
-  return React.createElement('WebView', props);
-};
+  return React.createElement('WebView', { ...props, ref });
+});
 
 export default WebView;
