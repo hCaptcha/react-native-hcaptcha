@@ -4,7 +4,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1
 <Modal
   animationIn="fadeIn"
   animationOut="fadeOut"
-  coverScreen={true}
+  coverScreen={false}
   deviceHeight={1334}
   deviceWidth={750}
   hasBackdrop={true}
@@ -172,7 +172,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
 <Modal
   animationIn="fadeIn"
   animationOut="fadeOut"
-  coverScreen={true}
+  coverScreen={false}
   deviceHeight={1334}
   deviceWidth={750}
   hasBackdrop={true}
