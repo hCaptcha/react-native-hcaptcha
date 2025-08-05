@@ -82,7 +82,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_3":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_4":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
         </script>
         <script src="https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=en&sentry=true&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi&orientation=portrait" async defer></script>
         <script type="text/javascript">
