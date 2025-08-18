@@ -1,7 +1,7 @@
-import React from 'react';
-import { HcaptchaProps } from './Hcaptcha';
+import React from "react";
+import { HcaptchaProps } from "./Hcaptcha";
 
-type ConfirmHcaptchaProps = Omit<HcaptchaProps, 'url' | 'style'> & {
+type ConfirmHcaptchaProps = Omit<HcaptchaProps, "url" | "style"> & {
   /**
    * Indicates whether the passive mode is enabled; when true, the modal won't be shown at all
    */
@@ -15,7 +15,11 @@ type ConfirmHcaptchaProps = Omit<HcaptchaProps, 'url' | 'style'> & {
    * `backgroundColor` will apply only after the hCaptcha visual challenge is presented.
    */
   hasBackdrop?: boolean;
-}
+  /**
+   * Defines if the view containing the hCaptcha should use a SafeAreaView or a View component (true by default)
+   */
+  useSafeAreaView?: boolean;
+};
 
 export default class ConfirmHcaptcha extends React.Component<ConfirmHcaptchaProps> {
   /**
