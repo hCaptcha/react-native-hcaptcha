@@ -60,7 +60,7 @@ class ConfirmHcaptcha extends PureComponent {
         onBackButtonPress={() => this.hide('back_button')}
         isVisible={show}
         hasBackdrop={!passiveSiteKey && hasBackdrop}
-        coverScreen={false} // https://github.com/react-native-modal/react-native-modal/issues/147#issuecomment-610729725
+        coverScreen={!passiveSiteKey}
       >
         <SafeAreaView style={[styles.wrapper, hasBackdrop ? { backgroundColor } : {}]}>
           <Hcaptcha
