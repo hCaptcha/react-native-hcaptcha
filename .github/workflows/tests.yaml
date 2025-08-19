@@ -48,6 +48,8 @@ jobs:
       with:
         java-version: 17
         distribution: adopt
+    - if: contains(matrix.os, 'macos')
+      run: sudo xcode-select -s /Applications/Xcode_16.4.app
     - run: |
         npm run example -- --pm ${{ matrix.pm }}
       working-directory: react-native-hcaptcha
