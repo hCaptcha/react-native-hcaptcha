@@ -129,7 +129,7 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
 
   // Run the project initialization command
   console.log(`Running command: ${createCommand}`);
-  execSync(createCommand.join(' '), { stdio: 'inherit', shell: true, env: { ...process.env, PATH: cleanPathEnv(), USE_HERMES: 0 } });
+  execSync(createCommand.join(' '), { stdio: 'inherit', shell: true, env: { ...process.env, PATH: cleanPathEnv() } });
 
   const projectPath = path.join(process.cwd(), projectRelativeProjectPath);
   const packageManagerOptions = { stdio: 'inherit', cwd: projectPath };
@@ -143,7 +143,7 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
   // Install dependencies
   const isHcaptchaLinked = checkHcaptchaLinked();
   const mainPackage = '@hcaptcha/react-native-hcaptcha';
-  const mainPackagePath = `${path.dirname(projectRelativeProjectPath)}/react-native-hcaptcha`;
+  const mainPackagePath = path.join(path.dirname(projectRelativeProjectPath), path.basename(process.cwd()));
   const peerPackages = 'react-native-modal react-native-webview';
   const devPackages = 'typescript @babel/preset-env';
 
@@ -167,7 +167,7 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
 
   // iOS: pod install
   if (platform() === 'darwin') {
-    const podOptions = { stdio: 'inherit', cwd: path.join(projectPath, 'ios'), env: { ...process.env, USE_HERMES: 0 } };
+    const podOptions = { stdio: 'inherit', cwd: path.join(projectPath, 'ios') };
     execSync('bundle install', podOptions);
     execSync('bundle exec pod install', podOptions);
   }
