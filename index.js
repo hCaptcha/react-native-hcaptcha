@@ -1,5 +1,5 @@
 import React, { PureComponent } from 'react';
-import { SafeAreaView, StyleSheet, Dimensions } from 'react-native';
+import { SafeAreaView, View, StyleSheet, Dimensions } from 'react-native';
 import Modal from 'react-native-modal';
 import Hcaptcha from './Hcaptcha';
 import PropTypes from 'prop-types';
@@ -45,7 +45,10 @@ class ConfirmHcaptcha extends PureComponent {
       host,
       hasBackdrop,
       debug,
+      useSafeAreaView,
     } = this.props;
+
+    const WrapperComponent = useSafeAreaView === false ? View : SafeAreaView;
 
     return (
       <Modal
@@ -60,9 +63,9 @@ class ConfirmHcaptcha extends PureComponent {
         onBackButtonPress={() => this.hide('back_button')}
         isVisible={show}
         hasBackdrop={!passiveSiteKey && hasBackdrop}
-        coverScreen={false} // https://github.com/react-native-modal/react-native-modal/issues/147#issuecomment-610729725
+        coverScreen={!passiveSiteKey}
       >
-        <SafeAreaView style={[styles.wrapper, hasBackdrop ? { backgroundColor } : {}]}>
+        <WrapperComponent style={[styles.wrapper, hasBackdrop ? { backgroundColor } : {}]}>
           <Hcaptcha
             url={baseUrl}
             size={size}
@@ -85,7 +88,7 @@ class ConfirmHcaptcha extends PureComponent {
             orientation={orientation}
             debug={debug}
           />
-        </SafeAreaView>
+        </WrapperComponent>
       </Modal>
     );
   }

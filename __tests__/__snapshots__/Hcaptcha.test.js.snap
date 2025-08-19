@@ -44,7 +44,7 @@ exports[`Hcaptcha snapshot tests Theme test object 1`] = `
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_4":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_5":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
         </script>
         <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en&custom=true" async defer></script>
         <script type="text/javascript">
@@ -172,7 +172,7 @@ exports[`Hcaptcha snapshot tests Theme test string 1`] = `
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_4":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_5":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
         </script>
         <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en" async defer></script>
         <script type="text/javascript">
@@ -300,7 +300,7 @@ exports[`Hcaptcha snapshot tests Theme test undefined 1`] = `
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_4":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_5":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
         </script>
         <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en" async defer></script>
         <script type="text/javascript">
@@ -428,7 +428,7 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with all props 1`] = `
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_4":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_5":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
         </script>
         <script src="https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=fr&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi" async defer></script>
         <script type="text/javascript">
@@ -591,7 +591,7 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with debug 1`] = `
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          Object.entries({"a":1,"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_4":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+          Object.entries({"a":1,"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_5":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
         </script>
         <script src="https://hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en" async defer></script>
         <script type="text/javascript">

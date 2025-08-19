@@ -4,7 +4,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1
 <Modal
   animationIn="fadeIn"
   animationOut="fadeOut"
-  coverScreen={false}
+  coverScreen={true}
   deviceHeight={1334}
   deviceWidth={750}
   hasBackdrop={true}
@@ -82,7 +82,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_4":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_5":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
         </script>
         <script src="https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=en&sentry=true&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi&orientation=portrait" async defer></script>
         <script type="text/javascript">
@@ -172,7 +172,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
 <Modal
   animationIn="fadeIn"
   animationOut="fadeOut"
-  coverScreen={false}
+  coverScreen={true}
   deviceHeight={1334}
   deviceWidth={750}
   hasBackdrop={true}
@@ -333,5 +333,171 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum pro
       />
     </View>
   </RCTSafeAreaView>
+</Modal>
+`;
+
+exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha without safe area view 1`] = `
+<Modal
+  animationIn="fadeIn"
+  animationOut="fadeOut"
+  coverScreen={false}
+  deviceHeight={1334}
+  deviceWidth={750}
+  hasBackdrop={false}
+  hideModalContentWhileAnimating={true}
+  isVisible={false}
+  onBackButtonPress={[Function]}
+  onBackdropPress={[Function]}
+  style={
+    [
+      {
+        "display": "none",
+        "margin": 0,
+      },
+      {
+        "display": "none",
+      },
+    ]
+  }
+  useNativeDriver={true}
+>
+  <View
+    style={
+      [
+        {
+          "flex": 1,
+          "justifyContent": "center",
+          "overflow": "hidden",
+        },
+        {},
+      ]
+    }
+  >
+    <View
+      style={
+        {
+          "flex": 1,
+        }
+      }
+    >
+      <WebView
+        automaticallyAdjustContentInsets={true}
+        injectedJavaScript="(function () {
+  var originalPostMessage = window.ReactNativeWebView.postMessage;
+  var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
+    originalPostMessage(message, targetOrigin, transfer);
+  };
+  patchedPostMessage.toString = function () {
+    return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
+  };
+  window.ReactNativeWebView.postMessage = patchedPostMessage;
+})();"
+        javaScriptEnabled={true}
+        mixedContentMode="always"
+        onMessage={[Function]}
+        onShouldStartLoadWithRequest={[Function]}
+        originWhitelist={
+          [
+            "*",
+          ]
+        }
+        ref={
+          {
+            "current": null,
+          }
+        }
+        source={
+          {
+            "baseUrl": "https://hcaptcha.com",
+            "html": "<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <script type="text/javascript">
+          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_0_5":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+        </script>
+        <script src="https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=en&sentry=true&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi&orientation=portrait" async defer></script>
+        <script type="text/javascript">
+          var onloadCallback = function() {
+            try {
+              console.log("challenge onload starting");
+              hcaptcha.render("hcaptcha-container", getRenderConfig("00000000-0000-0000-0000-000000000000", "light", "compact"));
+              // have loaded by this point; render is sync.
+              console.log("challenge render complete");
+            } catch (e) {
+              console.log("challenge failed to render:", e);
+              window.ReactNativeWebView.postMessage(e.name);
+            }
+            try {
+              console.log("showing challenge");
+              hcaptcha.execute(getExecuteOpts());
+            } catch (e) {
+              console.log("failed to show challenge:", e);
+              window.ReactNativeWebView.postMessage(e.name);
+            }
+          };
+          var onDataCallback = function(response) {
+            window.ReactNativeWebView.postMessage(response);
+          };
+          var onCancel = function() {
+            window.ReactNativeWebView.postMessage("challenge-closed");
+          };
+          var onOpen = function() {
+            document.body.style.backgroundColor = 'rgba(0.1, 0.1, 0.1, 0.4)';
+            window.ReactNativeWebView.postMessage("open");
+            console.log("challenge opened");
+          };
+          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onDataErrorCallback = function(error) {
+            console.warn("challenge error callback fired");
+            window.ReactNativeWebView.postMessage(error);
+          };
+          const getRenderConfig = function(siteKey, theme, size) {
+            var config = {
+              sitekey: siteKey,
+              size: size,
+              callback: onDataCallback,
+              "close-callback": onCancel,
+              "open-callback": onOpen,
+              "expired-callback": onDataExpiredCallback,
+              "chalexpired-callback": onChalExpiredCallback,
+              "error-callback": onDataErrorCallback
+            };
+            if (theme) {
+              config.theme = theme;
+            }
+            return config;
+          };
+          const getExecuteOpts = function() {
+            var opts;
+            const rqdata = "{"some": "data"}";
+            if (rqdata) {
+              opts = {"rqdata": rqdata};
+            }
+            return opts;
+          };
+        </script>
+      </head>
+      <body>
+        <div id="hcaptcha-container"></div>
+      </body>
+      </html>",
+          }
+        }
+        style={
+          [
+            {
+              "backgroundColor": "transparent",
+              "width": "100%",
+            },
+            undefined,
+          ]
+        }
+      />
+    </View>
+  </View>
 </Modal>
 `;
