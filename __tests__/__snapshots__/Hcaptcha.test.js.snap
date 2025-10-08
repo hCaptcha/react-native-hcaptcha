@@ -100,10 +100,19 @@ exports[`Hcaptcha snapshot tests Theme test object 1`] = `
             return config;
           };
           const getExecuteOpts = function() {
-            var opts;
+            var opts = {};
             const rqdata = undefined;
+            const phonePrefix = null;
+            const phoneNumber = null;
+
             if (rqdata) {
-              opts = {"rqdata": rqdata};
+              opts.rqdata = rqdata;
+            }
+            if (phonePrefix) {
+              opts.mfa_phoneprefix = phonePrefix;
+            }
+            if (phoneNumber) {
+              opts.mfa_phone = phoneNumber;
             }
             return opts;
           };
@@ -228,10 +237,19 @@ exports[`Hcaptcha snapshot tests Theme test string 1`] = `
             return config;
           };
           const getExecuteOpts = function() {
-            var opts;
+            var opts = {};
             const rqdata = undefined;
+            const phonePrefix = null;
+            const phoneNumber = null;
+
             if (rqdata) {
-              opts = {"rqdata": rqdata};
+              opts.rqdata = rqdata;
+            }
+            if (phonePrefix) {
+              opts.mfa_phoneprefix = phonePrefix;
+            }
+            if (phoneNumber) {
+              opts.mfa_phone = phoneNumber;
             }
             return opts;
           };
@@ -356,10 +374,19 @@ exports[`Hcaptcha snapshot tests Theme test undefined 1`] = `
             return config;
           };
           const getExecuteOpts = function() {
-            var opts;
+            var opts = {};
             const rqdata = undefined;
+            const phonePrefix = null;
+            const phoneNumber = null;
+
             if (rqdata) {
-              opts = {"rqdata": rqdata};
+              opts.rqdata = rqdata;
+            }
+            if (phonePrefix) {
+              opts.mfa_phoneprefix = phonePrefix;
+            }
+            if (phoneNumber) {
+              opts.mfa_phone = phoneNumber;
             }
             return opts;
           };
@@ -484,10 +511,19 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with all props 1`] = `
             return config;
           };
           const getExecuteOpts = function() {
-            var opts;
+            var opts = {};
             const rqdata = "{}";
+            const phonePrefix = null;
+            const phoneNumber = null;
+
             if (rqdata) {
-              opts = {"rqdata": rqdata};
+              opts.rqdata = rqdata;
+            }
+            if (phonePrefix) {
+              opts.mfa_phoneprefix = phonePrefix;
+            }
+            if (phoneNumber) {
+              opts.mfa_phone = phoneNumber;
             }
             return opts;
           };
@@ -647,10 +683,19 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with debug 1`] = `
             return config;
           };
           const getExecuteOpts = function() {
-            var opts;
+            var opts = {};
             const rqdata = undefined;
+            const phonePrefix = null;
+            const phoneNumber = null;
+
             if (rqdata) {
-              opts = {"rqdata": rqdata};
+              opts.rqdata = rqdata;
+            }
+            if (phonePrefix) {
+              opts.mfa_phoneprefix = phonePrefix;
+            }
+            if (phoneNumber) {
+              opts.mfa_phone = phoneNumber;
             }
             return opts;
           };
@@ -775,10 +820,19 @@ exports[`Hcaptcha snapshot tests renders Hcaptcha with minimum props 1`] = `
             return config;
           };
           const getExecuteOpts = function() {
-            var opts;
+            var opts = {};
             const rqdata = undefined;
+            const phonePrefix = null;
+            const phoneNumber = null;
+
             if (rqdata) {
-              opts = {"rqdata": rqdata};
+              opts.rqdata = rqdata;
+            }
+            if (phonePrefix) {
+              opts.mfa_phoneprefix = phonePrefix;
+            }
+            if (phoneNumber) {
+              opts.mfa_phone = phoneNumber;
             }
             return opts;
           };
