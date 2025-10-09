@@ -129,6 +129,26 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 - You can `import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha';` to customize the UI yourself.
 - hCaptcha loading is restricted to a 15-second timeout; an `error` will be sent via `onMessage` if it fails to load due to network issues.
 
+## MFA Phone Support
+
+The SDK supports phone prefix and phone number parameters for MFA (Multi-Factor Authentication) flows. You can pass these parameters as props:
+
+```js
+// Using phone prefix (country code without '+')
+<ConfirmHcaptcha
+  siteKey="your-site-key"
+  phonePrefix="44"
+  onMessage={onMessage}
+/>
+
+// Using phone number (full E.164 format)
+<ConfirmHcaptcha
+  siteKey="your-site-key"
+  phoneNumber="+44123456789"
+  onMessage={onMessage}
+/>
+```
+
 ## Properties
 
 | **Name** | **Type** | **Description** |
@@ -142,7 +162,7 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 | loadingIndicatorColor | string | Color of the ActivityIndicator |
 | backgroundColor | string | The background color code that will be applied to the main HTML element |
 | theme | string\|object | The theme can be 'light', 'dark', 'contrast' or a custom theme object (see Enterprise docs) |
-| rqdata | string | Hcaptcha execution options (see Enterprise docs) |
+| rqdata | string | **Deprecated**: Use `rqdata` in `HCaptchaVerifyParams` instead. Will be removed in future releases. See Enterprise docs. |
 | sentry | boolean | sentry error reporting (see Enterprise docs) |
 | jsSrc | string | The url of api.js. Default: https://js.hcaptcha.com/1/api.js (Override only if using first-party hosting feature.) |
 | endpoint | string | Point hCaptcha JS Ajax Requests to alternative API Endpoint. Default: https://api.hcaptcha.com (Override only if using first-party hosting feature.) |
@@ -156,6 +176,8 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 | passiveSiteKey _(modal component only)_ | boolean | Indicates whether the passive mode is enabled; when true, the modal won't be shown at all |
 | hasBackdrop _(modal component only)_ | boolean | Defines if the modal backdrop is shown (true by default). If `hasBackdrop=false`, `backgroundColor` will apply only after the hCaptcha visual challenge is presented. |
 | orientation | string | This specifies the "orientation" of the challenge. It can be `portrait`, `landscape`. Default: `portrait` |
+| phonePrefix | string | Optional phone country calling code (without '+'), e.g., "44". Used in MFA flows. |
+| phoneNumber | string | Optional full phone number in E.164 format ("+44123..."), for use in MFA. |
 
 
 ## Status
