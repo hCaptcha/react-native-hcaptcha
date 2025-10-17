@@ -90,6 +90,15 @@ type HcaptchaProps = {
    * Default: portrait
    */
   orientation?: 'portrait' | 'landscape';
+  /**
+   * Optional phone country calling code (without '+'), e.g., "44".
+   * Used in MFA flows.
+   */
+  phonePrefix?: string;
+  /**
+   * Optional full phone number in E.164 format ("+44123..."), for use in MFA.
+   */
+  phoneNumber?: string;
 }
 
 interface CustomWebViewMessageEvent extends WebViewMessageEvent {
