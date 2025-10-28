@@ -94,54 +94,54 @@ describe('Hcaptcha snapshot tests', () => {
 
   describe('Theme', () => {
     const theme = {
-      "palette": {
-        "mode": "dark",
-        "primary": {
-          "main": "#26C6DA"
+      'palette': {
+        'mode': 'dark',
+        'primary': {
+          'main': '#26C6DA',
         },
-        "warn": {
-          "main": "#FF8A80"
+        'warn': {
+          'main': '#FF8A80',
         },
-        "text": {
-          "heading": "#FAFAFA",
-          "body": "#E0E0E0"
-        }
+        'text': {
+          'heading': '#FAFAFA',
+          'body': '#E0E0E0',
+        },
       },
-      "component": {
-        "checkbox": {
-          "main": {
-            "fill": "#333333",
-            "border": "#F5F5F5"
+      'component': {
+        'checkbox': {
+          'main': {
+            'fill': '#333333',
+            'border': '#F5F5F5',
           },
-          "hover": {
-            "fill": "#222222"
-          }
+          'hover': {
+            'fill': '#222222',
+          },
         },
-        "modal": {
-          "main": {
-            "fill": "#222222"
+        'modal': {
+          'main': {
+            'fill': '#222222',
           },
-          "hover": {
-            "fill": "#333333"
+          'hover': {
+            'fill': '#333333',
           },
-          "focus": {
-            "outline": "#80DEEA"
-          }
+          'focus': {
+            'outline': '#80DEEA',
+          },
         },
-        "textarea": {
-          "main": {
-            "fill": "#4F4F4F",
-            "border": "#828282"
+        'textarea': {
+          'main': {
+            'fill': '#4F4F4F',
+            'border': '#828282',
           },
-          "focus": {
-            "fill": "#4F4F4F",
-            "outline": "#80DEEA"
+          'focus': {
+            'fill': '#4F4F4F',
+            'outline': '#80DEEA',
           },
-          "disabled": {
-            "fill": "#828282"
-          }
-        }
-      }
+          'disabled': {
+            'fill': '#828282',
+          },
+        },
+      },
     };
 
     [
