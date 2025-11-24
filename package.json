@@ -5,9 +5,11 @@
   "main": "index.js",
   "scripts": {
     "prepare": "husky",
-    "test": "jest",
+    "test": "jest --testPathIgnorePatterns=\\.perf-test\\.js$",
     "lint": "eslint .",
-    "example": "node __scripts__/generate-example.js"
+    "example": "node __scripts__/generate-example.js",
+    "perf:baseline": "reassure --baseline",
+    "perf:compare": "reassure --compare"
   },
   "jest": {
     "preset": "react-native",
@@ -58,7 +60,8 @@
     "react": "*",
     "react-native": "*",
     "react-native-modal": "*",
-    "react-native-webview": "*"
+    "react-native-webview": "*",
+    "reassure": "^1.4.0"
   },
   "dependencies": {
     "@babel/core": "^7.26.5",

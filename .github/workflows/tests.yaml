@@ -17,6 +17,43 @@ jobs:
     - run: npm install
     - run: npm test
     - run: npm run lint
+    - if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+      run: npm run perf:baseline
+    - if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+      uses: actions/cache/save@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+      with:
+        path: .reassure
+        key: reassure-baseline-${{ github.sha }}
+
+  performance:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - run: npm install
+    - uses: actions/cache/restore@d4323d4df104b026a6aa633fdb11d772146be0bf # v4.2.2
+      id: cache-reassure
+      with:
+        path: .reassure
+        key: reassure-baseline-${{ github.sha }}
+        restore-keys: reassure-baseline-
+        # TODO uncomment after merge to master and remove cache-hit == 'true' below
+        # fail-on-cache-miss: true
+    - if: steps.cache-reassure.outputs.cache-hit == 'true'
+      run: npm run perf:compare
+    - if: steps.cache-reassure.outputs.cache-hit == 'true'
+      uses: hCaptcha/find-comment@3eae4d37986fb5a8592848f6a574fdf654e61f9e
+      id: find_comment
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        body-includes: Performance Comparison Report
+    - if: steps.cache-reassure.outputs.cache-hit == 'true'
+      uses: hCaptcha/create-or-update-comment@71345be0265236311c031f5c7866368bd1eff043
+      with:
+        edit-mode: replace
+        body-path: .reassure/output.md
+        comment-id: ${{ steps.find_comment.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
 
   test:
     needs: build
