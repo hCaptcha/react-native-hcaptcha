@@ -141,6 +141,7 @@ jobs:
         filename: .github/examples-issue-template.md
 
   release:
+    runs-on: ubuntu-latest
     if: github.event_name == 'release'
     needs: test
     steps:
