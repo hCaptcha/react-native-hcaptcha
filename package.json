@@ -1,12 +1,13 @@
 {
   "name": "@hcaptcha/react-native-hcaptcha",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "hCaptcha Library for React Native (both Android and iOS)",
   "main": "index.js",
   "scripts": {
     "prepare": "husky",
     "test": "jest --testPathIgnorePatterns=\\.perf-test\\.js$",
-    "test:e2e": "node __e2e__/rn-android-dark-theme.e2e.mjs",
+    "test:e2e": "bash -lc 'if [ -n \"$CI\" ]; then echo \"Skipping local-only Android emulator E2E in CI\"; else npm run test:e2e:android-local; fi'",
+    "test:e2e:android-local": "node __e2e__/rn-android-dark-theme.e2e.mjs",
     "lint": "eslint .",
     "example": "node __scripts__/generate-example.js",
     "perf:baseline": "reassure --baseline",

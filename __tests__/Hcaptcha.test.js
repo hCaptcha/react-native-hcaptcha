@@ -101,7 +101,7 @@ describe('Hcaptcha', () => {
       customDebug: 'enabled',
       rnver_0_0_0: true,
       'dep_mocked-md5': true,
-      sdk_2_1_0: true,
+      sdk_2_2_0: true,
     });
 
     expect(query).toMatchObject({
