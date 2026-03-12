@@ -14,9 +14,10 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '..');
 const outputDir = path.join(repoRoot, 'output', 'android-e2e');
 const fixtureAppDir = process.env.HCAPTCHA_E2E_APP_DIR || path.join(os.tmpdir(), 'react-native-hcaptcha-android-e2e');
+const reuseFixtureApp = Boolean(process.env.HCAPTCHA_E2E_APP_DIR);
 const fixtureAppName = 'RNHcaptchaE2E';
 const fixturePackageName = 'com.hcaptcha.rne2e';
-const metroPort = process.env.RCT_METRO_PORT || '8088';
+let metroPort = process.env.RCT_METRO_PORT || '8088';
 const sdkRoot = process.env.ANDROID_SDK_ROOT || process.env.ANDROID_HOME || path.join(os.homedir(), 'Library', 'Android', 'sdk');
 const adbPath = path.join(sdkRoot, 'platform-tools', 'adb');
 const emulatorPath = path.join(sdkRoot, 'emulator', 'emulator');
@@ -26,10 +27,11 @@ const preferredAvd = process.env.HCAPTCHA_E2E_AVD || 'Medium_Phone';
 const screenshotPath = path.join(outputDir, 'android-dark-theme.png');
 const metroLogPath = path.join(outputDir, 'metro.log');
 const appLogPath = path.join(outputDir, 'run-android.log');
+const apkPath = path.join(fixtureAppDir, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk');
 
 const fixtureAppSource = `import React from 'react';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha';
+import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha.js';
 
 const siteKey = '10000000-ffff-ffff-ffff-000000000001';
 const baseUrl = 'https://hcaptcha.com';
@@ -207,13 +209,60 @@ const waitForPort = async (port, timeoutMs) => {
   throw new Error(`Timed out waiting for localhost:${port}`);
 };
 
+const getFreePort = async () =>
+  new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(0, '127.0.0.1', () => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        reject(new Error('Failed to allocate a local port for Metro.'));
+        return;
+      }
+
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(String(address.port));
+      });
+    });
+    server.on('error', reject);
+  });
+
+const createPackageTarball = async () => {
+  const packageJson = JSON.parse(await fs.readFile(path.join(repoRoot, 'package.json'), 'utf8'));
+  const tarballName = `${packageJson.name.replace('@', '').replace('/', '-')}-${packageJson.version}.tgz`;
+  const tarballPath = path.join(outputDir, tarballName);
+
+  await fs.rm(tarballPath, { force: true });
+
+  await run('npm', [
+    'pack',
+    '--ignore-scripts',
+    '--pack-destination',
+    outputDir,
+  ], {
+    cwd: repoRoot,
+    stdio: 'pipe',
+  });
+
+  await ensureFile(tarballPath);
+  return tarballPath;
+};
+
 const ensureFixtureApp = async () => {
   const packageJsonPath = path.join(fixtureAppDir, 'package.json');
 
   let needsInit = false;
+  if (!reuseFixtureApp) {
+    await fs.rm(fixtureAppDir, { recursive: true, force: true });
+    needsInit = true;
+  }
+
   try {
     const parsed = JSON.parse(await fs.readFile(packageJsonPath, 'utf8'));
-    if (parsed.name !== fixtureAppName) {
+    if (parsed.name !== fixturePackageName) {
       needsInit = true;
     }
   } catch (_) {
@@ -243,9 +292,11 @@ const ensureFixtureApp = async () => {
 
   await fs.writeFile(path.join(fixtureAppDir, 'App.js'), fixtureAppSource, 'utf8');
   await fs.rm(path.join(fixtureAppDir, 'App.tsx'), { force: true });
+  const tarballPath = await createPackageTarball();
   await run('npm', [
     'install',
-    `@hcaptcha/react-native-hcaptcha@file:${repoRoot}`,
+    '--legacy-peer-deps',
+    tarballPath,
     'react-native-modal',
     'react-native-webview',
   ], { cwd: fixtureAppDir });
@@ -389,8 +440,8 @@ const captureScreenshot = async (deviceId) => {
 const waitForThemeDifference = async (deviceId) => {
   for (let attempt = 1; attempt <= 12; attempt += 1) {
     const screenshot = await captureScreenshot(deviceId);
-    const lightCrop = crop(screenshot, 0.12, 0.33, 0.88, 0.40);
-    const darkCrop = crop(screenshot, 0.12, 0.62, 0.88, 0.69);
+    const lightCrop = crop(screenshot, 0.08, 0.40, 0.92, 0.49);
+    const darkCrop = crop(screenshot, 0.08, 0.60, 0.92, 0.68);
     const lightLuminance = getAverageLuminance(lightCrop);
     const darkLuminance = getAverageLuminance(darkCrop);
 
@@ -407,34 +458,53 @@ const waitForThemeDifference = async (deviceId) => {
   throw new Error('Timed out waiting for the dark widget to render darker than the light widget.');
 };
 
-const runAndroidApp = async (deviceId) => {
+const installAndLaunchAndroidApp = async (deviceId) => {
   const env = {
     ...process.env,
     ANDROID_HOME: sdkRoot,
     ANDROID_SDK_ROOT: sdkRoot,
+    ANDROID_NDK_HOME: path.join(sdkRoot, 'ndk', '27.1.12297006'),
     RCT_METRO_PORT: metroPort,
     REACT_NATIVE_PACKAGER_HOSTNAME: '127.0.0.1',
   };
 
-  return run('npx', [
-    'react-native',
-    'run-android',
-    '--deviceId',
-    deviceId,
-    '--port',
-    metroPort,
-    '--no-packager',
+  const gradleResult = await run('./gradlew', [
+    'app:assembleDebug',
+    '-x',
+    'lint',
+    `-PreactNativeDevServerPort=${metroPort}`,
   ], {
-    cwd: fixtureAppDir,
+    cwd: path.join(fixtureAppDir, 'android'),
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
+
+  await ensureFile(apkPath);
+  const installResult = await adb('-s', deviceId, 'install', '-r', apkPath);
+  await adb('-s', deviceId, 'reverse', `tcp:${metroPort}`, `tcp:${metroPort}`);
+  const launchResult = await adb(
+    '-s',
+    deviceId,
+    'shell',
+    'am',
+    'start',
+    '-n',
+    `${fixturePackageName}/.MainActivity`
+  );
+
+  return {
+    stdout: `${gradleResult.stdout}\n${installResult.stdout}\n${launchResult.stdout}`,
+    stderr: `${gradleResult.stderr}\n${installResult.stderr}\n${launchResult.stderr}`,
+  };
 };
 
 const main = async () => {
   await fs.mkdir(outputDir, { recursive: true });
   await ensureFile(adbPath);
   await ensureFile(emulatorPath);
+  if (!process.env.RCT_METRO_PORT) {
+    metroPort = await getFreePort();
+  }
   await ensureFixtureApp();
 
   const env = {
@@ -444,7 +514,7 @@ const main = async () => {
     RCT_METRO_PORT: metroPort,
   };
 
-  const metro = startBackgroundProcess('npx', ['react-native', 'start', '--port', metroPort], metroLogPath, {
+  const metro = startBackgroundProcess('npx', ['react-native', 'start', '--port', metroPort, '--reset-cache'], metroLogPath, {
     cwd: fixtureAppDir,
     env,
   });
@@ -457,7 +527,7 @@ const main = async () => {
     const emulator = await ensureEmulator();
     emulatorStop = emulator.stop;
 
-    const runResult = await runAndroidApp(emulator.deviceId);
+    const runResult = await installAndLaunchAndroidApp(emulator.deviceId);
     await fs.writeFile(appLogPath, `${runResult.stdout}\n${runResult.stderr}`, 'utf8');
 
     const metrics = await waitForThemeDifference(emulator.deviceId);
