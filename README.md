@@ -154,7 +154,7 @@ The SDK supports phone prefix and phone number parameters for MFA (Multi-Factor 
 | **Name** | **Type** | **Description** |
 |:---|:---|:---|
 | siteKey _(required)_ | string | The hCaptcha siteKey |
-| size | string | The size of the checkbox, can be 'invisible', 'compact' or 'checkbox', Default: 'invisible' |
+| size | string | The size of the widget, can be 'invisible', 'compact' or 'normal'. `checkbox` is also accepted as a legacy alias for `normal`. Default: 'invisible' |
 | onMessage | Function (see [here](https://github.com/react-native-webview/react-native-webview/blob/master/src/WebViewTypes.ts#L299)) | The callback function that runs after receiving a response, error, or when user cancels. |
 | languageCode | string | Default language for hCaptcha; overrides phone defaults. A complete list of supported languages and their codes can be found [here](https://docs.hcaptcha.com/languages/) |
 | showLoading | boolean | Whether to show a loading indicator while the hCaptcha web content loads |
