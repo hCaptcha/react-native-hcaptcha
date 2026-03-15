@@ -16,6 +16,7 @@ Options:
   --name <name>       Specify the project name (required)
   --path <path>       Specify the project path (default: ../<name>)
   --pm <pm>           Specify the package manager to use (default: yarn)
+  --skip-build        Skip native builds (pod install, gradlew assemble)
   --verbose           Enable verbose logging
   -h, --help          Show this help message
 `);
@@ -30,6 +31,7 @@ function parseArgs(args) {
     projectRelativeProjectPath: '../react-native-hcaptcha-example',
     packageManager: 'yarn',
     verbose: false,
+    skipBuild: false,
     projectTemplate: undefined,
     frameworkVersion: undefined,
   };
@@ -45,6 +47,7 @@ function parseArgs(args) {
       options.projectRelativeProjectPath = value;
     },
     '--pm': (value) => { options.packageManager = value; },
+    '--skip-build': () => { options.skipBuild = true; },
     '--verbose': () => { options.verbose = true; },
     '-h': showHelp,
     '--help': showHelp,
@@ -55,14 +58,13 @@ function parseArgs(args) {
 
     if (argHandlers[arg]) {
       const handler = argHandlers[arg];
-      if (typeof handler === 'function') {
+      if (handler.length === 0) {
+        handler();
+      } else {
         const nextArg = args[i + 1];
-        // Check if the next argument is not another flag
-        if (typeof handler === 'function' && (nextArg && !nextArg.startsWith('--'))) {
+        if (nextArg && !nextArg.startsWith('--')) {
           handler(nextArg);
-          i++; // Skip next argument as it is consumed
-        } else if (handler === showHelp) {
-          handler();
+          i++;
         } else {
           console.error(`Error: ${arg} requires a value.`);
           showHelp();
@@ -99,7 +101,7 @@ function buildCreateCommand({ cliName, projectRelativeProjectPath, projectName, 
   if (cliName === 'expo') {
     createCommand.push(`--${packageManager}`);
   } else if (cliName.includes('react-native')) {
-    createCommand.push('--pm', packageManager);
+    createCommand.push('--pm', packageManager, '--install-pods', 'false');
 
     if (frameworkVersion) {
       createCommand.push('--version', frameworkVersion);
@@ -121,7 +123,7 @@ function checkHcaptchaLinked() {
 }
 
 // Main function that takes parsed arguments and runs the necessary setup
-function main({ cliName, projectRelativeProjectPath, projectName, projectTemplate, packageManager, frameworkVersion, verbose }) {
+function main({ cliName, projectRelativeProjectPath, projectName, projectTemplate, packageManager, frameworkVersion, verbose, skipBuild }) {
   console.warn(`Warning! Example project will be generated in '${path.dirname(process.cwd())}'`);
 
   // Build the command to initialize the project
@@ -143,19 +145,21 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
   // Install dependencies
   const isHcaptchaLinked = checkHcaptchaLinked();
   const mainPackage = '@hcaptcha/react-native-hcaptcha';
-  const mainPackagePath = path.join(path.dirname(projectRelativeProjectPath), path.basename(process.cwd()));
+  const libRoot = process.cwd();
+  const libPathFromProject = path.relative(projectPath, libRoot);
   const peerPackages = 'react-native-modal react-native-webview';
   const devPackages = 'typescript @babel/preset-env';
 
   console.warn('Installing dependencies...');
   if (packageManager === 'yarn') {
-    execSync(`yarn add @hcaptcha/react-native-hcaptcha@file:${mainPackagePath}`, packageManagerOptions);
+    execSync(`yarn add @hcaptcha/react-native-hcaptcha@file:${libPathFromProject}`, packageManagerOptions);
     execSync(`yarn add --dev ${devPackages}`, packageManagerOptions);
     execSync(`yarn add ${peerPackages}`, packageManagerOptions);
   } else {
     // https://github.com/facebook/react-native/issues/29977 - react-native doesn't work with symlinks so `cp` instead
-    // fs.symlinkSync(mainPackagePath, path.join(projectPath, 'react-native-hcaptcha'), 'dir');
-    execSync(`cp -r ${mainPackagePath} ${projectPath}`);
+    const destLibDir = path.join(projectPath, 'react-native-hcaptcha');
+    const excludes = ['__e2e__/host', '__tests__', '__mocks__', 'node_modules', '.git', 'output', '.reassure'].map(e => `--exclude=${e}`).join(' ');
+    execSync(`rsync -a ${excludes} ${libRoot}/ ${destLibDir}/`, { stdio: 'inherit' });
     execSync('npm i --save file:./react-native-hcaptcha', packageManagerOptions);
     execSync(`npm i --save --dev ${devPackages}`, packageManagerOptions);
     execSync(`npm i --save ${peerPackages}`, packageManagerOptions);
@@ -165,21 +169,25 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
     execSync(`${packageManager} link ${mainPackage}`, packageManagerOptions);
   }
 
-  // iOS: pod install
-  if (platform() === 'darwin') {
-    const podOptions = { stdio: 'inherit', cwd: path.join(projectPath, 'ios') };
-    execSync('bundle install', podOptions);
-    execSync('bundle exec pod install', podOptions);
+  if (!skipBuild) {
+    // iOS: pod install
+    if (platform() === 'darwin') {
+      const podOptions = { stdio: 'inherit', cwd: path.join(projectPath, 'ios') };
+      execSync('bundle install', podOptions);
+      execSync('bundle exec pod install', podOptions);
+    }
+
+    // Android
+    const gradleOptions = {
+      stdio: 'inherit', cwd: path.join(projectPath, 'android'),
+      env: { ...process.env, GRADLE_OPTS: '-Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"' },
+    };
+    execSync('./gradlew assemble', gradleOptions);
+
+    ['assets', 'res'].map(dir => fs.mkdirSync(path.join(projectPath, 'android/app/src/main', dir), { recursive: true }));
+  } else {
+    console.log('Skipping native builds (--skip-build).');
   }
-
-  // Android
-  const gradleOptions = {
-    stdio: 'inherit', cwd: path.join(projectPath, 'android'),
-    env: { ...process.env, GRADLE_OPTS: '-Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"' },
-  };
-  execSync('./gradlew assemble', gradleOptions);
-
-  ['assets', 'res'].map(dir => fs.mkdirSync(path.join(projectPath, 'android/app/src/main', dir), { recursive: true }));
 
   console.log('Setup complete.');
 }

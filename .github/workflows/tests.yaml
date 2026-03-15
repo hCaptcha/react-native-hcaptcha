@@ -95,31 +95,87 @@ jobs:
         path: react-native-hcaptcha
     - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
-        node-version: 22.11.0
-    - uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
+        node-version: 22
+    - if: matrix.platform == 'android'
+      uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
       with:
         java-version: 17
         distribution: adopt
-    - if: contains(matrix.os, 'macos')
+    - if: matrix.platform == 'ios'
       run: sudo xcode-select -s /Applications/Xcode_16.4.app
-    - run: |
-        npm run example -- --pm ${{ matrix.pm }}
+    - run: npm run example -- --pm ${{ matrix.pm }}
       working-directory: react-native-hcaptcha
       env:
         YARN_ENABLE_IMMUTABLE_INSTALLS: false
     - id: rn-version
       working-directory: react-native-hcaptcha-example
       run: |
-        RN_VERSION=$(cat package.json | jq ".dependencies.\"react-native\"" -r)
+        RN_VERSION=$(jq -r ".dependencies.\"react-native\"" package.json)
         echo "value=${RN_VERSION}" >> $GITHUB_OUTPUT
-    - run: cat package.json
-      working-directory: react-native-hcaptcha-example
     - run: yarn test --config ./jest.config.js
       working-directory: react-native-hcaptcha-example
     - run: npx react-native build-${{ matrix.platform }}
       working-directory: react-native-hcaptcha-example
     - run: npx --yes check-peer-dependencies --yarn --runOnlyOnRootDependencies
       working-directory: react-native-hcaptcha-example
+
+  e2e:
+    needs: build
+    permissions:
+      contents: read
+    runs-on: ${{ matrix.os }}
+    concurrency:
+      group: 'e2e-${{ matrix.platform }}-${{ github.head_ref || github.ref_name }}'
+      cancel-in-progress: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - os: ubuntu-latest
+          platform: android
+        - os: macos-latest
+          platform: ios
+    steps:
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      with:
+        node-version: 22
+    - if: matrix.platform == 'android'
+      uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
+      with:
+        java-version: 17
+        distribution: adopt
+    - run: npm install
+    - name: Generate E2E host app
+      run: npm run test:e2e:setup -- --pm npm --platform ${{ matrix.platform }}
+
+    - if: matrix.platform == 'android'
+      name: Run Android E2E tests
+      uses: hCaptcha/hcaptcha-android-sdk/.github/actions/android-emulator-run@dc2e0fc978424322c977b68ae06f8dd54e571e22
+      with:
+        target: google_apis
+        api-level: '34'
+        profile: pixel_7
+        script: npm run test:e2e:android
+
+    - if: matrix.platform == 'ios'
+      name: Boot iOS simulator
+      run: |
+        UDID=$(xcrun simctl list devices available --json | \
+          jq -r '.devices["com.apple.CoreSimulator.SimRuntime.iOS-18-5"][] | select(.name=="iPhone 16") | .udid')
+        echo "Booting iPhone 16 (iOS 18.5): $UDID"
+        xcrun simctl bootstatus "$UDID" -b
+
+    - if: matrix.platform == 'ios'
+      name: Run iOS E2E tests
+      run: npm run test:e2e:ios
+
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      if: always()
+      with:
+        name: e2e-results-${{ matrix.platform }}
+        path: __e2e__/__image_snapshots__/
+        retention-days: 14
 
   create-an-issue:
     permissions:
