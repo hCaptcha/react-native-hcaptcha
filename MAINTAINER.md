@@ -12,12 +12,32 @@ PATCH: bugfix only.
 
 - bump [`package.json's`](./package.json) version
 - run `npm i` to update `package-lock.json`
+- update [`MAINTAINER.md`](./MAINTAINER.md) if release or verification steps changed
+- verify:
+  - `npm test`
+  - `npm run lint`
+  - `CI=1 npm run test:e2e` to confirm CI skips local-only device E2E cleanly
+  - `npm run test:e2e:android-local` if you want the full Android emulator verification locally
 - commit `package.json` and `package-lock.json`
+- commit any maintainer or release-documentation updates in the same PR
 - open the PR for review
 - once the PR is approved and merged to master:
- - set the tag on master matching your version: git tag `vM.M.P`
+ - set the tag on master matching your version: `git tag vM.m.p`
+ - push the tag: `git push origin vM.m.p`
  - draft a new release https://github.com/hCaptcha/react-native-hcaptcha/releases
+ - summarize functional changes in the release notes, including:
+   - safer WebView config handling for HTML-facing props
+   - `ConfirmHcaptcha` forwarding of `phonePrefix` and `phoneNumber`
+   - `checkbox` size alias normalization to `normal`
+   - expanded unit coverage and local Android theme E2E coverage
 - once the release is created, CI will release the new version to https://www.npmjs.com/package/@hcaptcha/react-native-hcaptcha?activeTab=versions
+
+3. Post-release verification:
+
+- confirm the GitHub release published successfully
+- confirm npm lists the new version:
+  - `npm view @hcaptcha/react-native-hcaptcha version`
+- smoke-test install in a disposable app if the release changed packaging or generated assets
 
 ### Generate test app
 
@@ -32,6 +52,13 @@ For `react-native` test app
 - `cd react-native-hcaptcha`
 - `yarn example`
 - `yarn android` or `npm run android`
+
+For the local Android emulator regression E2E added in this repo:
+
+- `cd react-native-hcaptcha`
+- ensure Android SDK, emulator, and an AVD are installed
+- run `npm run test:e2e:android-local`
+- inspect artifacts in [`output/android-e2e`](./output/android-e2e) if the run fails
 
 For iOS instead the last step do:
 

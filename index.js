@@ -46,6 +46,8 @@ class ConfirmHcaptcha extends PureComponent {
       hasBackdrop,
       debug,
       useSafeAreaView,
+      phonePrefix,
+      phoneNumber,
     } = this.props;
 
     const WrapperComponent = useSafeAreaView === false ? View : SafeAreaView;
@@ -87,6 +89,8 @@ class ConfirmHcaptcha extends PureComponent {
             host={host}
             orientation={orientation}
             debug={debug}
+            phonePrefix={phonePrefix}
+            phoneNumber={phoneNumber}
           />
         </WrapperComponent>
       </Modal>
@@ -133,6 +137,8 @@ ConfirmHcaptcha.propTypes = {
   host: PropTypes.string,
   hasBackdrop: PropTypes.bool,
   debug: PropTypes.object,
+  phonePrefix: PropTypes.string,
+  phoneNumber: PropTypes.string,
 };
 
 ConfirmHcaptcha.defaultProps = {
@@ -154,6 +160,8 @@ ConfirmHcaptcha.defaultProps = {
   host: undefined,
   hasBackdrop: true,
   debug: {},
+  phonePrefix: null,
+  phoneNumber: null,
 };
 
 export default ConfirmHcaptcha;

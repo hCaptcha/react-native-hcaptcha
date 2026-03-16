@@ -1,11 +1,16 @@
 {
   "name": "@hcaptcha/react-native-hcaptcha",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "hCaptcha Library for React Native (both Android and iOS)",
   "main": "index.js",
   "scripts": {
     "prepare": "husky",
     "test": "jest --testPathIgnorePatterns=\\.perf-test\\.js$",
+    "test:e2e:setup": "node __scripts__/setup-e2e-host.js",
+    "test:e2e:install:android": "adb install -r __e2e__/host/android/app/build/outputs/apk/debug/app-debug.apk",
+    "test:e2e:install:ios": "xcrun simctl install booted __e2e__/host/ios/build/Build/Products/Debug-iphonesimulator/react_native_hcaptcha_example.app",
+    "test:e2e:android": "npm run test:e2e:install:android && cd __e2e__/host && npx react-native-harness --harnessRunner android",
+    "test:e2e:ios": "npm run test:e2e:install:ios && cd __e2e__/host && npx react-native-harness --harnessRunner ios",
     "lint": "eslint .",
     "example": "node __scripts__/generate-example.js",
     "perf:baseline": "reassure --baseline",
@@ -16,6 +21,10 @@
     "verbose": true,
     "setupFiles": [
       "<rootDir>/__mocks__/global.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/__e2e__/"
     ]
   },
   "repository": {
@@ -56,6 +65,7 @@
     "eslint-plugin-react-native": "^5.0.0",
     "husky": "^9.1.7",
     "jest": "^29.7.0",
+    "pngjs": "^7.0.0",
     "prettier": "^3.6.2",
     "react": "*",
     "react-native": "*",
