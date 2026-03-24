@@ -81,9 +81,7 @@ If your app encounters an `error` event, you can reset the hCaptcha SDK flow by 
 
 ## Dependencies
 
-1. [react-native-modal](https://github.com/react-native-community/react-native-modal)
-
-2. [react-native-webview](https://github.com/react-native-community/react-native-webview)
+1. [react-native-webview](https://github.com/react-native-community/react-native-webview)
 
 
 ## Building on iOS
