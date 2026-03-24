@@ -294,7 +294,7 @@ const Hcaptcha = ({
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
       <WebView
         ref={webViewRef}
         originWhitelist={['*']}
@@ -334,7 +334,7 @@ const Hcaptcha = ({
         javaScriptEnabled
         injectedJavaScript={patchPostMessageJsCode}
         automaticallyAdjustContentInsets
-        style={[{ backgroundColor: 'transparent', width: '100%' }, style]}
+        style={[styles.webview, style]}
         source={{
           html: generateTheWebViewContent,
           baseUrl: `${url}`,
@@ -346,9 +346,16 @@ const Hcaptcha = ({
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
+  },
+  webview: {
+    backgroundColor: 'transparent',
+    width: '100%',
   },
 });
 
