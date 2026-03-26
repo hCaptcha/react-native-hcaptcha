@@ -33,4 +33,4 @@ jobs:
       - name: npm release
         run: |
           npm ci
-          npm publish publish --no-git-checks --access public
+          npm publish --no-git-checks --access public
