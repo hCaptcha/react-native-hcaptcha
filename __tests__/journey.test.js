@@ -235,4 +235,26 @@ describe('journey runtime', () => {
       },
     })).toBe('primary-action');
   });
+
+  it('publishes runtime stats and optional debug logs', () => {
+    const onStats = jest.fn();
+    const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
+
+    initJourneyTracking({ debug: true, onStats });
+    emitJourneyEvent('click', 'View', { id: 'screen', ac: 'tap' });
+    enableJourneyConsumer();
+    disableJourneyConsumer();
+
+    expect(debugSpy).toHaveBeenCalledWith('[hcaptcha] journey', expect.objectContaining({
+      k: 'click',
+      v: 'View',
+    }));
+    expect(onStats).toHaveBeenCalledWith(expect.objectContaining({
+      activeConsumers: 0,
+      bufferedEvents: 0,
+      capturing: false,
+      initialized: true,
+      wrapperInstalled: true,
+    }));
+  });
 });

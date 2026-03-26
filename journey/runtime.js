@@ -5,10 +5,12 @@ const state = {
   activeConsumers: 0,
   capturing: false,
   currentRoute: null,
+  debug: false,
   events: [],
   initialized: false,
   navigationCleanup: null,
   navigationTarget: null,
+  statsListener: null,
   wrapperInstalled: false,
 };
 
@@ -29,6 +31,33 @@ const normalizeNavigationTarget = (target) => {
 
 const setCapturing = (value) => {
   state.capturing = Boolean(value);
+};
+
+const getJourneyRuntimeStats = () => ({
+  activeConsumers: state.activeConsumers,
+  bufferedEvents: state.events.length,
+  capturing: state.capturing,
+  currentRoute: state.currentRoute ? { ...state.currentRoute } : null,
+  initialized: state.initialized,
+  wrapperInstalled: state.wrapperInstalled,
+});
+
+const publishStats = () => {
+  if (state.statsListener) {
+    state.statsListener(getJourneyRuntimeStats());
+  }
+};
+
+const configureRuntime = (options = {}) => {
+  if (Object.prototype.hasOwnProperty.call(options, 'debug')) {
+    state.debug = Boolean(options.debug);
+  }
+
+  if (Object.prototype.hasOwnProperty.call(options, 'onStats')) {
+    state.statsListener = isFunction(options.onStats) ? options.onStats : null;
+  }
+
+  publishStats();
 };
 
 const clearNavigationCleanup = () => {
@@ -78,6 +107,12 @@ const pushEvent = (event) => {
   if (state.events.length > JOURNEY_MAX_EVENTS) {
     state.events.splice(0, state.events.length - JOURNEY_MAX_EVENTS);
   }
+
+  if (state.debug && typeof console !== 'undefined' && isFunction(console.debug)) {
+    console.debug('[hcaptcha] journey', event);
+  }
+
+  publishStats();
 };
 
 const installWrapperProvider = () => {
@@ -96,6 +131,8 @@ export const initJourneyTracking = (options = {}) => {
     installWrapperProvider();
   }
 
+  configureRuntime(options);
+
   if (options.navigationContainerRef) {
     registerJourneyNavigationContainer(options.navigationContainerRef);
   }
@@ -113,6 +150,7 @@ export const registerJourneyNavigationContainer = (target) => {
 
   clearNavigationCleanup();
   state.navigationTarget = navigationTarget;
+  publishStats();
 
   if (!isFunction(navigationTarget.addListener) || !isFunction(navigationTarget.getCurrentRoute)) {
     return;
@@ -138,6 +176,7 @@ export const registerJourneyNavigationContainer = (target) => {
       [JourneyField.action]: 'appear',
     }));
     state.currentRoute = currentRoute;
+    publishStats();
   };
 
   state.navigationCleanup = navigationTarget.addListener('state', emitCurrentRoute);
@@ -160,6 +199,8 @@ export const enableJourneyConsumer = () => {
       [JourneyField.action]: 'appear',
     }));
   }
+
+  publishStats();
 };
 
 export const disableJourneyConsumer = () => {
@@ -171,6 +212,8 @@ export const disableJourneyConsumer = () => {
     clearJourneyEvents();
     setCapturing(false);
   }
+
+  publishStats();
 };
 
 export const emitJourneyEvent = (kind, view, metadata = {}) => {
@@ -187,6 +230,7 @@ export const drainJourneyEvents = () => {
 
 export const clearJourneyEvents = () => {
   state.events.length = 0;
+  publishStats();
 };
 
 const readIdentifierFromProps = (props) => {
@@ -270,8 +314,10 @@ export const __unsafeResetJourneyRuntime = () => {
   state.activeConsumers = 0;
   state.capturing = false;
   state.currentRoute = null;
+  state.debug = false;
   state.events = [];
   state.initialized = false;
   state.navigationTarget = null;
+  state.statsListener = null;
   state.wrapperInstalled = false;
 };

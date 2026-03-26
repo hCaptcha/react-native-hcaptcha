@@ -4,6 +4,12 @@ import { Modal, SafeAreaView } from 'react-native';
 
 import Hcaptcha from '../Hcaptcha';
 import ConfirmHcaptcha from '../index';
+import {
+  __unsafeResetJourneyRuntime,
+  emitJourneyEvent,
+  initJourneyTracking,
+  peekJourneyEvents,
+} from '../journey';
 
 describe('ConfirmHcaptcha', () => {
   const getModal = (component) => component.UNSAFE_getByType(Modal);
@@ -13,6 +19,7 @@ describe('ConfirmHcaptcha', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
     jest.clearAllMocks();
+    __unsafeResetJourneyRuntime();
   });
 
   it('renders ConfirmHcaptcha with minimum props after show() is called', () => {
@@ -256,6 +263,29 @@ describe('ConfirmHcaptcha', () => {
 
     expect(component.toJSON()).toBeNull();
     expect(onMessage).toHaveBeenCalledWith({ nativeEvent: { data: 'cancel' } });
+  });
+
+  it('stopEvents() disables capture for the current consumer and clears the shared buffer', () => {
+    initJourneyTracking();
+    const component = render(
+      <ConfirmHcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        baseUrl="https://hcaptcha.com"
+        languageCode="en"
+        userJourney={true}
+      />
+    );
+    const instance = getInstance(component);
+
+    emitJourneyEvent('click', 'View', { id: 'before-stop', ac: 'tap' });
+    expect(peekJourneyEvents()).toHaveLength(1);
+
+    act(() => {
+      instance.stopEvents();
+    });
+
+    emitJourneyEvent('click', 'View', { id: 'after-stop', ac: 'tap' });
+    expect(peekJourneyEvents()).toEqual([]);
   });
 
   it('backdrop and back-button handlers call hide(source) and emit cancel events', () => {

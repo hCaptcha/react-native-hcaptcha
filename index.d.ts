@@ -1,6 +1,21 @@
 import React from 'react';
 import Hcaptcha, { HcaptchaProps } from './Hcaptcha';
 
+export type JourneyRuntimeStats = {
+  activeConsumers: number;
+  bufferedEvents: number;
+  capturing: boolean;
+  currentRoute: { key?: string; name: string } | null;
+  initialized: boolean;
+  wrapperInstalled: boolean;
+};
+
+export type JourneyTrackingOptions = {
+  navigationContainerRef?: unknown;
+  debug?: boolean;
+  onStats?: (stats: JourneyRuntimeStats) => void;
+};
+
 type ConfirmHcaptchaProps = Omit<HcaptchaProps, 'url' | 'style'> & {
   /**
    * Indicates whether the passive mode is enabled; when true, the modal won't be shown at all
@@ -37,9 +52,7 @@ export default class ConfirmHcaptcha extends React.Component<ConfirmHcaptchaProp
   stopEvents: () => void;
 }
 
-export function initJourneyTracking(options?: {
-  navigationContainerRef?: unknown;
-}): void;
+export function initJourneyTracking(options?: JourneyTrackingOptions): void;
 
 export function registerJourneyNavigationContainer(ref: unknown): void;
 
