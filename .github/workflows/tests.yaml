@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   build:
@@ -206,8 +207,6 @@ jobs:
         filename: .github/examples-issue-template.md
 
   release:
-    runs-on: ubuntu-latest
     if: github.event_name == 'release'
     needs: test
-    steps:
-      - uses: ./.github/workflows/publish.yaml
+    uses: ./.github/workflows/publish.yaml
