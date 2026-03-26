@@ -1,12 +1,12 @@
 import React from 'react';
-import { act, render } from '@testing-library/react-native';
-import { SafeAreaView } from 'react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
+import { Modal, SafeAreaView } from 'react-native';
 
 import Hcaptcha from '../Hcaptcha';
 import ConfirmHcaptcha from '../index';
 
 describe('ConfirmHcaptcha', () => {
-  const getModal = (component) => component.UNSAFE_getByType('Modal');
+  const getModal = (component) => component.UNSAFE_getByType(Modal);
   const getHcaptchaChild = (component) => component.UNSAFE_getByType(Hcaptcha);
   const getInstance = (component) => component.UNSAFE_getByType(ConfirmHcaptcha).instance;
 
@@ -15,7 +15,7 @@ describe('ConfirmHcaptcha', () => {
     jest.clearAllMocks();
   });
 
-  it('renders ConfirmHcaptcha with minimum props', () => {
+  it('renders ConfirmHcaptcha with minimum props after show() is called', () => {
     const component = render(
       <ConfirmHcaptcha
         siteKey="00000000-0000-0000-0000-000000000000"
@@ -23,6 +23,11 @@ describe('ConfirmHcaptcha', () => {
         languageCode="en"
       />
     );
+    const instance = getInstance(component);
+
+    act(() => {
+      instance.show();
+    });
 
     expect(component).toMatchSnapshot();
   });
@@ -56,6 +61,11 @@ describe('ConfirmHcaptcha', () => {
         phoneNumber="+44123456789"
       />
     );
+    const instance = getInstance(component);
+
+    act(() => {
+      instance.show();
+    });
 
     expect(getHcaptchaChild(component).props).toMatchObject({
       size: 'compact',
@@ -83,6 +93,18 @@ describe('ConfirmHcaptcha', () => {
     });
   });
 
+  it('renders nothing until show() is called', () => {
+    const component = render(
+      <ConfirmHcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        baseUrl="https://hcaptcha.com"
+        languageCode="en"
+      />
+    );
+
+    expect(component.toJSON()).toBeNull();
+  });
+
   it('applies wrapper-only props to the modal and backdrop container', () => {
     const component = render(
       <ConfirmHcaptcha
@@ -93,27 +115,39 @@ describe('ConfirmHcaptcha', () => {
         backgroundColor="rgba(0.1, 0.1, 0.1, 0.4)"
       />
     );
+    const instance = getInstance(component);
+
+    act(() => {
+      instance.show();
+    });
+
     const modal = getModal(component);
+    const backdrop = component.getByTestId('confirm-hcaptcha-backdrop');
     const safeAreaView = component.UNSAFE_getByType(SafeAreaView);
 
-    expect(modal.props.useNativeDriver).toBe(true);
-    expect(modal.props.hideModalContentWhileAnimating).toBe(true);
-    expect(modal.props.isVisible).toBe(false);
-    expect(modal.props.hasBackdrop).toBe(true);
-    expect(modal.props.coverScreen).toBe(true);
-    expect(modal.props.animationIn).toBe('fadeIn');
-    expect(modal.props.animationOut).toBe('fadeOut');
-    expect(safeAreaView.props.style).toEqual([
+    expect(modal.props.animationType).toBe('fade');
+    expect(modal.props.transparent).toBe(true);
+    expect(modal.props.visible).toBe(true);
+    expect(backdrop.props.style).toEqual([
+      expect.objectContaining({
+        bottom: 0,
+        left: 0,
+        position: 'absolute',
+        right: 0,
+        top: 0,
+      }),
+      { backgroundColor: 'rgba(0.1, 0.1, 0.1, 0.4)' },
+    ]);
+    expect(safeAreaView.props.style).toEqual(
       expect.objectContaining({
         flex: 1,
         justifyContent: 'center',
         overflow: 'hidden',
-      }),
-      { backgroundColor: 'rgba(0.1, 0.1, 0.1, 0.4)' },
-    ]);
+      })
+    );
   });
 
-  it('disables modal backdrop/screen coverage when passiveSiteKey is enabled and omits wrapper backdrop color when hasBackdrop is false', () => {
+  it('mounts the challenge off-screen when passiveSiteKey is enabled and omits the internal backdrop when hasBackdrop is false', () => {
     const component = render(
       <ConfirmHcaptcha
         siteKey="00000000-0000-0000-0000-000000000000"
@@ -124,23 +158,34 @@ describe('ConfirmHcaptcha', () => {
         backgroundColor="rgba(0.1, 0.1, 0.1, 0.4)"
       />
     );
-    const modal = getModal(component);
+    const instance = getInstance(component);
+
+    act(() => {
+      instance.show();
+    });
+
+    const hiddenContainer = component.UNSAFE_getByProps({ pointerEvents: 'none' });
     const safeAreaView = component.UNSAFE_getByType(SafeAreaView);
 
-    expect(modal.props.style).toEqual([
-      expect.objectContaining({ margin: 0, display: 'none' }),
-      { display: 'none' },
-    ]);
-    expect(modal.props.hasBackdrop).toBe(false);
-    expect(modal.props.coverScreen).toBe(false);
-    expect(safeAreaView.props.style).toEqual([
+    expect(component.UNSAFE_queryByType(Modal)).toBeNull();
+    expect(component.queryByTestId('confirm-hcaptcha-backdrop')).toBeNull();
+    expect(hiddenContainer.props.style).toEqual(
+      expect.objectContaining({
+        height: 1,
+        left: 0,
+        opacity: 0,
+        position: 'absolute',
+        top: 0,
+        width: 1,
+      })
+    );
+    expect(safeAreaView.props.style).toEqual(
       expect.objectContaining({
         flex: 1,
         justifyContent: 'center',
         overflow: 'hidden',
-      }),
-      {},
-    ]);
+      })
+    );
   });
 
   it('uses SafeAreaView by default and a plain View wrapper when useSafeAreaView is false', () => {
@@ -151,6 +196,11 @@ describe('ConfirmHcaptcha', () => {
         languageCode="en"
       />
     );
+    const defaultInstance = getInstance(defaultWrapper);
+
+    act(() => {
+      defaultInstance.show();
+    });
 
     expect(defaultWrapper.UNSAFE_queryByType(SafeAreaView)).not.toBeNull();
 
@@ -162,6 +212,11 @@ describe('ConfirmHcaptcha', () => {
         useSafeAreaView={false}
       />
     );
+    const plainViewInstance = getInstance(plainViewWrapper);
+
+    act(() => {
+      plainViewInstance.show();
+    });
 
     expect(plainViewWrapper.UNSAFE_queryByType(SafeAreaView)).toBeNull();
   });
@@ -182,13 +237,13 @@ describe('ConfirmHcaptcha', () => {
       instance.show();
     });
 
-    expect(getModal(component).props.isVisible).toBe(true);
+    expect(getModal(component).props.visible).toBe(true);
 
     act(() => {
       instance.hide();
     });
 
-    expect(getModal(component).props.isVisible).toBe(false);
+    expect(component.toJSON()).toBeNull();
     expect(onMessage).not.toHaveBeenCalled();
 
     act(() => {
@@ -199,7 +254,7 @@ describe('ConfirmHcaptcha', () => {
       instance.hide('backdrop');
     });
 
-    expect(getModal(component).props.isVisible).toBe(false);
+    expect(component.toJSON()).toBeNull();
     expect(onMessage).toHaveBeenCalledWith({ nativeEvent: { data: 'cancel' } });
   });
 
@@ -220,11 +275,11 @@ describe('ConfirmHcaptcha', () => {
     });
 
     act(() => {
-      getModal(component).props.onBackdropPress();
+      fireEvent.press(component.getByTestId('confirm-hcaptcha-backdrop'));
     });
 
     expect(onMessage).toHaveBeenCalledWith({ nativeEvent: { data: 'cancel' } });
-    expect(getModal(component).props.isVisible).toBe(false);
+    expect(component.toJSON()).toBeNull();
 
     onMessage.mockClear();
 
@@ -233,10 +288,10 @@ describe('ConfirmHcaptcha', () => {
     });
 
     act(() => {
-      getModal(component).props.onBackButtonPress();
+      getModal(component).props.onRequestClose();
     });
 
     expect(onMessage).toHaveBeenCalledWith({ nativeEvent: { data: 'cancel' } });
-    expect(getModal(component).props.isVisible).toBe(false);
+    expect(component.toJSON()).toBeNull();
   });
 });

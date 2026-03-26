@@ -1,44 +1,56 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props 1`] = `
+exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show() is called 1`] = `
 <Modal
-  animationIn="fadeIn"
-  animationOut="fadeOut"
-  coverScreen={true}
-  deviceHeight={1334}
-  deviceWidth={750}
-  hasBackdrop={true}
-  hideModalContentWhileAnimating={true}
-  isVisible={false}
-  onBackButtonPress={[Function]}
-  onBackdropPress={[Function]}
-  style={
-    [
-      {
-        "display": "none",
-        "margin": 0,
-      },
-      {
-        "display": undefined,
-      },
-    ]
-  }
-  useNativeDriver={true}
+  animationType="fade"
+  hardwareAccelerated={false}
+  onRequestClose={[Function]}
+  transparent={true}
+  visible={true}
 >
-  <RCTSafeAreaView
+  <View
     style={
-      [
-        {
-          "flex": 1,
-          "justifyContent": "center",
-          "overflow": "hidden",
-        },
-        {
-          "backgroundColor": "rgba(0, 0, 0, 0.3)",
-        },
-      ]
+      {
+        "flex": 1,
+        "margin": 0,
+      }
     }
   >
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessible={true}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        [
+          {
+            "bottom": 0,
+            "left": 0,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          },
+          {
+            "backgroundColor": "rgba(0, 0, 0, 0.3)",
+          },
+        ]
+      }
+      testID="confirm-hcaptcha-backdrop"
+    />
     <View
       style={
         {
@@ -46,9 +58,25 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props 1`] = `
         }
       }
     >
-      <WebView
-        automaticallyAdjustContentInsets={true}
-        injectedJavaScript="(function () {
+      <RCTSafeAreaView
+        style={
+          {
+            "flex": 1,
+            "justifyContent": "center",
+            "overflow": "hidden",
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "flex": 1,
+            }
+          }
+        >
+          <WebView
+            automaticallyAdjustContentInsets={true}
+            injectedJavaScript="(function () {
   var originalPostMessage = window.ReactNativeWebView.postMessage;
   var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
     originalPostMessage(message, targetOrigin, transfer);
@@ -58,33 +86,33 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props 1`] = `
   };
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })();"
-        javaScriptEnabled={true}
-        mixedContentMode="always"
-        onMessage={[Function]}
-        onShouldStartLoadWithRequest={[Function]}
-        originWhitelist={
-          [
-            "*",
-          ]
-        }
-        ref={
-          {
-            "current": {
-              "injectJavaScript": [MockFunction],
-            },
-          }
-        }
-        source={
-          {
-            "baseUrl": "https://hcaptcha.com",
-            "html": "<!DOCTYPE html>
+            javaScriptEnabled={true}
+            mixedContentMode="always"
+            onMessage={[Function]}
+            onShouldStartLoadWithRequest={[Function]}
+            originWhitelist={
+              [
+                "*",
+              ]
+            }
+            ref={
+              {
+                "current": {
+                  "injectJavaScript": [MockFunction],
+                },
+              }
+            }
+            source={
+              {
+                "baseUrl": "https://hcaptcha.com",
+                "html": "<!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026custom=true\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_2_0":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":["test_key"]};
+          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_2_0":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
         <script type="text/javascript">
@@ -170,19 +198,21 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props 1`] = `
         <div id="hcaptcha-container"></div>
       </body>
       </html>",
-          }
-        }
-        style={
-          [
-            {
-              "backgroundColor": "transparent",
-              "width": "100%",
-            },
-            undefined,
-          ]
-        }
-      />
+              }
+            }
+            style={
+              [
+                {
+                  "backgroundColor": "transparent",
+                  "width": "100%",
+                },
+                undefined,
+              ]
+            }
+          />
+        </View>
+      </RCTSafeAreaView>
     </View>
-  </RCTSafeAreaView>
+  </View>
 </Modal>
 `;

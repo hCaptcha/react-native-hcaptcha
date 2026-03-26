@@ -48,7 +48,6 @@
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-    "react-native-modal": ">=11.5.4",
     "react-native-webview": ">=9.0.1"
   },
   "contributors": [
@@ -69,7 +68,6 @@
     "prettier": "^3.6.2",
     "react": "*",
     "react-native": "*",
-    "react-native-modal": "*",
     "react-native-webview": "*",
     "reassure": "^1.4.0"
   },

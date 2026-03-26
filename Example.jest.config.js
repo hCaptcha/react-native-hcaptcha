@@ -7,9 +7,7 @@ module.exports = {
     'node_modules/(?!(react-native'
       + '|@react-native'
       + '|@hcaptcha'
-      + '|react-native-modal'
       + '|react-native-webview'
-      + '|react-native-animatable'
     + ')/)',
   ],
   setupFiles: ['./jest.setup.js'],

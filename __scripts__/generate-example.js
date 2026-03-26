@@ -147,7 +147,7 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
   const mainPackage = '@hcaptcha/react-native-hcaptcha';
   const libRoot = process.cwd();
   const libPathFromProject = path.relative(projectPath, libRoot);
-  const peerPackages = 'react-native-modal react-native-webview';
+  const peerPackages = 'react-native-webview';
   const devPackages = 'typescript @babel/preset-env';
 
   console.warn('Installing dependencies...');
