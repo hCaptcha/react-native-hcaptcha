@@ -2,7 +2,7 @@ import React, { PureComponent } from 'react';
 import { Modal, SafeAreaView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import Hcaptcha from './Hcaptcha';
 import PropTypes from 'prop-types';
-import { disableJourneyConsumer, enableJourneyConsumer } from './journey';
+import { clearJourneyEvents, disableJourneyConsumer, enableJourneyConsumer } from './journey';
 export { initJourneyTracking, registerJourneyNavigationContainer } from './journey';
 export { default as Hcaptcha } from './Hcaptcha';
 
@@ -34,6 +34,8 @@ class ConfirmHcaptcha extends PureComponent {
       disableJourneyConsumer();
       this.hasJourneyConsumer = false;
     }
+
+    clearJourneyEvents();
   };
   show = () => {
     this.setState({ show: true });

@@ -26,6 +26,8 @@ const patchPostMessageJsCode = `(${String(function () {
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })})();`;
 
+const HCAPTCHA_READY_EVENT = '__hcaptcha_ready__';
+
 const serializeForInlineScript = (value) =>
   JSON.stringify(value)
     .replace(/</g, '\\u003c')
@@ -91,8 +93,8 @@ const buildVerifyData = ({
   return data;
 };
 
-const buildVerifyInjectionScript = (payload) =>
-  `try { reset(); setData(${serializeForInlineScript(payload)}); execute(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;`;
+const buildVerifyInjectionScript = (payload, resetFirst = false) =>
+  `try { ${resetFirst ? 'reset(); ' : ''}setData(${serializeForInlineScript(payload)}); execute(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;`;
 
 const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, assethost, imghost, reportapi, orientation) => {
   var url = `${jsSrc || 'https://hcaptcha.com/1/api.js'}?render=explicit&onload=onloadCallback`;
@@ -198,17 +200,6 @@ const Hcaptcha = ({
     [debug]
   );
 
-  const verifyData = useMemo(
-    () => buildVerifyData({
-      phoneNumber,
-      phonePrefix,
-      rqdata,
-      userJourney: journeyEnabled ? peekJourneyEvents() : undefined,
-      verifyParams,
-    }),
-    [journeyEnabled, phoneNumber, phonePrefix, rqdata, verifyParams]
-  );
-
   const serializedWebViewConfig = useMemo(
     () => serializeForInlineScript({
       apiUrl,
@@ -217,9 +208,8 @@ const Hcaptcha = ({
       siteKey: siteKey || '',
       size: normalizedSize,
       theme: normalizedTheme,
-      verifyData,
     }),
-    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, siteKey, verifyData]
+    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, siteKey]
   );
 
   const generateTheWebViewContent = useMemo(
@@ -256,18 +246,11 @@ const Hcaptcha = ({
             try {
               console.log("challenge onload starting");
               hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
+              window.ReactNativeWebView.postMessage("${HCAPTCHA_READY_EVENT}");
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
               console.log("challenge failed to render:", e);
-              window.ReactNativeWebView.postMessage(e.name);
-            }
-            try {
-              console.log("showing challenge");
-              setData(hcaptchaConfig.verifyData || {});
-              execute();
-            } catch (e) {
-              console.log("failed to show challenge:", e);
               window.ReactNativeWebView.postMessage(e.name);
             }
           };
@@ -341,6 +324,19 @@ const Hcaptcha = ({
   }, [isLoading, onMessage]);
 
   const webViewRef = useRef(null);
+  const injectVerifyData = (resetFirst = false) => {
+    if (!webViewRef.current) {
+      return;
+    }
+
+    webViewRef.current.injectJavaScript(buildVerifyInjectionScript(buildVerifyData({
+      phoneNumber,
+      phonePrefix,
+      rqdata,
+      userJourney: journeyEnabled ? peekJourneyEvents() : undefined,
+      verifyParams,
+    }), resetFirst));
+  };
 
   // This shows ActivityIndicator till webview loads hCaptcha images
   const renderLoading = () => (
@@ -352,15 +348,7 @@ const Hcaptcha = ({
   );
 
   const reset = () => {
-    if (webViewRef.current) {
-      webViewRef.current.injectJavaScript(buildVerifyInjectionScript(buildVerifyData({
-        phoneNumber,
-        phonePrefix,
-        rqdata,
-        userJourney: journeyEnabled ? peekJourneyEvents() : undefined,
-        verifyParams,
-      })));
-    }
+    injectVerifyData(true);
   };
 
   return (
@@ -389,6 +377,11 @@ const Hcaptcha = ({
         }}
         mixedContentMode={'always'}
         onMessage={(e) => {
+          if (e.nativeEvent.data === HCAPTCHA_READY_EVENT) {
+            injectVerifyData();
+            return;
+          }
+
           e.reset = reset;
           e.success = true;
           if (e.nativeEvent.data === 'open') {
@@ -433,4 +426,4 @@ const styles = StyleSheet.create({
 });
 
 export default Hcaptcha;
-export { buildVerifyData };
+export { buildVerifyData, HCAPTCHA_READY_EVENT };

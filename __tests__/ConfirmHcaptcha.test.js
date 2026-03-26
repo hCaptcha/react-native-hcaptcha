@@ -265,7 +265,7 @@ describe('ConfirmHcaptcha', () => {
     expect(onMessage).toHaveBeenCalledWith({ nativeEvent: { data: 'cancel' } });
   });
 
-  it('stopEvents() disables capture for the current consumer and clears the shared buffer', () => {
+  it('stopEvents() clears the current shared buffer without tearing down global capture', () => {
     initJourneyTracking();
     const component = render(
       <ConfirmHcaptcha
@@ -284,8 +284,16 @@ describe('ConfirmHcaptcha', () => {
       instance.stopEvents();
     });
 
-    emitJourneyEvent('click', 'View', { id: 'after-stop', ac: 'tap' });
     expect(peekJourneyEvents()).toEqual([]);
+
+    emitJourneyEvent('click', 'View', { id: 'after-stop', ac: 'tap' });
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        k: 'click',
+        v: 'View',
+        m: { id: 'after-stop', ac: 'tap' },
+      }),
+    ]);
   });
 
   it('backdrop and back-button handlers call hide(source) and emit cancel events', () => {

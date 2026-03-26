@@ -3,8 +3,8 @@ import vm from 'vm';
 import { act, render, waitFor } from '@testing-library/react-native';
 import { ActivityIndicator, Linking, TouchableWithoutFeedback } from 'react-native';
 
-import Hcaptcha from '../Hcaptcha';
-import { __unsafeResetJourneyRuntime, emitJourneyEvent, initJourneyTracking } from '../journey';
+import Hcaptcha, { HCAPTCHA_READY_EVENT } from '../Hcaptcha';
+import { __unsafeResetJourneyRuntime, emitJourneyEvent, initJourneyTracking, peekJourneyEvents } from '../journey';
 import {
   getLastInjectJavaScriptMock,
   resetWebViewMockState,
@@ -96,11 +96,7 @@ describe('Hcaptcha', () => {
     expect(config.size).toBe('normal');
     expect(config.backgroundColor).toBe('rgba(0.1, 0.1, 0.1, 0.4)');
     expect(config.theme).toBe('contrast');
-    expect(config.verifyData).toEqual({
-      rqdata: '{"some":"data"}',
-      mfa_phoneprefix: '44',
-      mfa_phone: '+441234567890',
-    });
+    expect(config.verifyData).toBeUndefined();
     expect(config.debugInfo).toMatchObject({
       customDebug: 'enabled',
       rnver_0_0_0: true,
@@ -161,7 +157,7 @@ describe('Hcaptcha', () => {
     });
   });
 
-  it('loads the external api script dynamically and preserves the onload render/execute flow', () => {
+  it('loads the external api script dynamically and signals RN when the widget is ready', () => {
     const component = render(
       <Hcaptcha
         siteKey="00000000-0000-0000-0000-000000000000"
@@ -232,12 +228,9 @@ describe('Hcaptcha', () => {
       'chalexpired-callback': expect.any(Function),
       'error-callback': expect.any(Function),
     }));
-    expect(sandbox.hcaptcha.setData).toHaveBeenCalledWith('widget-id', {
-      rqdata: '{"some":"data"}',
-      mfa_phoneprefix: '44',
-      mfa_phone: '+441234567890',
-    });
-    expect(executeMock).toHaveBeenCalledWith('widget-id');
+    expect(postMessageMock).toHaveBeenCalledWith(HCAPTCHA_READY_EVENT);
+    expect(sandbox.hcaptcha.setData).not.toHaveBeenCalled();
+    expect(executeMock).not.toHaveBeenCalled();
 
     const renderConfig = renderMock.mock.calls[0][1];
     renderConfig['open-callback']();
@@ -280,8 +273,8 @@ describe('Hcaptcha', () => {
     const query = getApiQueryParams(component);
 
     expect(html).toContain('var hcaptchaConfig = ');
-    expect(html).toContain('setData(hcaptchaConfig.verifyData || {});');
     expect(html).toContain('hcaptcha.setData(hcaptchaWidgetId, data || {});');
+    expect(html).toContain(`window.ReactNativeWebView.postMessage("${HCAPTCHA_READY_EVENT}");`);
     expect(html).not.toContain('<script src=');
     expect(html).not.toContain('</script><script>alert("site")</script>');
     expect(html).toContain('\\u003c/script\\u003e\\u003cscript\\u003ealert(\\"site\\")\\u003c/script\\u003e');
@@ -289,11 +282,7 @@ describe('Hcaptcha', () => {
 
     expect(config.siteKey).toBe('site"</script><script>alert("site")</script>');
     expect(config.backgroundColor).toBe('red\';window.ReactNativeWebView.postMessage("bg");//');
-    expect(config.verifyData).toEqual({
-      rqdata: '";window.ReactNativeWebView.postMessage("rqdata");//</script><script>alert("rqdata")</script>',
-      mfa_phoneprefix: '44";window.ReactNativeWebView.postMessage("prefix");//',
-      mfa_phone: '+44123\');window.ReactNativeWebView.postMessage("phone");//',
-    });
+    expect(config.verifyData).toBeUndefined();
     expect(config.theme).toEqual(theme);
     expect(config.debugInfo['</script><script>alert("debug")</script>']).toBe('</script><script>alert("value")</script>');
 
@@ -449,6 +438,28 @@ describe('Hcaptcha', () => {
     }));
   });
 
+  it('injects fresh verify data only after the widget signals readiness', () => {
+    initJourneyTracking();
+    emitJourneyEvent('click', 'View', { id: 'before-ready', ac: 'tap', x: 1, y: 2 });
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        userJourney={true}
+      />
+    );
+
+    emitJourneyEvent('click', 'View', { id: 'after-mount', ac: 'tap', x: 3, y: 4 });
+
+    act(() => {
+      getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } });
+    });
+
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"id":"before-ready"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"id":"after-mount"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.not.stringContaining('reset();'));
+  });
+
   it('emits an expired message when a forwarded token is not marked used', async () => {
     jest.useFakeTimers();
     const onMessage = jest.fn();
@@ -522,18 +533,44 @@ describe('Hcaptcha', () => {
       />
     );
 
-    expect(getSerializedConfig(component).verifyData).toEqual({
-      rqdata: 'preferred',
-      mfa_phoneprefix: '44',
-      mfa_phone: '+44123',
-      userjourney: [
-        expect.objectContaining({
-          k: 'click',
-          v: 'View',
-          m: { id: 'screen', ac: 'tap', x: 1, y: 2 },
-        }),
-      ],
+    expect(getSerializedConfig(component).verifyData).toBeUndefined();
+
+    act(() => {
+      getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } });
     });
+
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"rqdata":"preferred"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"mfa_phoneprefix":"44"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"mfa_phone":"+44123"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"userjourney"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"id":"screen"'));
+  });
+
+  it('preserves buffered journey events after error and cancel messages', () => {
+    initJourneyTracking();
+    emitJourneyEvent('click', 'View', { id: 'preserved', ac: 'tap' });
+    const onMessage = jest.fn();
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={onMessage}
+        userJourney={true}
+      />
+    );
+
+    act(() => {
+      getWebView(component).props.onMessage({ nativeEvent: { data: 'challenge-closed' } });
+      getWebView(component).props.onMessage({ nativeEvent: { data: 'webview-error' } });
+    });
+
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        k: 'click',
+        v: 'View',
+        m: { id: 'preserved', ac: 'tap' },
+      }),
+    ]);
   });
 
   it('opens hcaptcha links externally and blocks navigation in the WebView', () => {

@@ -112,7 +112,7 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_3_0_0":true},"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light","verifyData":{}};
+          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_3_0_0":true},"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
         <script type="text/javascript">
@@ -137,18 +137,11 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             try {
               console.log("challenge onload starting");
               hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
+              window.ReactNativeWebView.postMessage("__hcaptcha_ready__");
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
               console.log("challenge failed to render:", e);
-              window.ReactNativeWebView.postMessage(e.name);
-            }
-            try {
-              console.log("showing challenge");
-              setData(hcaptchaConfig.verifyData || {});
-              execute();
-            } catch (e) {
-              console.log("failed to show challenge:", e);
               window.ReactNativeWebView.postMessage(e.name);
             }
           };

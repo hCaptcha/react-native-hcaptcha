@@ -33,6 +33,13 @@ const setCapturing = (value) => {
   state.capturing = Boolean(value);
 };
 
+const hasCurrentScreenEvent = () =>
+  state.events.some((event) =>
+    event[JourneyField.kind] === JourneyEventKind.screen
+    && event[JourneyField.metadata]?.[JourneyField.screen] === state.currentRoute?.name
+    && event[JourneyField.metadata]?.[JourneyField.action] === 'appear'
+  );
+
 const getJourneyRuntimeStats = () => ({
   activeConsumers: state.activeConsumers,
   bufferedEvents: state.events.length,
@@ -192,7 +199,7 @@ export const enableJourneyConsumer = () => {
   state.activeConsumers += 1;
   setCapturing(true);
 
-  if (wasInactive && state.currentRoute) {
+  if (wasInactive && state.currentRoute && !hasCurrentScreenEvent()) {
     pushEvent(createJourneyEvent(JourneyEventKind.screen, 'Screen', {
       [JourneyField.id]: 'screen',
       [JourneyField.screen]: state.currentRoute.name,
@@ -206,11 +213,6 @@ export const enableJourneyConsumer = () => {
 export const disableJourneyConsumer = () => {
   if (state.activeConsumers > 0) {
     state.activeConsumers -= 1;
-  }
-
-  if (state.activeConsumers === 0) {
-    clearJourneyEvents();
-    setCapturing(false);
   }
 
   publishStats();

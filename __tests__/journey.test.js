@@ -6,6 +6,7 @@ import {
   __unsafeResetJourneyRuntime,
   clearJourneyEvents,
   disableJourneyConsumer,
+  drainJourneyEvents,
   enableJourneyConsumer,
   emitJourneyEvent,
   initJourneyTracking,
@@ -87,6 +88,33 @@ describe('journey runtime', () => {
     initJourneyTracking();
     registerJourneyNavigationContainer(navigation);
     clearJourneyEvents();
+
+    enableJourneyConsumer();
+    disableJourneyConsumer();
+    enableJourneyConsumer();
+
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        k: 'screen',
+        v: 'Screen',
+        m: { id: 'screen', sc: 'Home', ac: 'appear' },
+      }),
+    ]);
+  });
+
+  it('does not duplicate the current screen when a consumer restarts and the route is already buffered', () => {
+    const navigation = {
+      addListener: jest.fn((eventName, listener) => {
+        expect(eventName).toBe('state');
+        return () => listener;
+      }),
+      getCurrentRoute: jest.fn(() => ({ key: 'home-key', name: 'Home' })),
+    };
+
+    initJourneyTracking();
+    registerJourneyNavigationContainer(navigation);
+
+    expect(peekJourneyEvents()).toHaveLength(1);
 
     enableJourneyConsumer();
     disableJourneyConsumer();
@@ -236,6 +264,51 @@ describe('journey runtime', () => {
     })).toBe('primary-action');
   });
 
+  it('retains the last 50 events in the ring buffer', () => {
+    initJourneyTracking();
+
+    for (let index = 0; index < 60; index += 1) {
+      emitJourneyEvent('click', 'View', { id: `event-${index}`, ac: 'tap' });
+    }
+
+    const events = peekJourneyEvents();
+    expect(events).toHaveLength(50);
+    expect(events[0].m.id).toBe('event-10');
+    expect(events[49].m.id).toBe('event-59');
+  });
+
+  it('peek keeps buffered events while drain returns and clears them', () => {
+    initJourneyTracking();
+    emitJourneyEvent('click', 'View', { id: 'peeked', ac: 'tap' });
+
+    expect(peekJourneyEvents()).toHaveLength(1);
+    expect(peekJourneyEvents()).toHaveLength(1);
+    expect(drainJourneyEvents()).toEqual([
+      expect.objectContaining({
+        k: 'click',
+        v: 'View',
+        m: { id: 'peeked', ac: 'tap' },
+      }),
+    ]);
+    expect(peekJourneyEvents()).toEqual([]);
+  });
+
+  it('keeps buffering after the last consumer disables', () => {
+    initJourneyTracking();
+
+    enableJourneyConsumer();
+    disableJourneyConsumer();
+    emitJourneyEvent('click', 'View', { id: 'idle-event', ac: 'tap' });
+
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        k: 'click',
+        v: 'View',
+        m: { id: 'idle-event', ac: 'tap' },
+      }),
+    ]);
+  });
+
   it('publishes runtime stats and optional debug logs', () => {
     const onStats = jest.fn();
     const debugSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
@@ -249,10 +322,10 @@ describe('journey runtime', () => {
       k: 'click',
       v: 'View',
     }));
-    expect(onStats).toHaveBeenCalledWith(expect.objectContaining({
+    expect(onStats).toHaveBeenLastCalledWith(expect.objectContaining({
       activeConsumers: 0,
-      bufferedEvents: 0,
-      capturing: false,
+      bufferedEvents: 1,
+      capturing: true,
       initialized: true,
       wrapperInstalled: true,
     }));
