@@ -209,5 +209,4 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'release'
     needs: test
-    steps:
-      - uses: ./.github/workflows/publish.yaml
+    uses: ./.github/workflows/publish.yaml
