@@ -5,6 +5,12 @@ import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
 
 import md5 from './md5';
 import hcaptchaPackage from './package.json';
+import {
+  clearJourneyEvents,
+  disableJourneyConsumer,
+  enableJourneyConsumer,
+  peekJourneyEvents,
+} from './journey';
 
 const patchPostMessageJsCode = `(${String(function () {
   var originalPostMessage = window.ReactNativeWebView.postMessage;
@@ -56,6 +62,38 @@ const normalizeSize = (value) => {
   return value === 'checkbox' ? 'normal' : value;
 };
 
+const buildVerifyData = ({
+  phoneNumber,
+  phonePrefix,
+  rqdata,
+  userJourney,
+  verifyParams,
+}) => {
+  const normalizedVerifyParams = verifyParams || {};
+  const data = {};
+  const finalRqdata = normalizedVerifyParams.rqdata ?? rqdata ?? undefined;
+  const finalPhonePrefix = normalizedVerifyParams.phonePrefix ?? phonePrefix ?? undefined;
+  const finalPhoneNumber = normalizedVerifyParams.phoneNumber ?? phoneNumber ?? undefined;
+
+  if (finalRqdata) {
+    data.rqdata = finalRqdata;
+  }
+  if (finalPhonePrefix) {
+    data.mfa_phoneprefix = finalPhonePrefix;
+  }
+  if (finalPhoneNumber) {
+    data.mfa_phone = finalPhoneNumber;
+  }
+  if (Array.isArray(userJourney) && userJourney.length > 0) {
+    data.userjourney = userJourney;
+  }
+
+  return data;
+};
+
+const buildVerifyInjectionScript = (payload) =>
+  `try { reset(); setData(${serializeForInlineScript(payload)}); execute(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;`;
+
 const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, assethost, imghost, reportapi, orientation) => {
   var url = `${jsSrc || 'https://hcaptcha.com/1/api.js'}?render=explicit&onload=onloadCallback`;
 
@@ -100,6 +138,8 @@ const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, 
  * @param {string} orientation: hCaptcha challenge orientation
  * @param {string} phonePrefix: Optional phone country calling code (without '+'), e.g., "44". Used in MFA flows.
  * @param {string} phoneNumber: Optional full phone number in E.164 format ("+44123..."), for use in MFA.
+ * @param {boolean} userJourney: Enable automatic user journey injection
+ * @param {object} verifyParams: Verification payload overrides
  */
 const Hcaptcha = ({
   onMessage,
@@ -125,10 +165,15 @@ const Hcaptcha = ({
   orientation,
   phonePrefix,
   phoneNumber,
+  userJourney,
+  verifyParams,
+  _journeyManagedExternally,
 }) => {
   const tokenTimeout = 120000;
   const loadingTimeout = 15000;
   const [isLoading, setIsLoading] = useState(true);
+  const journeyEnabled = Boolean(userJourney);
+  const hasJourneyConsumerRef = useRef(false);
   const normalizedTheme = useMemo(() => normalizeTheme(theme), [theme]);
   const normalizedSize = useMemo(() => normalizeSize(size), [size]);
   const apiUrl = useMemo(
@@ -153,19 +198,28 @@ const Hcaptcha = ({
     [debug]
   );
 
+  const verifyData = useMemo(
+    () => buildVerifyData({
+      phoneNumber,
+      phonePrefix,
+      rqdata,
+      userJourney: journeyEnabled ? peekJourneyEvents() : undefined,
+      verifyParams,
+    }),
+    [journeyEnabled, phoneNumber, phonePrefix, rqdata, verifyParams]
+  );
+
   const serializedWebViewConfig = useMemo(
     () => serializeForInlineScript({
       apiUrl,
       backgroundColor: backgroundColor ?? '',
       debugInfo,
-      phoneNumber: phoneNumber ?? null,
-      phonePrefix: phonePrefix ?? null,
-      rqdata: rqdata ?? null,
       siteKey: siteKey || '',
       size: normalizedSize,
       theme: normalizedTheme,
+      verifyData,
     }),
-    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, phoneNumber, phonePrefix, rqdata, siteKey]
+    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, siteKey, verifyData]
   );
 
   const generateTheWebViewContent = useMemo(
@@ -188,10 +242,20 @@ const Hcaptcha = ({
             script.src = hcaptchaConfig.apiUrl;
             document.head.appendChild(script);
           };
+          var hcaptchaWidgetId = null;
+          var setData = function(data) {
+            hcaptcha.setData(hcaptchaWidgetId, data || {});
+          };
+          var execute = function() {
+            hcaptcha.execute(hcaptchaWidgetId);
+          };
+          var reset = function() {
+            hcaptcha.reset(hcaptchaWidgetId);
+          };
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
+              hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
@@ -200,7 +264,8 @@ const Hcaptcha = ({
             }
             try {
               console.log("showing challenge");
-              hcaptcha.execute(getExecuteOpts());
+              setData(hcaptchaConfig.verifyData || {});
+              execute();
             } catch (e) {
               console.log("failed to show challenge:", e);
               window.ReactNativeWebView.postMessage(e.name);
@@ -239,23 +304,6 @@ const Hcaptcha = ({
             }
             return config;
           };
-          const getExecuteOpts = function() {
-            var opts = {};
-            const rqdata = hcaptchaConfig.rqdata;
-            const phonePrefix = hcaptchaConfig.phonePrefix;
-            const phoneNumber = hcaptchaConfig.phoneNumber;
-
-            if (rqdata) {
-              opts.rqdata = rqdata;
-            }
-            if (phonePrefix) {
-              opts.mfa_phoneprefix = phonePrefix;
-            }
-            if (phoneNumber) {
-              opts.mfa_phone = phoneNumber;
-            }
-            return opts;
-          };
           loadApiScript();
         </script>
       </head>
@@ -265,6 +313,22 @@ const Hcaptcha = ({
       </html>`,
     [serializedWebViewConfig]
   );
+
+  useEffect(() => {
+    if (_journeyManagedExternally || !journeyEnabled || hasJourneyConsumerRef.current) {
+      return undefined;
+    }
+
+    enableJourneyConsumer();
+    hasJourneyConsumerRef.current = true;
+
+    return () => {
+      if (hasJourneyConsumerRef.current) {
+        disableJourneyConsumer();
+        hasJourneyConsumerRef.current = false;
+      }
+    };
+  }, [_journeyManagedExternally, journeyEnabled]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -289,7 +353,13 @@ const Hcaptcha = ({
 
   const reset = () => {
     if (webViewRef.current) {
-      webViewRef.current.injectJavaScript('onloadCallback();');
+      webViewRef.current.injectJavaScript(buildVerifyInjectionScript(buildVerifyData({
+        phoneNumber,
+        phonePrefix,
+        rqdata,
+        userJourney: journeyEnabled ? peekJourneyEvents() : undefined,
+        verifyParams,
+      })));
     }
   };
 
@@ -326,6 +396,9 @@ const Hcaptcha = ({
           } else if (e.nativeEvent.data.length > 35) {
             const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
             e.markUsed = () => clearTimeout(expiredTokenTimerId);
+            if (journeyEnabled) {
+              clearJourneyEvents();
+            }
           } else /* error */ {
             e.success = false;
           }
@@ -360,3 +433,4 @@ const styles = StyleSheet.create({
 });
 
 export default Hcaptcha;
+export { buildVerifyData };

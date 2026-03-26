@@ -2,10 +2,38 @@ import React, { PureComponent } from 'react';
 import { Modal, SafeAreaView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import Hcaptcha from './Hcaptcha';
 import PropTypes from 'prop-types';
+import { disableJourneyConsumer, enableJourneyConsumer } from './journey';
+export { initJourneyTracking, registerJourneyNavigationContainer } from './journey';
+export { default as Hcaptcha } from './Hcaptcha';
 
 class ConfirmHcaptcha extends PureComponent {
   state = {
     show: false,
+  };
+  hasJourneyConsumer = false;
+  componentDidMount() {
+    this.syncJourneyConsumer(false, this.props.userJourney);
+  }
+  componentDidUpdate(prevProps) {
+    this.syncJourneyConsumer(prevProps.userJourney, this.props.userJourney);
+  }
+  componentWillUnmount() {
+    this.syncJourneyConsumer(this.props.userJourney, false);
+  }
+  syncJourneyConsumer(previousValue, nextValue) {
+    if (!previousValue && nextValue && !this.hasJourneyConsumer) {
+      enableJourneyConsumer();
+      this.hasJourneyConsumer = true;
+    } else if (previousValue && !nextValue && this.hasJourneyConsumer) {
+      disableJourneyConsumer();
+      this.hasJourneyConsumer = false;
+    }
+  }
+  stopEvents = () => {
+    if (this.hasJourneyConsumer) {
+      disableJourneyConsumer();
+      this.hasJourneyConsumer = false;
+    }
   };
   show = () => {
     this.setState({ show: true });
@@ -42,6 +70,8 @@ class ConfirmHcaptcha extends PureComponent {
       useSafeAreaView,
       phonePrefix,
       phoneNumber,
+      userJourney,
+      verifyParams,
     } = this.props;
 
     const WrapperComponent = useSafeAreaView === false ? View : SafeAreaView;
@@ -71,6 +101,9 @@ class ConfirmHcaptcha extends PureComponent {
           debug={debug}
           phonePrefix={phonePrefix}
           phoneNumber={phoneNumber}
+          userJourney={userJourney}
+          verifyParams={verifyParams}
+          _journeyManagedExternally={true}
         />
       </WrapperComponent>
     );
@@ -178,6 +211,12 @@ ConfirmHcaptcha.propTypes = {
   debug: PropTypes.object,
   phonePrefix: PropTypes.string,
   phoneNumber: PropTypes.string,
+  userJourney: PropTypes.bool,
+  verifyParams: PropTypes.shape({
+    phoneNumber: PropTypes.string,
+    phonePrefix: PropTypes.string,
+    rqdata: PropTypes.string,
+  }),
 };
 
 ConfirmHcaptcha.defaultProps = {
@@ -201,6 +240,8 @@ ConfirmHcaptcha.defaultProps = {
   debug: {},
   phonePrefix: null,
   phoneNumber: null,
+  userJourney: false,
+  verifyParams: undefined,
 };
 
 export default ConfirmHcaptcha;

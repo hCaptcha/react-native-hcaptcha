@@ -1,5 +1,5 @@
 import React from 'react';
-import { HcaptchaProps } from './Hcaptcha';
+import Hcaptcha, { HcaptchaProps } from './Hcaptcha';
 
 type ConfirmHcaptchaProps = Omit<HcaptchaProps, 'url' | 'style'> & {
   /**
@@ -31,4 +31,16 @@ export default class ConfirmHcaptcha extends React.Component<ConfirmHcaptchaProp
    * the onMessage `cancel` event
    */
   hide: (source?: any) => void;
+  /**
+   * Stops automatic event recording for this captcha instance.
+   */
+  stopEvents: () => void;
 }
+
+export function initJourneyTracking(options?: {
+  navigationContainerRef?: unknown;
+}): void;
+
+export function registerJourneyNavigationContainer(ref: unknown): void;
+
+export { Hcaptcha };

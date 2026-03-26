@@ -46,7 +46,7 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          var hcaptchaConfig = {"apiUrl":"https://hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=missing-sitekey.react-native.hcaptcha.com\\u0026custom=true","backgroundColor":"","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_3_0_0":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"","size":"invisible","theme":["test_key"]};
+          var hcaptchaConfig = {"apiUrl":"https://hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=missing-sitekey.react-native.hcaptcha.com\\u0026custom=true","backgroundColor":"","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_3_0_0":true},"siteKey":"","size":"invisible","theme":["test_key"],"verifyData":{}};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
         <script type="text/javascript">
@@ -57,10 +57,20 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
             script.src = hcaptchaConfig.apiUrl;
             document.head.appendChild(script);
           };
+          var hcaptchaWidgetId = null;
+          var setData = function(data) {
+            hcaptcha.setData(hcaptchaWidgetId, data || {});
+          };
+          var execute = function() {
+            hcaptcha.execute(hcaptchaWidgetId);
+          };
+          var reset = function() {
+            hcaptcha.reset(hcaptchaWidgetId);
+          };
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
+              hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
@@ -69,7 +79,8 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
             }
             try {
               console.log("showing challenge");
-              hcaptcha.execute(getExecuteOpts());
+              setData(hcaptchaConfig.verifyData || {});
+              execute();
             } catch (e) {
               console.log("failed to show challenge:", e);
               window.ReactNativeWebView.postMessage(e.name);
@@ -107,23 +118,6 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
               config.theme = theme;
             }
             return config;
-          };
-          const getExecuteOpts = function() {
-            var opts = {};
-            const rqdata = hcaptchaConfig.rqdata;
-            const phonePrefix = hcaptchaConfig.phonePrefix;
-            const phoneNumber = hcaptchaConfig.phoneNumber;
-
-            if (rqdata) {
-              opts.rqdata = rqdata;
-            }
-            if (phonePrefix) {
-              opts.mfa_phoneprefix = phonePrefix;
-            }
-            if (phoneNumber) {
-              opts.mfa_phone = phoneNumber;
-            }
-            return opts;
           };
           loadApiScript();
         </script>
