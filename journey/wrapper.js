@@ -27,6 +27,36 @@ const getDirection = (dx, dy) => {
   return dy >= 0 ? 'vertical:down' : 'vertical:up';
 };
 
+const getGestureSnapshot = (nativeEvent, gesture) => {
+  const point = getPoint(nativeEvent);
+  const dx = point.x - gesture.point.x;
+  const dy = point.y - gesture.point.y;
+
+  return {
+    direction: getDirection(dx, dy),
+    distance: Math.sqrt((dx * dx) + (dy * dy)),
+    dx,
+    dy,
+    point,
+  };
+};
+
+const getGestureKind = (distance, dx, dy) => {
+  if (distance < DRAG_THRESHOLD_PX) {
+    return null;
+  }
+
+  const axisDominant = Math.max(Math.abs(dx), Math.abs(dy)) / Math.max(Math.min(Math.abs(dx), Math.abs(dy)), 1);
+
+  return distance >= SCROLL_THRESHOLD_PX && axisDominant >= SCROLL_DOMINANCE_RATIO ? 'scroll' : 'drag';
+};
+
+const createBaseMetadata = (identifier, point) => ({
+  [JourneyField.id]: identifier,
+  [JourneyField.x]: point.x,
+  [JourneyField.y]: point.y,
+});
+
 const JourneyWrapper = ({ children }) => {
   const gestureRef = useRef(null);
 
@@ -38,9 +68,40 @@ const JourneyWrapper = ({ children }) => {
     const nativeEvent = event.nativeEvent || {};
     gestureRef.current = {
       identifier: resolveJourneyIdentifier(nativeEvent),
+      kind: null,
       point: getPoint(nativeEvent),
       startedAt: Date.now(),
     };
+  };
+
+  const handleTouchMove = (event) => {
+    const gesture = gestureRef.current;
+
+    if (!gesture || !isJourneyCapturing()) {
+      return;
+    }
+
+    const nativeEvent = event.nativeEvent || {};
+    const snapshot = getGestureSnapshot(nativeEvent, gesture);
+    const kind = getGestureKind(snapshot.distance, snapshot.dx, snapshot.dy);
+
+    gesture.identifier = resolveJourneyIdentifier(nativeEvent, gesture.identifier);
+
+    if (!kind || gesture.kind) {
+      return;
+    }
+
+    gesture.kind = kind;
+    const metadata = {
+      ...createBaseMetadata(gesture.identifier, snapshot.point),
+      [JourneyField.action]: kind === 'scroll' ? 'scroll_start' : 'drag_start',
+    };
+
+    if (kind === 'scroll') {
+      metadata[JourneyField.value] = snapshot.direction;
+    }
+
+    emitJourneyEvent(JourneyEventKind.drag, kind === 'scroll' ? 'ScrollView' : 'View', metadata);
   };
 
   const handleTouchEnd = (event) => {
@@ -52,18 +113,12 @@ const JourneyWrapper = ({ children }) => {
     }
 
     const nativeEvent = event.nativeEvent || {};
-    const endPoint = getPoint(nativeEvent);
-    const dx = endPoint.x - gesture.point.x;
-    const dy = endPoint.y - gesture.point.y;
-    const distance = Math.sqrt((dx * dx) + (dy * dy));
+    gesture.identifier = resolveJourneyIdentifier(nativeEvent, gesture.identifier);
+    const snapshot = getGestureSnapshot(nativeEvent, gesture);
     const duration = Date.now() - gesture.startedAt;
-    const baseMetadata = {
-      [JourneyField.id]: gesture.identifier,
-      [JourneyField.x]: endPoint.x,
-      [JourneyField.y]: endPoint.y,
-    };
+    const baseMetadata = createBaseMetadata(gesture.identifier, snapshot.point);
 
-    if (distance < DRAG_THRESHOLD_PX && duration <= TAP_DURATION_MS) {
+    if (!gesture.kind && snapshot.distance < DRAG_THRESHOLD_PX && duration <= TAP_DURATION_MS) {
       emitJourneyEvent(JourneyEventKind.click, 'View', {
         ...baseMetadata,
         [JourneyField.action]: 'tap',
@@ -71,29 +126,36 @@ const JourneyWrapper = ({ children }) => {
       return;
     }
 
-    const axisDominant = Math.max(Math.abs(dx), Math.abs(dy)) / Math.max(Math.min(Math.abs(dx), Math.abs(dy)), 1);
-    if (distance >= SCROLL_THRESHOLD_PX && axisDominant >= SCROLL_DOMINANCE_RATIO) {
-      emitJourneyEvent(JourneyEventKind.drag, 'ScrollView', {
-        ...baseMetadata,
-        [JourneyField.action]: 'scroll_start',
-        [JourneyField.value]: getDirection(dx, dy),
-      });
+    const finalKind = gesture.kind || getGestureKind(snapshot.distance, snapshot.dx, snapshot.dy) || 'drag';
+
+    if (finalKind === 'scroll') {
+      if (!gesture.kind) {
+        emitJourneyEvent(JourneyEventKind.drag, 'ScrollView', {
+          ...baseMetadata,
+          [JourneyField.action]: 'scroll_start',
+          [JourneyField.value]: snapshot.direction,
+        });
+      }
+
       emitJourneyEvent(JourneyEventKind.drag, 'ScrollView', {
         ...baseMetadata,
         [JourneyField.action]: 'scroll_end',
-        [JourneyField.value]: Number(distance.toFixed(2)),
+        [JourneyField.value]: Number(snapshot.distance.toFixed(2)),
       });
       return;
     }
 
-    emitJourneyEvent(JourneyEventKind.drag, 'View', {
-      ...baseMetadata,
-      [JourneyField.action]: 'drag_start',
-    });
+    if (!gesture.kind) {
+      emitJourneyEvent(JourneyEventKind.drag, 'View', {
+        ...baseMetadata,
+        [JourneyField.action]: 'drag_start',
+      });
+    }
+
     emitJourneyEvent(JourneyEventKind.drag, 'View', {
       ...baseMetadata,
       [JourneyField.action]: 'drag_end',
-      [JourneyField.value]: Number(distance.toFixed(2)),
+      [JourneyField.value]: Number(snapshot.distance.toFixed(2)),
     });
   };
 
@@ -105,6 +167,7 @@ const JourneyWrapper = ({ children }) => {
     <View
       onTouchCancel={handleTouchCancel}
       onTouchEnd={handleTouchEnd}
+      onTouchMove={handleTouchMove}
       onTouchStart={handleTouchStart}
       style={styles.container}
     >

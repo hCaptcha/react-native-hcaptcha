@@ -11,6 +11,7 @@ import {
   initJourneyTracking,
   peekJourneyEvents,
   registerJourneyNavigationContainer,
+  resolveJourneyIdentifier,
 } from '../journey';
 
 describe('journey runtime', () => {
@@ -153,5 +154,85 @@ describe('journey runtime', () => {
         m: expect.objectContaining({ id: '30', ac: 'drag_end', x: 20, y: 20 }),
       }),
     ]);
+  });
+
+  it('emits scroll-shaped drag events when movement is axis-dominant', () => {
+    initJourneyTracking();
+    const component = render(
+      <JourneyWrapper>
+        <Text>child</Text>
+      </JourneyWrapper>
+    );
+
+    const wrapper = component.UNSAFE_getByType(View);
+    fireEvent(wrapper, 'touchStart', {
+      nativeEvent: { pageX: 0, pageY: 0, target: 40 },
+    });
+    fireEvent(wrapper, 'touchMove', {
+      nativeEvent: { pageX: 35, pageY: 3, target: 40 },
+    });
+    fireEvent(wrapper, 'touchEnd', {
+      nativeEvent: { pageX: 55, pageY: 4, target: 40 },
+    });
+
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        k: 'drag',
+        v: 'ScrollView',
+        m: { id: '40', ac: 'scroll_start', x: 35, y: 3, val: 'horizontal:right' },
+      }),
+      expect.objectContaining({
+        k: 'drag',
+        v: 'ScrollView',
+        m: expect.objectContaining({ id: '40', ac: 'scroll_end', x: 55, y: 4 }),
+      }),
+    ]);
+  });
+
+  it('upgrades numeric targets to semantic identifiers when richer metadata becomes available', () => {
+    initJourneyTracking();
+    const component = render(
+      <JourneyWrapper>
+        <Text>child</Text>
+      </JourneyWrapper>
+    );
+
+    const wrapper = component.UNSAFE_getByType(View);
+    fireEvent(wrapper, 'touchStart', {
+      nativeEvent: { pageX: 0, pageY: 0, target: 41 },
+    });
+    fireEvent(wrapper, 'touchMove', {
+      nativeEvent: {
+        pageX: 25,
+        pageY: 2,
+        target: 41,
+        _dispatchInstances: {
+          pendingProps: { testID: 'checkout-cta' },
+          return: null,
+        },
+      },
+    });
+    fireEvent(wrapper, 'touchEnd', {
+      nativeEvent: { pageX: 30, pageY: 4, target: 41 },
+    });
+
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        m: { id: 'checkout-cta', ac: 'scroll_start', x: 25, y: 2, val: 'horizontal:right' },
+      }),
+      expect.objectContaining({
+        m: expect.objectContaining({ id: 'checkout-cta', ac: 'scroll_end' }),
+      }),
+    ]);
+  });
+
+  it('prefers semantic identifiers over numeric fallbacks during resolution', () => {
+    expect(resolveJourneyIdentifier({
+      target: 99,
+      _dispatchInstances: {
+        pendingProps: { nativeID: 'primary-action' },
+        return: null,
+      },
+    })).toBe('primary-action');
   });
 });

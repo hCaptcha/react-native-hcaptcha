@@ -13,6 +13,7 @@ const state = {
 };
 
 const isFunction = (value) => typeof value === 'function';
+const numericIdentifierPattern = /^\d+$/;
 
 const normalizeNavigationTarget = (target) => {
   if (!target) {
@@ -196,23 +197,70 @@ const readIdentifierFromProps = (props) => {
   return props.nativeID || props.testID || props.accessibilityLabel || null;
 };
 
-export const resolveJourneyIdentifier = (nativeEvent) => {
-  const targetInst = nativeEvent?._targetInst;
-  let current = targetInst;
+const readIdentifierFromNode = (node) => {
+  let current = node;
 
   while (current) {
-    const identifier = readIdentifierFromProps(current.memoizedProps);
+    const identifier = readIdentifierFromProps(current.memoizedProps)
+      || readIdentifierFromProps(current.pendingProps)
+      || readIdentifierFromProps(current.stateNode?.props);
+
     if (identifier) {
       return String(identifier);
     }
+
     current = current.return;
   }
 
-  if (nativeEvent && nativeEvent.target != null) {
-    return String(nativeEvent.target);
+  return null;
+};
+
+const readIdentifierFromNodeList = (value) => {
+  if (!value) {
+    return null;
   }
 
-  return 'unknown';
+  const nodes = Array.isArray(value) ? value : [value];
+  for (const node of nodes) {
+    const identifier = readIdentifierFromNode(node);
+    if (identifier) {
+      return identifier;
+    }
+  }
+
+  return null;
+};
+
+const getIdentifierRank = (value) => {
+  if (!value || value === 'unknown') {
+    return 0;
+  }
+
+  return numericIdentifierPattern.test(String(value)) ? 1 : 2;
+};
+
+export const resolveJourneyIdentifier = (nativeEvent, fallbackIdentifier) => {
+  const directIdentifier = readIdentifierFromProps(nativeEvent);
+  const fiberIdentifier = readIdentifierFromNodeList(nativeEvent?._targetInst)
+    || readIdentifierFromNodeList(nativeEvent?._dispatchInstances);
+  const targetIdentifier = nativeEvent && nativeEvent.target != null ? String(nativeEvent.target) : null;
+  const candidates = [
+    fallbackIdentifier,
+    directIdentifier ? String(directIdentifier) : null,
+    fiberIdentifier,
+    targetIdentifier,
+    'unknown',
+  ];
+
+  let bestIdentifier = 'unknown';
+
+  for (const candidate of candidates) {
+    if (getIdentifierRank(candidate) > getIdentifierRank(bestIdentifier)) {
+      bestIdentifier = candidate;
+    }
+  }
+
+  return bestIdentifier;
 };
 
 export const isJourneyCapturing = () => state.capturing;
