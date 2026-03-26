@@ -546,6 +546,27 @@ describe('Hcaptcha', () => {
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"id":"screen"'));
   });
 
+  it('injects legacy rqdata and phone fields into the final verify payload', () => {
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={jest.fn()}
+        rqdata='{"some":"data"}'
+        phonePrefix="44"
+        phoneNumber="+441234567890"
+      />
+    );
+
+    act(() => {
+      getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } });
+    });
+
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"rqdata":"{\\"some\\":\\"data\\"}"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"mfa_phoneprefix":"44"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"mfa_phone":"+441234567890"'));
+  });
+
   it('preserves buffered journey events after error and cancel messages', () => {
     initJourneyTracking();
     emitJourneyEvent('click', 'View', { id: 'preserved', ac: 'tap' });
