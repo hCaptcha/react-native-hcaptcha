@@ -17,4 +17,4 @@ jobs:
       - name: npm release
         run: |
           npm ci
-          npm publish
+          npm publish --provenance
