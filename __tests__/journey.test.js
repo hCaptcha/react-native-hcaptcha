@@ -154,6 +154,29 @@ describe('journey runtime', () => {
     ]);
   });
 
+  it('rounds captured touch coordinates to integers', () => {
+    initJourneyTracking();
+    const component = render(
+      <JourneyWrapper>
+        <Text>child</Text>
+      </JourneyWrapper>
+    );
+
+    const wrapper = component.UNSAFE_getByType(View);
+    fireEvent(wrapper, 'touchStart', {
+      nativeEvent: { pageX: 5.4, pageY: 6.6, target: 22 },
+    });
+    fireEvent(wrapper, 'touchEnd', {
+      nativeEvent: { pageX: 5.4, pageY: 6.6, target: 22 },
+    });
+
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        m: { id: '22', ac: 'tap', x: 5, y: 7 },
+      }),
+    ]);
+  });
+
   it('emits drag events from the automatic wrapper when movement exceeds threshold', () => {
     initJourneyTracking();
     const component = render(
@@ -254,6 +277,43 @@ describe('journey runtime', () => {
     ]);
   });
 
+  it('reads semantic identifiers from the synthetic event when nativeEvent lacks fiber metadata', () => {
+    initJourneyTracking();
+    const component = render(
+      <JourneyWrapper>
+        <Text>child</Text>
+      </JourneyWrapper>
+    );
+
+    const wrapper = component.UNSAFE_getByType(View);
+    fireEvent(wrapper, 'touchStart', {
+      nativeEvent: { pageX: 0, pageY: 0, target: 42 },
+    });
+    fireEvent(wrapper, 'touchMove', {
+      _dispatchInstances: {
+        pendingProps: { nativeID: 'launch-captcha' },
+        return: null,
+      },
+      nativeEvent: {
+        pageX: 25.2,
+        pageY: 2.2,
+        target: 42,
+      },
+    });
+    fireEvent(wrapper, 'touchEnd', {
+      nativeEvent: { pageX: 30.1, pageY: 4.4, target: 42 },
+    });
+
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        m: { id: 'launch-captcha', ac: 'scroll_start', x: 25, y: 2, val: 'horizontal:right' },
+      }),
+      expect.objectContaining({
+        m: expect.objectContaining({ id: 'launch-captcha', ac: 'scroll_end', x: 30, y: 4 }),
+      }),
+    ]);
+  });
+
   it('prefers semantic identifiers over numeric fallbacks during resolution', () => {
     expect(resolveJourneyIdentifier({
       target: 99,
@@ -262,6 +322,18 @@ describe('journey runtime', () => {
         return: null,
       },
     })).toBe('primary-action');
+  });
+
+  it('resolves identifiers from the synthetic event before falling back to native numeric targets', () => {
+    expect(resolveJourneyIdentifier({
+      _dispatchInstances: {
+        pendingProps: { testID: 'warmup-touch' },
+        return: null,
+      },
+      nativeEvent: {
+        target: 99,
+      },
+    })).toBe('warmup-touch');
   });
 
   it('retains the last 50 events in the ring buffer', () => {

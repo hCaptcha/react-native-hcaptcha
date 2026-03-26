@@ -16,6 +16,7 @@ const state = {
 
 const isFunction = (value) => typeof value === 'function';
 const numericIdentifierPattern = /^\d+$/;
+const getEventPayload = (event) => event?.nativeEvent || event || null;
 
 const normalizeNavigationTarget = (target) => {
   if (!target) {
@@ -285,11 +286,14 @@ const getIdentifierRank = (value) => {
   return numericIdentifierPattern.test(String(value)) ? 1 : 2;
 };
 
-export const resolveJourneyIdentifier = (nativeEvent, fallbackIdentifier) => {
-  const directIdentifier = readIdentifierFromProps(nativeEvent);
-  const fiberIdentifier = readIdentifierFromNodeList(nativeEvent?._targetInst)
-    || readIdentifierFromNodeList(nativeEvent?._dispatchInstances);
-  const targetIdentifier = nativeEvent && nativeEvent.target != null ? String(nativeEvent.target) : null;
+export const resolveJourneyIdentifier = (event, fallbackIdentifier) => {
+  const payload = getEventPayload(event);
+  const directIdentifier = readIdentifierFromProps(payload);
+  const fiberIdentifier = readIdentifierFromNodeList(event?._targetInst)
+    || readIdentifierFromNodeList(event?._dispatchInstances)
+    || readIdentifierFromNodeList(payload?._targetInst)
+    || readIdentifierFromNodeList(payload?._dispatchInstances);
+  const targetIdentifier = payload && payload.target != null ? String(payload.target) : null;
   const candidates = [
     fallbackIdentifier,
     directIdentifier ? String(directIdentifier) : null,

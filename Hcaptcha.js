@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import WebView from 'react-native-webview';
-import { ActivityIndicator, Linking, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
-import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
+import { ActivityIndicator, Linking, Platform, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 
 import md5 from './md5';
 import hcaptchaPackage from './package.json';
@@ -62,6 +61,42 @@ const normalizeSize = (value) => {
   }
 
   return value === 'checkbox' ? 'normal' : value;
+};
+
+const getVersionPart = (value) => (
+  typeof value === 'number' && Number.isFinite(value) && value >= 0 && value < 100
+    ? value
+    : null
+);
+
+const getReactNativeVersion = (value = Platform?.constants?.reactNativeVersion) => {
+  const candidate = value && typeof value === 'object' && value.version ? value.version : value;
+  const major = getVersionPart(candidate?.major);
+  const minor = getVersionPart(candidate?.minor);
+  const patch = getVersionPart(candidate?.patch);
+
+  if (major == null || minor == null || patch == null) {
+    return null;
+  }
+
+  return { major, minor, patch };
+};
+
+const buildDebugInfo = (debug, reactNativeVersion = Platform?.constants?.reactNativeVersion) => {
+  const result = { ...(debug || {}) };
+
+  try {
+    const version = getReactNativeVersion(reactNativeVersion);
+    if (version) {
+      result[`rnver_${version.major}_${version.minor}_${version.patch}`] = true;
+    }
+    result['dep_' + md5(Object.keys(global).join(''))] = true;
+    result['sdk_' + hcaptchaPackage.version.toString().replace(/\./g, '_')] = true;
+  } catch (e) {
+    console.log(e);
+  }
+
+  return result;
 };
 
 const buildVerifyData = ({
@@ -184,19 +219,7 @@ const Hcaptcha = ({
   );
 
   const debugInfo = useMemo(
-    () => {
-      var result = debug || {};
-      try {
-        const {major, minor, patch} = ReactNativeVersion.version;
-        result[`rnver_${major}_${minor}_${patch}`] = true;
-        result['dep_' + md5(Object.keys(global).join(''))] = true;
-        result['sdk_' + hcaptchaPackage.version.toString().replace(/\./g, '_')] = true;
-      } catch (e) {
-        console.log(e);
-      } finally {
-        return result;
-      }
-    },
+    () => buildDebugInfo(debug),
     [debug]
   );
 
@@ -426,4 +449,4 @@ const styles = StyleSheet.create({
 });
 
 export default Hcaptcha;
-export { buildVerifyData, HCAPTCHA_READY_EVENT };
+export { buildDebugInfo, buildVerifyData, HCAPTCHA_READY_EVENT };

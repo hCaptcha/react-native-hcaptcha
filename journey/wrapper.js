@@ -14,9 +14,15 @@ const styles = StyleSheet.create({
   },
 });
 
+const toInteger = (value) => (
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.round(value)
+    : undefined
+);
+
 const getPoint = (nativeEvent) => ({
-  x: typeof nativeEvent.pageX === 'number' ? nativeEvent.pageX : nativeEvent.locationX,
-  y: typeof nativeEvent.pageY === 'number' ? nativeEvent.pageY : nativeEvent.locationY,
+  x: toInteger(typeof nativeEvent.pageX === 'number' ? nativeEvent.pageX : nativeEvent.locationX),
+  y: toInteger(typeof nativeEvent.pageY === 'number' ? nativeEvent.pageY : nativeEvent.locationY),
 });
 
 const getDirection = (dx, dy) => {
@@ -67,7 +73,7 @@ const JourneyWrapper = ({ children }) => {
 
     const nativeEvent = event.nativeEvent || {};
     gestureRef.current = {
-      identifier: resolveJourneyIdentifier(nativeEvent),
+      identifier: resolveJourneyIdentifier(event),
       kind: null,
       point: getPoint(nativeEvent),
       startedAt: Date.now(),
@@ -85,7 +91,7 @@ const JourneyWrapper = ({ children }) => {
     const snapshot = getGestureSnapshot(nativeEvent, gesture);
     const kind = getGestureKind(snapshot.distance, snapshot.dx, snapshot.dy);
 
-    gesture.identifier = resolveJourneyIdentifier(nativeEvent, gesture.identifier);
+    gesture.identifier = resolveJourneyIdentifier(event, gesture.identifier);
 
     if (!kind || gesture.kind) {
       return;
@@ -113,7 +119,7 @@ const JourneyWrapper = ({ children }) => {
     }
 
     const nativeEvent = event.nativeEvent || {};
-    gesture.identifier = resolveJourneyIdentifier(nativeEvent, gesture.identifier);
+    gesture.identifier = resolveJourneyIdentifier(event, gesture.identifier);
     const snapshot = getGestureSnapshot(nativeEvent, gesture);
     const duration = Date.now() - gesture.startedAt;
     const baseMetadata = createBaseMetadata(gesture.identifier, snapshot.point);

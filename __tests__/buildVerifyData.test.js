@@ -1,4 +1,4 @@
-import { buildVerifyData } from '../Hcaptcha';
+import { buildDebugInfo, buildVerifyData } from '../Hcaptcha';
 
 describe('buildVerifyData', () => {
   it('maps legacy props to the final wire keys', () => {
@@ -58,6 +58,24 @@ describe('buildVerifyData', () => {
       userjourney: [
         { ts: 123, k: 'click', v: 'View', m: { id: 'screen', ac: 'tap' } },
       ],
+    });
+  });
+});
+
+describe('buildDebugInfo', () => {
+  it('adds sdk and dependency markers even when the RN version shape is missing', () => {
+    expect(buildDebugInfo({ custom: true }, {})).toEqual({
+      custom: true,
+      'dep_mocked-md5': true,
+      sdk_3_0_0: true,
+    });
+  });
+
+  it('adds the normalized RN version marker when available', () => {
+    expect(buildDebugInfo({}, { version: { major: 1, minor: 2, patch: 3 } })).toEqual({
+      rnver_1_2_3: true,
+      'dep_mocked-md5': true,
+      sdk_3_0_0: true,
     });
   });
 });
