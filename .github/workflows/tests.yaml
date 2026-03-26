@@ -2,8 +2,6 @@ name: CI
 on:
   push:
     branches: [ master ]
-  release:
-    types: [ published ]
   pull_request:
   workflow_dispatch:
   schedule:
@@ -11,7 +9,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   build:
@@ -205,8 +202,3 @@ jobs:
         assignees: CAMOBAP
         update_existing: true
         filename: .github/examples-issue-template.md
-
-  release:
-    if: github.event_name == 'release'
-    needs: test
-    uses: ./.github/workflows/publish.yaml
