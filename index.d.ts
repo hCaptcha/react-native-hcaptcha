@@ -47,7 +47,8 @@ export default class ConfirmHcaptcha extends React.Component<ConfirmHcaptchaProp
    */
   hide: (source?: any) => void;
   /**
-   * Stops automatic event recording for this captcha instance.
+   * Clears the shared journey buffer and detaches this instance from journey attachment
+   * until it is explicitly reconfigured.
    */
   stopEvents: () => void;
 }

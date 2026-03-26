@@ -277,6 +277,10 @@ describe('ConfirmHcaptcha', () => {
     );
     const instance = getInstance(component);
 
+    act(() => {
+      instance.show();
+    });
+
     emitJourneyEvent('click', 'View', { id: 'before-stop', ac: 'tap' });
     expect(peekJourneyEvents()).toHaveLength(1);
 
@@ -284,6 +288,7 @@ describe('ConfirmHcaptcha', () => {
       instance.stopEvents();
     });
 
+    expect(getHcaptchaChild(component).props.userJourney).toBe(false);
     expect(peekJourneyEvents()).toEqual([]);
 
     emitJourneyEvent('click', 'View', { id: 'after-stop', ac: 'tap' });
@@ -291,6 +296,150 @@ describe('ConfirmHcaptcha', () => {
       expect.objectContaining({
         k: 'click',
         v: 'View',
+        m: { id: 'after-stop', ac: 'tap' },
+      }),
+    ]);
+  });
+
+  it('re-enables journeys after stopEvents() when the prop is explicitly reconfigured', () => {
+    initJourneyTracking();
+    const component = render(
+      <ConfirmHcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        baseUrl="https://hcaptcha.com"
+        languageCode="en"
+        userJourney={true}
+      />
+    );
+    const instance = getInstance(component);
+
+    act(() => {
+      instance.show();
+    });
+
+    expect(getHcaptchaChild(component).props.userJourney).toBe(true);
+
+    act(() => {
+      instance.stopEvents();
+    });
+
+    expect(getHcaptchaChild(component).props.userJourney).toBe(false);
+
+    component.rerender(
+      <ConfirmHcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        baseUrl="https://hcaptcha.com"
+        languageCode="en"
+        userJourney={false}
+      />
+    );
+    component.rerender(
+      <ConfirmHcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        baseUrl="https://hcaptcha.com"
+        languageCode="en"
+        userJourney={true}
+      />
+    );
+
+    expect(getHcaptchaChild(component).props.userJourney).toBe(true);
+  });
+
+  it('keeps the shared buffer active when one of two simultaneous consumers unmounts', () => {
+    const onStats = jest.fn();
+    const firstRef = React.createRef();
+    const secondRef = React.createRef();
+
+    initJourneyTracking({ onStats });
+    const component = render(
+      <>
+        <ConfirmHcaptcha
+          ref={firstRef}
+          siteKey="00000000-0000-0000-0000-000000000000"
+          baseUrl="https://hcaptcha.com"
+          languageCode="en"
+          userJourney={true}
+        />
+        <ConfirmHcaptcha
+          ref={secondRef}
+          siteKey="00000000-0000-0000-0000-000000000001"
+          baseUrl="https://hcaptcha.com"
+          languageCode="en"
+          userJourney={true}
+        />
+      </>
+    );
+
+    expect(onStats).toHaveBeenLastCalledWith(expect.objectContaining({
+      activeConsumers: 2,
+    }));
+
+    emitJourneyEvent('click', 'View', { id: 'before-unmount', ac: 'tap' });
+
+    component.rerender(
+      <ConfirmHcaptcha
+        ref={secondRef}
+        siteKey="00000000-0000-0000-0000-000000000001"
+        baseUrl="https://hcaptcha.com"
+        languageCode="en"
+        userJourney={true}
+      />
+    );
+
+    expect(onStats).toHaveBeenLastCalledWith(expect.objectContaining({
+      activeConsumers: 1,
+    }));
+
+    emitJourneyEvent('click', 'View', { id: 'after-unmount', ac: 'tap' });
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        m: { id: 'before-unmount', ac: 'tap' },
+      }),
+      expect.objectContaining({
+        m: { id: 'after-unmount', ac: 'tap' },
+      }),
+    ]);
+  });
+
+  it('clears the shared buffer when one of two simultaneous consumers calls stopEvents, but capture continues for the other', () => {
+    const onStats = jest.fn();
+    const firstRef = React.createRef();
+    const secondRef = React.createRef();
+
+    initJourneyTracking({ onStats });
+    render(
+      <>
+        <ConfirmHcaptcha
+          ref={firstRef}
+          siteKey="00000000-0000-0000-0000-000000000000"
+          baseUrl="https://hcaptcha.com"
+          languageCode="en"
+          userJourney={true}
+        />
+        <ConfirmHcaptcha
+          ref={secondRef}
+          siteKey="00000000-0000-0000-0000-000000000001"
+          baseUrl="https://hcaptcha.com"
+          languageCode="en"
+          userJourney={true}
+        />
+      </>
+    );
+
+    emitJourneyEvent('click', 'View', { id: 'before-stop', ac: 'tap' });
+
+    act(() => {
+      firstRef.current.stopEvents();
+    });
+
+    expect(onStats).toHaveBeenLastCalledWith(expect.objectContaining({
+      activeConsumers: 1,
+    }));
+    expect(peekJourneyEvents()).toEqual([]);
+
+    emitJourneyEvent('click', 'View', { id: 'after-stop', ac: 'tap' });
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
         m: { id: 'after-stop', ac: 'tap' },
       }),
     ]);

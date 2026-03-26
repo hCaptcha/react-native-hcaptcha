@@ -1,10 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { Text, View, StyleSheet, TouchableOpacity } from 'react-native';
 import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
+// import ConfirmHcaptcha, { initJourneyTracking } from '@hcaptcha/react-native-hcaptcha';
 
 // demo sitekey
 const siteKey = '00000000-0000-0000-0000-000000000000';
 const baseUrl = 'https://hcaptcha.com';
+
+// Uncomment to enable automatic User Journeys collection for this example app.
+// initJourneyTracking();
 
 const App = () => {
   const [code, setCode] = useState(null);
@@ -38,6 +42,8 @@ const App = () => {
         baseUrl={baseUrl}
         languageCode="en"
         onMessage={onMessage}
+        // Uncomment to attach the buffered User Journey to each verification request.
+        // userJourney={true}
       />
       <TouchableOpacity
         onPress={() => {

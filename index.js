@@ -8,17 +8,29 @@ export { default as Hcaptcha } from './Hcaptcha';
 
 class ConfirmHcaptcha extends PureComponent {
   state = {
+    journeyStopped: false,
     show: false,
   };
   hasJourneyConsumer = false;
-  componentDidMount() {
-    this.syncJourneyConsumer(false, this.props.userJourney);
+  getJourneyEnabled(props = this.props, state = this.state) {
+    return Boolean(props.userJourney && !state.journeyStopped);
   }
-  componentDidUpdate(prevProps) {
-    this.syncJourneyConsumer(prevProps.userJourney, this.props.userJourney);
+  componentDidMount() {
+    this.syncJourneyConsumer(false, this.getJourneyEnabled());
+  }
+  componentDidUpdate(prevProps, prevState) {
+    if (prevProps.userJourney !== this.props.userJourney && prevState.journeyStopped) {
+      this.setState({ journeyStopped: false });
+      return;
+    }
+
+    this.syncJourneyConsumer(
+      this.getJourneyEnabled(prevProps, prevState),
+      this.getJourneyEnabled()
+    );
   }
   componentWillUnmount() {
-    this.syncJourneyConsumer(this.props.userJourney, false);
+    this.syncJourneyConsumer(this.getJourneyEnabled(), false);
   }
   syncJourneyConsumer(previousValue, nextValue) {
     if (!previousValue && nextValue && !this.hasJourneyConsumer) {
@@ -36,6 +48,7 @@ class ConfirmHcaptcha extends PureComponent {
     }
 
     clearJourneyEvents();
+    this.setState({ journeyStopped: true });
   };
   show = () => {
     this.setState({ show: true });
@@ -72,11 +85,11 @@ class ConfirmHcaptcha extends PureComponent {
       useSafeAreaView,
       phonePrefix,
       phoneNumber,
-      userJourney,
       verifyParams,
     } = this.props;
 
     const WrapperComponent = useSafeAreaView === false ? View : SafeAreaView;
+    const journeyEnabled = this.getJourneyEnabled();
 
     return (
       <WrapperComponent style={styles.wrapper}>
@@ -103,7 +116,7 @@ class ConfirmHcaptcha extends PureComponent {
           debug={debug}
           phonePrefix={phonePrefix}
           phoneNumber={phoneNumber}
-          userJourney={userJourney}
+          userJourney={journeyEnabled}
           verifyParams={verifyParams}
           _journeyManagedExternally={true}
         />
@@ -193,7 +206,7 @@ ConfirmHcaptcha.propTypes = {
   siteKey: PropTypes.string.isRequired,
   passiveSiteKey: PropTypes.bool,
   baseUrl: PropTypes.string,
-  onMessage: PropTypes.func,
+  onMessage: PropTypes.func.isRequired,
   languageCode: PropTypes.string,
   orientation: PropTypes.string,
   backgroundColor: PropTypes.string,

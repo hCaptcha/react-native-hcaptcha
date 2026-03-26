@@ -12,7 +12,7 @@ export type HcaptchaProps = {
   /**
    * The callback function that runs after receiving a response, error, or when user cancels.
    */
-  onMessage?: (event: CustomWebViewMessageEvent) => void;
+  onMessage: (event: CustomWebViewMessageEvent) => void;
   /**
    * The size of the checkbox.
    */
