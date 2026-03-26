@@ -1,10 +1,7 @@
 import React, { PureComponent } from 'react';
-import { SafeAreaView, View, StyleSheet, Dimensions } from 'react-native';
-import Modal from 'react-native-modal';
+import { Modal, SafeAreaView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import Hcaptcha from './Hcaptcha';
 import PropTypes from 'prop-types';
-
-const { width, height } = Dimensions.get('window');
 
 class ConfirmHcaptcha extends PureComponent {
   state = {
@@ -20,20 +17,18 @@ class ConfirmHcaptcha extends PureComponent {
       onMessage({ nativeEvent: { data: 'cancel' } });
     }
   };
-  render() {
-    let { show } = this.state;
+  renderCaptcha() {
     let {
       size,
       siteKey,
-      passiveSiteKey,
       baseUrl,
       languageCode,
       orientation,
       onMessage,
       showLoading,
       closableLoading,
-      backgroundColor,
       loadingIndicatorColor,
+      backgroundColor,
       theme,
       rqdata,
       sentry,
@@ -43,52 +38,83 @@ class ConfirmHcaptcha extends PureComponent {
       assethost,
       imghost,
       host,
-      hasBackdrop,
       debug,
       useSafeAreaView,
+      phonePrefix,
+      phoneNumber,
     } = this.props;
 
     const WrapperComponent = useSafeAreaView === false ? View : SafeAreaView;
 
     return (
+      <WrapperComponent style={styles.wrapper}>
+        <Hcaptcha
+          url={baseUrl}
+          size={size}
+          siteKey={siteKey}
+          onMessage={onMessage}
+          languageCode={languageCode}
+          showLoading={showLoading}
+          closableLoading={closableLoading}
+          loadingIndicatorColor={loadingIndicatorColor}
+          backgroundColor={backgroundColor}
+          theme={theme}
+          rqdata={rqdata}
+          sentry={sentry}
+          jsSrc={jsSrc}
+          endpoint={endpoint}
+          reportapi={reportapi}
+          assethost={assethost}
+          imghost={imghost}
+          host={host}
+          orientation={orientation}
+          debug={debug}
+          phonePrefix={phonePrefix}
+          phoneNumber={phoneNumber}
+        />
+      </WrapperComponent>
+    );
+  }
+  render() {
+    let { show } = this.state;
+    let {
+      passiveSiteKey,
+      backgroundColor,
+      hasBackdrop,
+    } = this.props;
+
+    if (!show) {
+      return null;
+    }
+
+    if (passiveSiteKey) {
+      return (
+        <View pointerEvents="none" style={styles.passiveContainer}>
+          {this.renderCaptcha()}
+        </View>
+      );
+    }
+
+    return (
       <Modal
-        useNativeDriver
-        hideModalContentWhileAnimating
-        deviceHeight={height}
-        deviceWidth={width}
-        style={[styles.modal, {display: passiveSiteKey ? 'none' : undefined}]}
-        animationIn="fadeIn"
-        animationOut="fadeOut"
-        onBackdropPress={() => this.hide('backdrop')}
-        onBackButtonPress={() => this.hide('back_button')}
-        isVisible={show}
-        hasBackdrop={!passiveSiteKey && hasBackdrop}
-        coverScreen={!passiveSiteKey}
+        animationType="fade"
+        onRequestClose={() => this.hide('back_button')}
+        transparent
+        visible={show}
       >
-        <WrapperComponent style={[styles.wrapper, hasBackdrop ? { backgroundColor } : {}]}>
-          <Hcaptcha
-            url={baseUrl}
-            size={size}
-            siteKey={siteKey}
-            onMessage={onMessage}
-            languageCode={languageCode}
-            showLoading={showLoading}
-            closableLoading={closableLoading}
-            loadingIndicatorColor={loadingIndicatorColor}
-            backgroundColor={backgroundColor}
-            theme={theme}
-            rqdata={rqdata}
-            sentry={sentry}
-            jsSrc={jsSrc}
-            endpoint={endpoint}
-            reportapi={reportapi}
-            assethost={assethost}
-            imghost={imghost}
-            host={host}
-            orientation={orientation}
-            debug={debug}
-          />
-        </WrapperComponent>
+        <View style={styles.modal}>
+          {hasBackdrop ? (
+            <TouchableWithoutFeedback
+              onPress={() => this.hide('backdrop')}
+              testID="confirm-hcaptcha-backdrop"
+            >
+              <View style={[styles.backdrop, { backgroundColor }]} />
+            </TouchableWithoutFeedback>
+          ) : null}
+          <View style={styles.modalContent}>
+            {this.renderCaptcha()}
+          </View>
+        </View>
       </Modal>
     );
   }
@@ -102,7 +128,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
   },
-  modal: { margin: 0, display: 'none' },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modal: {
+    flex: 1,
+    margin: 0,
+  },
+  modalContent: {
+    flex: 1,
+  },
+  passiveContainer: {
+    height: 1,
+    left: 0,
+    opacity: 0,
+    position: 'absolute',
+    top: 0,
+    width: 1,
+  },
   wrapper: {
     flex: 1,
     justifyContent: 'center',
@@ -133,6 +176,8 @@ ConfirmHcaptcha.propTypes = {
   host: PropTypes.string,
   hasBackdrop: PropTypes.bool,
   debug: PropTypes.object,
+  phonePrefix: PropTypes.string,
+  phoneNumber: PropTypes.string,
 };
 
 ConfirmHcaptcha.defaultProps = {
@@ -154,6 +199,8 @@ ConfirmHcaptcha.defaultProps = {
   host: undefined,
   hasBackdrop: true,
   debug: {},
+  phonePrefix: null,
+  phoneNumber: null,
 };
 
 export default ConfirmHcaptcha;

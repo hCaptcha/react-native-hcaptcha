@@ -1,7 +1,7 @@
-import React from "react";
-import { HcaptchaProps } from "./Hcaptcha";
+import React from 'react';
+import { HcaptchaProps } from './Hcaptcha';
 
-type ConfirmHcaptchaProps = Omit<HcaptchaProps, "url" | "style"> & {
+type ConfirmHcaptchaProps = Omit<HcaptchaProps, 'url' | 'style'> & {
   /**
    * Indicates whether the passive mode is enabled; when true, the modal won't be shown at all
    */

@@ -20,6 +20,42 @@ const patchPostMessageJsCode = `(${String(function () {
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })})();`;
 
+const serializeForInlineScript = (value) =>
+  JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+
+const normalizeTheme = (value) => {
+  if (value == null) {
+    return null;
+  }
+
+  if (typeof value === 'object') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value);
+    } catch (_) {
+      return value;
+    }
+  }
+
+  return value;
+};
+
+const normalizeSize = (value) => {
+  if (value == null) {
+    return 'invisible';
+  }
+
+  return value === 'checkbox' ? 'normal' : value;
+};
+
 const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, assethost, imghost, reportapi, orientation) => {
   var url = `${jsSrc || 'https://hcaptcha.com/1/api.js'}?render=explicit&onload=onloadCallback`;
 
@@ -43,7 +79,7 @@ const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, 
  *
  * @param {*} onMessage: callback after receiving response, error, or when user cancels
  * @param {*} siteKey: your hCaptcha sitekey
- * @param {string} size: The size of the checkbox, can be 'invisible', 'compact' or 'checkbox', Default: 'invisible'
+ * @param {string} size: The size of the widget, can be 'invisible', 'compact' or 'normal'. 'checkbox' is kept as a legacy alias for 'normal'. Default: 'invisible'
  * @param {*} style: custom style
  * @param {*} url: base url
  * @param {*} languageCode: can be found at https://docs.hcaptcha.com/languages
@@ -90,26 +126,15 @@ const Hcaptcha = ({
   phonePrefix,
   phoneNumber,
 }) => {
-  const apiUrl = buildHcaptchaApiUrl(jsSrc, siteKey, languageCode, theme, host, sentry, endpoint, assethost, imghost, reportapi, orientation);
   const tokenTimeout = 120000;
   const loadingTimeout = 15000;
   const [isLoading, setIsLoading] = useState(true);
-
-  if (theme && typeof theme === 'string') {
-    try {
-      JSON.parse(theme);
-    } catch (_) {
-      theme = `"${theme}"`;
-    }
-  }
-
-  if (theme && typeof theme === 'object') {
-    theme = `${JSON.stringify(theme)}`;
-  }
-
-  if (rqdata && typeof rqdata === 'string') {
-    rqdata = `"${rqdata}"`;
-  }
+  const normalizedTheme = useMemo(() => normalizeTheme(theme), [theme]);
+  const normalizedSize = useMemo(() => normalizeSize(size), [size]);
+  const apiUrl = useMemo(
+    () => buildHcaptchaApiUrl(jsSrc, siteKey, languageCode, normalizedTheme, host, sentry, endpoint, assethost, imghost, reportapi, orientation),
+    [jsSrc, siteKey, languageCode, normalizedTheme, host, sentry, endpoint, assethost, imghost, reportapi, orientation]
+  );
 
   const debugInfo = useMemo(
     () => {
@@ -128,6 +153,21 @@ const Hcaptcha = ({
     [debug]
   );
 
+  const serializedWebViewConfig = useMemo(
+    () => serializeForInlineScript({
+      apiUrl,
+      backgroundColor: backgroundColor ?? '',
+      debugInfo,
+      phoneNumber: phoneNumber ?? null,
+      phonePrefix: phonePrefix ?? null,
+      rqdata: rqdata ?? null,
+      siteKey: siteKey || '',
+      size: normalizedSize,
+      theme: normalizedTheme,
+    }),
+    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, phoneNumber, phonePrefix, rqdata, siteKey]
+  );
+
   const generateTheWebViewContent = useMemo(
     () =>
      `<!DOCTYPE html>
@@ -137,14 +177,21 @@ const Hcaptcha = ({
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          Object.entries(${JSON.stringify(debugInfo)}).forEach(function (entry) { window[entry[0]] = entry[1] })
+          var hcaptchaConfig = ${serializedWebViewConfig};
+          Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
-        <script src="${apiUrl}" async defer></script>
         <script type="text/javascript">
+          var loadApiScript = function() {
+            var script = document.createElement('script');
+            script.async = true;
+            script.defer = true;
+            script.src = hcaptchaConfig.apiUrl;
+            document.head.appendChild(script);
+          };
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptcha.render("hcaptcha-container", getRenderConfig("${siteKey || ''}", ${theme}, "${size || 'invisible'}"));
+              hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
@@ -166,7 +213,7 @@ const Hcaptcha = ({
             window.ReactNativeWebView.postMessage("challenge-closed");
           };
           var onOpen = function() {
-            document.body.style.backgroundColor = '${backgroundColor}';
+            document.body.style.backgroundColor = hcaptchaConfig.backgroundColor;
             window.ReactNativeWebView.postMessage("open");
             console.log("challenge opened");
           };
@@ -194,9 +241,9 @@ const Hcaptcha = ({
           };
           const getExecuteOpts = function() {
             var opts = {};
-            const rqdata = ${rqdata};
-            const phonePrefix = ${phonePrefix || 'null'};
-            const phoneNumber = ${phoneNumber || 'null'};
+            const rqdata = hcaptchaConfig.rqdata;
+            const phonePrefix = hcaptchaConfig.phonePrefix;
+            const phoneNumber = hcaptchaConfig.phoneNumber;
 
             if (rqdata) {
               opts.rqdata = rqdata;
@@ -209,13 +256,14 @@ const Hcaptcha = ({
             }
             return opts;
           };
+          loadApiScript();
         </script>
       </head>
       <body>
         <div id="hcaptcha-container"></div>
       </body>
       </html>`,
-    [debugInfo, apiUrl, siteKey, theme, size, backgroundColor, rqdata, phonePrefix, phoneNumber]
+    [serializedWebViewConfig]
   );
 
   useEffect(() => {
@@ -246,7 +294,7 @@ const Hcaptcha = ({
   };
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
       <WebView
         ref={webViewRef}
         originWhitelist={['*']}
@@ -261,7 +309,7 @@ const Hcaptcha = ({
                   data: 'sms-open-failed',
                   description: err.message,
                 },
-                success: false
+                success: false,
               });
             });
             return false;
@@ -286,7 +334,7 @@ const Hcaptcha = ({
         javaScriptEnabled
         injectedJavaScript={patchPostMessageJsCode}
         automaticallyAdjustContentInsets
-        style={[{ backgroundColor: 'transparent', width: '100%' }, style]}
+        style={[styles.webview, style]}
         source={{
           html: generateTheWebViewContent,
           baseUrl: `${url}`,
@@ -298,9 +346,16 @@ const Hcaptcha = ({
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
+  },
+  webview: {
+    backgroundColor: 'transparent',
+    width: '100%',
   },
 });
 

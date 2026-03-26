@@ -4,3 +4,7 @@ yarn.lock
 
 # Reassure performance testing files
 .reassure/
+output/
+
+# Generated E2E host app
+__e2e__/host/

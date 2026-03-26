@@ -1,396 +1,56 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with all props 1`] = `
+exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show() is called 1`] = `
 <Modal
-  animationIn="fadeIn"
-  animationOut="fadeOut"
-  coverScreen={true}
-  deviceHeight={1334}
-  deviceWidth={750}
-  hasBackdrop={true}
-  hideModalContentWhileAnimating={true}
-  isVisible={false}
-  onBackButtonPress={[Function]}
-  onBackdropPress={[Function]}
-  style={
-    [
-      {
-        "display": "none",
-        "margin": 0,
-      },
-      {
-        "display": undefined,
-      },
-    ]
-  }
-  useNativeDriver={true}
->
-  <RCTSafeAreaView
-    style={
-      [
-        {
-          "flex": 1,
-          "justifyContent": "center",
-          "overflow": "hidden",
-        },
-        {
-          "backgroundColor": "rgba(0.1, 0.1, 0.1, 0.4)",
-        },
-      ]
-    }
-  >
-    <View
-      style={
-        {
-          "flex": 1,
-        }
-      }
-    >
-      <WebView
-        automaticallyAdjustContentInsets={true}
-        injectedJavaScript="(function () {
-  var originalPostMessage = window.ReactNativeWebView.postMessage;
-  var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
-    originalPostMessage(message, targetOrigin, transfer);
-  };
-  patchedPostMessage.toString = function () {
-    return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
-  };
-  window.ReactNativeWebView.postMessage = patchedPostMessage;
-})();"
-        javaScriptEnabled={true}
-        mixedContentMode="always"
-        onMessage={[Function]}
-        onShouldStartLoadWithRequest={[Function]}
-        originWhitelist={
-          [
-            "*",
-          ]
-        }
-        ref={
-          {
-            "current": null,
-          }
-        }
-        source={
-          {
-            "baseUrl": "https://hcaptcha.com",
-            "html": "<!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <script type="text/javascript">
-          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_1_0":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
-        </script>
-        <script src="https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=en&sentry=true&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi&orientation=portrait" async defer></script>
-        <script type="text/javascript">
-          var onloadCallback = function() {
-            try {
-              console.log("challenge onload starting");
-              hcaptcha.render("hcaptcha-container", getRenderConfig("00000000-0000-0000-0000-000000000000", "light", "compact"));
-              // have loaded by this point; render is sync.
-              console.log("challenge render complete");
-            } catch (e) {
-              console.log("challenge failed to render:", e);
-              window.ReactNativeWebView.postMessage(e.name);
-            }
-            try {
-              console.log("showing challenge");
-              hcaptcha.execute(getExecuteOpts());
-            } catch (e) {
-              console.log("failed to show challenge:", e);
-              window.ReactNativeWebView.postMessage(e.name);
-            }
-          };
-          var onDataCallback = function(response) {
-            window.ReactNativeWebView.postMessage(response);
-          };
-          var onCancel = function() {
-            window.ReactNativeWebView.postMessage("challenge-closed");
-          };
-          var onOpen = function() {
-            document.body.style.backgroundColor = 'rgba(0.1, 0.1, 0.1, 0.4)';
-            window.ReactNativeWebView.postMessage("open");
-            console.log("challenge opened");
-          };
-          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
-          var onDataErrorCallback = function(error) {
-            console.warn("challenge error callback fired");
-            window.ReactNativeWebView.postMessage(error);
-          };
-          const getRenderConfig = function(siteKey, theme, size) {
-            var config = {
-              sitekey: siteKey,
-              size: size,
-              callback: onDataCallback,
-              "close-callback": onCancel,
-              "open-callback": onOpen,
-              "expired-callback": onDataExpiredCallback,
-              "chalexpired-callback": onChalExpiredCallback,
-              "error-callback": onDataErrorCallback
-            };
-            if (theme) {
-              config.theme = theme;
-            }
-            return config;
-          };
-          const getExecuteOpts = function() {
-            var opts = {};
-            const rqdata = "{"some": "data"}";
-            const phonePrefix = null;
-            const phoneNumber = null;
-
-            if (rqdata) {
-              opts.rqdata = rqdata;
-            }
-            if (phonePrefix) {
-              opts.mfa_phoneprefix = phonePrefix;
-            }
-            if (phoneNumber) {
-              opts.mfa_phone = phoneNumber;
-            }
-            return opts;
-          };
-        </script>
-      </head>
-      <body>
-        <div id="hcaptcha-container"></div>
-      </body>
-      </html>",
-          }
-        }
-        style={
-          [
-            {
-              "backgroundColor": "transparent",
-              "width": "100%",
-            },
-            undefined,
-          ]
-        }
-      />
-    </View>
-  </RCTSafeAreaView>
-</Modal>
-`;
-
-exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha with minimum props 1`] = `
-<Modal
-  animationIn="fadeIn"
-  animationOut="fadeOut"
-  coverScreen={true}
-  deviceHeight={1334}
-  deviceWidth={750}
-  hasBackdrop={true}
-  hideModalContentWhileAnimating={true}
-  isVisible={false}
-  onBackButtonPress={[Function]}
-  onBackdropPress={[Function]}
-  style={
-    [
-      {
-        "display": "none",
-        "margin": 0,
-      },
-      {
-        "display": undefined,
-      },
-    ]
-  }
-  useNativeDriver={true}
->
-  <RCTSafeAreaView
-    style={
-      [
-        {
-          "flex": 1,
-          "justifyContent": "center",
-          "overflow": "hidden",
-        },
-        {
-          "backgroundColor": "rgba(0, 0, 0, 0.3)",
-        },
-      ]
-    }
-  >
-    <View
-      style={
-        {
-          "flex": 1,
-        }
-      }
-    >
-      <WebView
-        automaticallyAdjustContentInsets={true}
-        injectedJavaScript="(function () {
-  var originalPostMessage = window.ReactNativeWebView.postMessage;
-  var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
-    originalPostMessage(message, targetOrigin, transfer);
-  };
-  patchedPostMessage.toString = function () {
-    return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
-  };
-  window.ReactNativeWebView.postMessage = patchedPostMessage;
-})();"
-        javaScriptEnabled={true}
-        mixedContentMode="always"
-        onMessage={[Function]}
-        onShouldStartLoadWithRequest={[Function]}
-        originWhitelist={
-          [
-            "*",
-          ]
-        }
-        ref={
-          {
-            "current": null,
-          }
-        }
-        source={
-          {
-            "baseUrl": "https://hcaptcha.com",
-            "html": "<!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <script type="text/javascript">
-          Object.entries(["test_key"]).forEach(function (entry) { window[entry[0]] = entry[1] })
-        </script>
-        <script src="https://js.hcaptcha.com/1/api.js?render=explicit&onload=onloadCallback&host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com&hl=en&orientation=portrait" async defer></script>
-        <script type="text/javascript">
-          var onloadCallback = function() {
-            try {
-              console.log("challenge onload starting");
-              hcaptcha.render("hcaptcha-container", getRenderConfig("00000000-0000-0000-0000-000000000000", "light", "invisible"));
-              // have loaded by this point; render is sync.
-              console.log("challenge render complete");
-            } catch (e) {
-              console.log("challenge failed to render:", e);
-              window.ReactNativeWebView.postMessage(e.name);
-            }
-            try {
-              console.log("showing challenge");
-              hcaptcha.execute(getExecuteOpts());
-            } catch (e) {
-              console.log("failed to show challenge:", e);
-              window.ReactNativeWebView.postMessage(e.name);
-            }
-          };
-          var onDataCallback = function(response) {
-            window.ReactNativeWebView.postMessage(response);
-          };
-          var onCancel = function() {
-            window.ReactNativeWebView.postMessage("challenge-closed");
-          };
-          var onOpen = function() {
-            document.body.style.backgroundColor = 'rgba(0, 0, 0, 0.3)';
-            window.ReactNativeWebView.postMessage("open");
-            console.log("challenge opened");
-          };
-          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
-          var onDataErrorCallback = function(error) {
-            console.warn("challenge error callback fired");
-            window.ReactNativeWebView.postMessage(error);
-          };
-          const getRenderConfig = function(siteKey, theme, size) {
-            var config = {
-              sitekey: siteKey,
-              size: size,
-              callback: onDataCallback,
-              "close-callback": onCancel,
-              "open-callback": onOpen,
-              "expired-callback": onDataExpiredCallback,
-              "chalexpired-callback": onChalExpiredCallback,
-              "error-callback": onDataErrorCallback
-            };
-            if (theme) {
-              config.theme = theme;
-            }
-            return config;
-          };
-          const getExecuteOpts = function() {
-            var opts = {};
-            const rqdata = null;
-            const phonePrefix = null;
-            const phoneNumber = null;
-
-            if (rqdata) {
-              opts.rqdata = rqdata;
-            }
-            if (phonePrefix) {
-              opts.mfa_phoneprefix = phonePrefix;
-            }
-            if (phoneNumber) {
-              opts.mfa_phone = phoneNumber;
-            }
-            return opts;
-          };
-        </script>
-      </head>
-      <body>
-        <div id="hcaptcha-container"></div>
-      </body>
-      </html>",
-          }
-        }
-        style={
-          [
-            {
-              "backgroundColor": "transparent",
-              "width": "100%",
-            },
-            undefined,
-          ]
-        }
-      />
-    </View>
-  </RCTSafeAreaView>
-</Modal>
-`;
-
-exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha without safe area view 1`] = `
-<Modal
-  animationIn="fadeIn"
-  animationOut="fadeOut"
-  coverScreen={false}
-  deviceHeight={1334}
-  deviceWidth={750}
-  hasBackdrop={false}
-  hideModalContentWhileAnimating={true}
-  isVisible={false}
-  onBackButtonPress={[Function]}
-  onBackdropPress={[Function]}
-  style={
-    [
-      {
-        "display": "none",
-        "margin": 0,
-      },
-      {
-        "display": "none",
-      },
-    ]
-  }
-  useNativeDriver={true}
+  animationType="fade"
+  hardwareAccelerated={false}
+  onRequestClose={[Function]}
+  transparent={true}
+  visible={true}
 >
   <View
     style={
-      [
-        {
-          "flex": 1,
-          "justifyContent": "center",
-          "overflow": "hidden",
-        },
-        {},
-      ]
+      {
+        "flex": 1,
+        "margin": 0,
+      }
     }
   >
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessible={true}
+      focusable={true}
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        [
+          {
+            "bottom": 0,
+            "left": 0,
+            "position": "absolute",
+            "right": 0,
+            "top": 0,
+          },
+          {
+            "backgroundColor": "rgba(0, 0, 0, 0.3)",
+          },
+        ]
+      }
+      testID="confirm-hcaptcha-backdrop"
+    />
     <View
       style={
         {
@@ -398,9 +58,25 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha without safe are
         }
       }
     >
-      <WebView
-        automaticallyAdjustContentInsets={true}
-        injectedJavaScript="(function () {
+      <RCTSafeAreaView
+        style={
+          {
+            "flex": 1,
+            "justifyContent": "center",
+            "overflow": "hidden",
+          }
+        }
+      >
+        <View
+          style={
+            {
+              "flex": 1,
+            }
+          }
+        >
+          <WebView
+            automaticallyAdjustContentInsets={true}
+            injectedJavaScript="(function () {
   var originalPostMessage = window.ReactNativeWebView.postMessage;
   var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
     originalPostMessage(message, targetOrigin, transfer);
@@ -410,38 +86,47 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha without safe are
   };
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })();"
-        javaScriptEnabled={true}
-        mixedContentMode="always"
-        onMessage={[Function]}
-        onShouldStartLoadWithRequest={[Function]}
-        originWhitelist={
-          [
-            "*",
-          ]
-        }
-        ref={
-          {
-            "current": null,
-          }
-        }
-        source={
-          {
-            "baseUrl": "https://hcaptcha.com",
-            "html": "<!DOCTYPE html>
+            javaScriptEnabled={true}
+            mixedContentMode="always"
+            onMessage={[Function]}
+            onShouldStartLoadWithRequest={[Function]}
+            originWhitelist={
+              [
+                "*",
+              ]
+            }
+            ref={
+              {
+                "current": {
+                  "injectJavaScript": [MockFunction],
+                },
+              }
+            }
+            source={
+              {
+                "baseUrl": "https://hcaptcha.com",
+                "html": "<!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          Object.entries({"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_2_1_0":true}).forEach(function (entry) { window[entry[0]] = entry[1] })
+          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_3_0_0":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
+          Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
-        <script src="https://all.props/api-endpoint?render=explicit&onload=onloadCallback&host=all-props-host&hl=en&sentry=true&endpoint=https%3A%2F%2Fall.props%2Fendpoint&assethost=https%3A%2F%2Fall.props%2Fassethost&imghost=https%3A%2F%2Fall.props%2Fimghost&reportapi=https%3A%2F%2Fall.props%2Freportapi&orientation=portrait" async defer></script>
         <script type="text/javascript">
+          var loadApiScript = function() {
+            var script = document.createElement('script');
+            script.async = true;
+            script.defer = true;
+            script.src = hcaptchaConfig.apiUrl;
+            document.head.appendChild(script);
+          };
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptcha.render("hcaptcha-container", getRenderConfig("00000000-0000-0000-0000-000000000000", "light", "compact"));
+              hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
@@ -463,7 +148,7 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha without safe are
             window.ReactNativeWebView.postMessage("challenge-closed");
           };
           var onOpen = function() {
-            document.body.style.backgroundColor = 'rgba(0.1, 0.1, 0.1, 0.4)';
+            document.body.style.backgroundColor = hcaptchaConfig.backgroundColor;
             window.ReactNativeWebView.postMessage("open");
             console.log("challenge opened");
           };
@@ -491,9 +176,9 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha without safe are
           };
           const getExecuteOpts = function() {
             var opts = {};
-            const rqdata = "{"some": "data"}";
-            const phonePrefix = null;
-            const phoneNumber = null;
+            const rqdata = hcaptchaConfig.rqdata;
+            const phonePrefix = hcaptchaConfig.phonePrefix;
+            const phoneNumber = hcaptchaConfig.phoneNumber;
 
             if (rqdata) {
               opts.rqdata = rqdata;
@@ -506,24 +191,27 @@ exports[`ConfirmHcaptcha snapshot tests renders ConfirmHcaptcha without safe are
             }
             return opts;
           };
+          loadApiScript();
         </script>
       </head>
       <body>
         <div id="hcaptcha-container"></div>
       </body>
       </html>",
-          }
-        }
-        style={
-          [
-            {
-              "backgroundColor": "transparent",
-              "width": "100%",
-            },
-            undefined,
-          ]
-        }
-      />
+              }
+            }
+            style={
+              [
+                {
+                  "backgroundColor": "transparent",
+                  "width": "100%",
+                },
+                undefined,
+              ]
+            }
+          />
+        </View>
+      </RCTSafeAreaView>
     </View>
   </View>
 </Modal>

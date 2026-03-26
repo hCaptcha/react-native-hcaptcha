@@ -46,9 +46,9 @@ const App = () => {
         <Text style={styles.paragraph}>Click to launch</Text>
       </TouchableOpacity>
       {code && (
-        <Text style={{ alignSelf: 'center' }}>
-          {`passcode or status: `}
-          <Text style={{ color: 'darkviolet', fontWeight: 'bold', fontSize: 6 }}>
+        <Text style={styles.codeContainer}>
+          {'passcode or status: '}
+          <Text style={styles.codeText}>
             {code}
           </Text>
         </Text>
@@ -69,6 +69,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  codeContainer: {
+    alignSelf: 'center',
+  },
+  codeText: {
+    color: 'darkviolet',
+    fontSize: 6,
+    fontWeight: 'bold',
   },
 });
 
