@@ -46,7 +46,7 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          var hcaptchaConfig = {"apiUrl":"https://hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=missing-sitekey.react-native.hcaptcha.com\\u0026custom=true","backgroundColor":"","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_3_0_1":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"","size":"invisible","theme":["test_key"]};
+          var hcaptchaConfig = {"apiUrl":"https://hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=missing-sitekey.react-native.hcaptcha.com\\u0026custom=true","backgroundColor":"","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_3_0_2":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"","size":"invisible","theme":["test_key"]};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
         <script type="text/javascript">
