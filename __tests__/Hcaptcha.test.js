@@ -96,11 +96,14 @@ describe('Hcaptcha', () => {
     expect(config.size).toBe('normal');
     expect(config.backgroundColor).toBe('rgba(0.1, 0.1, 0.1, 0.4)');
     expect(config.theme).toBe('contrast');
+    expect(config.rqdata).toBe('{"some":"data"}');
+    expect(config.phonePrefix).toBe('44');
+    expect(config.phoneNumber).toBe('+441234567890');
     expect(config.verifyData).toBeUndefined();
     expect(config.debugInfo).toMatchObject({
       customDebug: 'enabled',
       'dep_mocked-md5': true,
-      sdk_3_0_0: true,
+      sdk_3_0_2: true,
     });
 
     expect(query).toMatchObject({

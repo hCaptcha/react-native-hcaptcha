@@ -228,11 +228,14 @@ const Hcaptcha = ({
       apiUrl,
       backgroundColor: backgroundColor ?? '',
       debugInfo,
+      phoneNumber: phoneNumber ?? null,
+      phonePrefix: phonePrefix ?? null,
+      rqdata: rqdata ?? null,
       siteKey: siteKey || '',
       size: normalizedSize,
       theme: normalizedTheme,
     }),
-    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, siteKey]
+    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, phoneNumber, phonePrefix, rqdata, siteKey]
   );
 
   const generateTheWebViewContent = useMemo(

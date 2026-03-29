@@ -2,8 +2,6 @@ name: CI
 on:
   push:
     branches: [ master ]
-  release:
-    types: [ published ]
   pull_request:
   workflow_dispatch:
   schedule:
@@ -19,6 +17,9 @@ jobs:
       actions: write
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+      with:
+        node-version: 24
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
     - run: npm install
     - run: npm test
@@ -90,6 +91,9 @@ jobs:
           platform: ios
           pm: yarn
     steps:
+    - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+      with:
+        node-version: 24
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
         path: react-native-hcaptcha
@@ -198,20 +202,3 @@ jobs:
         assignees: CAMOBAP
         update_existing: true
         filename: .github/examples-issue-template.md
-
-  release:
-    permissions:
-      contents: read
-    if: github.event_name == 'release'
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-
-      - name: npm release
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          npm config set //registry.npmjs.org/:_authToken=$NODE_AUTH_TOKEN
-          npm ci
-          npm publish

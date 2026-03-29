@@ -67,7 +67,7 @@ describe('buildDebugInfo', () => {
     expect(buildDebugInfo({ custom: true }, {})).toEqual({
       custom: true,
       'dep_mocked-md5': true,
-      sdk_3_0_0: true,
+      sdk_3_0_2: true,
     });
   });
 
@@ -75,7 +75,7 @@ describe('buildDebugInfo', () => {
     expect(buildDebugInfo({}, { version: { major: 1, minor: 2, patch: 3 } })).toEqual({
       rnver_1_2_3: true,
       'dep_mocked-md5': true,
-      sdk_3_0_0: true,
+      sdk_3_0_2: true,
     });
   });
 });

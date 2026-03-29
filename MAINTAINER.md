@@ -12,6 +12,7 @@ PATCH: bugfix only.
 
 - bump [`package.json's`](./package.json) version
 - run `npm i` to update `package-lock.json`
+- update debug strings in tests, e.g. replace sdk_3_0_0 with sdk_3_0_1
 - update [`MAINTAINER.md`](./MAINTAINER.md) if release or verification steps changed
 - verify:
   - `npm test`
