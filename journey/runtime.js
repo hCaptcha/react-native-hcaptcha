@@ -195,15 +195,8 @@ const patchWrapperProviderSetter = () => {
 };
 
 const syncWrapperProvider = () => {
-  const setterPatched = patchWrapperProviderSetter();
-
-  if (!setterPatched) {
-    publishStats();
-    return;
-  }
-
-  if (!state.touchCaptureEnabled) {
-    if (originalSetWrapperComponentProvider) {
+  if (!state.touchCaptureEnabled || !patchWrapperProviderSetter()) {
+    if (!state.touchCaptureEnabled && originalSetWrapperComponentProvider) {
       if (!state.wrapperInstalled && !externalWrapperProvider) {
         publishStats();
         return;

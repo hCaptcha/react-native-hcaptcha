@@ -294,6 +294,7 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 - Automatic touch capture uses React Native's public `AppRegistry.setWrapperComponentProvider(...)` API.
 - This SDK composes with wrapper providers registered after it initializes by intercepting future calls to `setWrapperComponentProvider(...)`.
 - React Native does not expose a getter for wrapper providers that were already registered before this SDK initialized. If another library installs a wrapper provider first, call `initJourneyTracking()` earlier or use `touchCapture: false` to avoid conflicts.
+- If you start with `touchCapture: false`, this SDK deliberately does not patch `AppRegistry`. If another library registers a wrapper provider during that disabled window and you later re-enable touch capture, hCaptcha cannot recover that earlier provider automatically. If you may toggle touch capture on later, initialize hCaptcha first or keep `touchCapture` enabled from the start.
 - Navigation capture is only automatic when you register a React Navigation container ref through `initJourneyTracking({ navigationContainerRef })` or `registerJourneyNavigationContainer(ref)`.
 - `userJourney={true}` controls whether the current buffered journey is attached to that captcha's verification request. It also enables automatic touch capture by default unless you disable that with `initJourneyTracking({ touchCapture: false })`.
 - The journey buffer is app-global and shared across captcha instances in the same process. This is intentional for the single-app, single-user case.
