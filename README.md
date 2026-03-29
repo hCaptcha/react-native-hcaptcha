@@ -96,10 +96,20 @@ Legacy top-level `rqdata`, `phonePrefix`, and `phoneNumber` props still work, bu
 
 ### User Journeys (Enterprise)
 
-Journey capture is opt-in and has two parts:
+Journey capture is opt-in at the captcha level through `userJourney={true}`.
 
-1. Initialize automatic capture once, as early as possible in app startup. (`initJourneyTracking()`)
-2. Enable `userJourney` on the captcha instances that should attach the buffered journey to verification requests.
+By default, a captcha instance with `userJourney={true}` will:
+
+- attach the current shared journey buffer to its verification payload as `userjourney`
+- initialize the journey runtime on first use if needed
+- enable automatic app-wide touch capture while at least one `userJourney` captcha instance is mounted
+
+Use `initJourneyTracking()` when you want to:
+
+- start journey tracking before the captcha component mounts
+- register a React Navigation container for automatic screen tracking
+- enable runtime debug/stats hooks
+- disable automatic touch capture with `touchCapture: false` while keeping the rest of User Journeys enabled
 
 ```js
 import ConfirmHcaptcha, {
@@ -107,7 +117,9 @@ import ConfirmHcaptcha, {
   registerJourneyNavigationContainer,
 } from '@hcaptcha/react-native-hcaptcha';
 
-initJourneyTracking();
+initJourneyTracking({
+  touchCapture: true,
+});
 
 // If you use React Navigation, register the container once the ref exists.
 registerJourneyNavigationContainer(navigationRef);
@@ -124,7 +136,9 @@ registerJourneyNavigationContainer(navigationRef);
 If you are already holding a navigation container ref at init time, you can pass it directly:
 
 ```js
-initJourneyTracking({ navigationContainerRef: navigationRef });
+initJourneyTracking({
+  navigationContainerRef: navigationRef,
+});
 ```
 
 If you want to use the inline component with journeys enabled:
@@ -140,6 +154,15 @@ initJourneyTracking();
   onMessage={onMessage}
   userJourney={true}
 />
+```
+
+If you want `userJourney` verification payloads and navigation tracking, but do not want automatic app-wide touch capture:
+
+```js
+initJourneyTracking({
+  navigationContainerRef: navigationRef,
+  touchCapture: false,
+});
 ```
 
 Automatic journey capture currently records:
@@ -267,9 +290,12 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 ## Journey Capture Caveats
 
 - Call `initJourneyTracking()` once and do it early. Events that happen before initialization are not captured.
-- Automatic touch capture uses React Native's public `AppRegistry.setWrapperComponentProvider(...)` API. That API is a singleton slot. If another library also installs a wrapper provider, the last caller wins, and automatic app-wide touch capture may be replaced.
+- Automatic app-wide touch capture is enabled by default while at least one captcha instance with `userJourney={true}` is mounted.
+- Automatic touch capture uses React Native's public `AppRegistry.setWrapperComponentProvider(...)` API.
+- This SDK composes with wrapper providers registered after it initializes by intercepting future calls to `setWrapperComponentProvider(...)`.
+- React Native does not expose a getter for wrapper providers that were already registered before this SDK initialized. If another library installs a wrapper provider first, call `initJourneyTracking()` earlier or use `touchCapture: false` to avoid conflicts.
 - Navigation capture is only automatic when you register a React Navigation container ref through `initJourneyTracking({ navigationContainerRef })` or `registerJourneyNavigationContainer(ref)`.
-- `userJourney={true}` controls whether the current buffered journey is attached to that captcha's verification request. It does not turn global capture on by itself; that is the job of `initJourneyTracking()`.
+- `userJourney={true}` controls whether the current buffered journey is attached to that captcha's verification request. It also enables automatic touch capture by default unless you disable that with `initJourneyTracking({ touchCapture: false })`.
 - The journey buffer is app-global and shared across captcha instances in the same process. This is intentional for the single-app, single-user case.
 - `ConfirmHcaptcha.stopEvents()` clears the shared buffered journey and detaches that `ConfirmHcaptcha` instance from journey attachment until you explicitly reconfigure it, for example by toggling `userJourney` off and back on.
 - Global journey capture can continue after `stopEvents()` if journey tracking was initialized, so later app events may still accumulate in the shared buffer for other consumers.
@@ -325,7 +351,7 @@ For new code, prefer:
 | theme | string\|object | The theme can be 'light', 'dark', 'contrast' or a custom theme object (see Enterprise docs) |
 | rqdata | string | **Deprecated**: Use `rqdata` in `HCaptchaVerifyParams` instead. Will be removed in future releases. See Enterprise docs. |
 | verifyParams | object | Verification payload overrides passed to `hcaptcha.setData(...)` immediately before verification. Supports `rqdata`, `phonePrefix`, and `phoneNumber`. |
-| userJourney | boolean | When `true`, attaches the current automatically captured journey buffer to the verification payload as `userjourney`. Requires `initJourneyTracking()` if you want automatic capture. |
+| userJourney | boolean | When `true`, attaches the current shared journey buffer to the verification payload as `userjourney`. It also enables automatic touch capture by default while a `userJourney` captcha instance is mounted. Use `initJourneyTracking({ touchCapture: false })` to keep User Journeys enabled without automatic touch capture. |
 | sentry | boolean | sentry error reporting (see Enterprise docs) |
 | jsSrc | string | The url of api.js. Default: https://js.hcaptcha.com/1/api.js (Override only if using first-party hosting feature.) |
 | endpoint | string | Point hCaptcha JS Ajax Requests to alternative API Endpoint. Default: https://api.hcaptcha.com (Override only if using first-party hosting feature.) |
@@ -351,6 +377,7 @@ Installs automatic journey collection once for the app process.
 Options:
 
 - `navigationContainerRef`: optional React Navigation container ref to register immediately
+- `touchCapture`: optional boolean, defaults to `true`. When `false`, keeps User Journeys enabled but disables automatic app-wide touch capture
 - `debug`: optional boolean to log emitted journey events to `console.debug`
 - `onStats`: optional callback for runtime diagnostics in tests or app instrumentation
 

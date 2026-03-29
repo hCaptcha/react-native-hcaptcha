@@ -39,6 +39,48 @@ describe('journey runtime', () => {
     ]);
   });
 
+  it('composes wrapper providers registered after journey tracking initializes', () => {
+    const installedProviders = [];
+    jest.spyOn(AppRegistry, 'setWrapperComponentProvider').mockImplementation((provider) => {
+      installedProviders.push(provider);
+    });
+
+    initJourneyTracking();
+
+    const ExternalWrapper = ({ children }) => (
+      <View testID="external-wrapper">{children}</View>
+    );
+
+    AppRegistry.setWrapperComponentProvider(() => ExternalWrapper);
+    enableJourneyConsumer();
+
+    const provider = installedProviders[installedProviders.length - 1];
+    const ComposedWrapper = provider({ rootTag: 1 });
+    const component = render(
+      <ComposedWrapper>
+        <Text>child</Text>
+      </ComposedWrapper>
+    );
+
+    expect(component.getByTestId('external-wrapper')).toBeTruthy();
+
+    const wrappers = component.UNSAFE_getAllByType(View);
+    fireEvent(wrappers[1], 'touchStart', {
+      nativeEvent: { pageX: 7, pageY: 8, target: 70 },
+    });
+    fireEvent(wrappers[1], 'touchEnd', {
+      nativeEvent: { pageX: 7, pageY: 8, target: 70 },
+    });
+
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        k: 'click',
+        v: 'View',
+        m: { id: '70', ac: 'tap', x: 7, y: 8 },
+      }),
+    ]);
+  });
+
   it('captures initial and subsequent navigation transitions', () => {
     const listeners = new Set();
     const route = { current: { key: 'home-key', name: 'Home' } };
@@ -129,7 +171,7 @@ describe('journey runtime', () => {
     ]);
   });
 
-  it('emits click events from the automatic wrapper', () => {
+  it('does not emit automatic touch events until a journey consumer is enabled', () => {
     initJourneyTracking();
     const component = render(
       <JourneyWrapper>
@@ -138,6 +180,17 @@ describe('journey runtime', () => {
     );
 
     const wrapper = component.UNSAFE_getByType(View);
+    fireEvent(wrapper, 'touchStart', {
+      nativeEvent: { pageX: 5, pageY: 6, target: 21 },
+    });
+    fireEvent(wrapper, 'touchEnd', {
+      nativeEvent: { pageX: 5, pageY: 6, target: 21 },
+    });
+
+    expect(peekJourneyEvents()).toEqual([]);
+
+    enableJourneyConsumer();
+
     fireEvent(wrapper, 'touchStart', {
       nativeEvent: { pageX: 5, pageY: 6, target: 21 },
     });
@@ -156,6 +209,7 @@ describe('journey runtime', () => {
 
   it('does not emit drag events for a stationary long press', () => {
     initJourneyTracking();
+    enableJourneyConsumer();
     const nowSpy = jest.spyOn(Date, 'now');
     let now = 1000;
     nowSpy.mockImplementation(() => now);
@@ -181,6 +235,7 @@ describe('journey runtime', () => {
 
   it('rounds captured touch coordinates to integers', () => {
     initJourneyTracking();
+    enableJourneyConsumer();
     const component = render(
       <JourneyWrapper>
         <Text>child</Text>
@@ -204,6 +259,7 @@ describe('journey runtime', () => {
 
   it('emits drag events from the automatic wrapper when movement exceeds threshold', () => {
     initJourneyTracking();
+    enableJourneyConsumer();
     const component = render(
       <JourneyWrapper>
         <Text>child</Text>
@@ -234,6 +290,7 @@ describe('journey runtime', () => {
 
   it('emits scroll-shaped drag events when movement is axis-dominant', () => {
     initJourneyTracking();
+    enableJourneyConsumer();
     const component = render(
       <JourneyWrapper>
         <Text>child</Text>
@@ -267,6 +324,7 @@ describe('journey runtime', () => {
 
   it('upgrades numeric targets to semantic identifiers when richer metadata becomes available', () => {
     initJourneyTracking();
+    enableJourneyConsumer();
     const component = render(
       <JourneyWrapper>
         <Text>child</Text>
@@ -304,6 +362,7 @@ describe('journey runtime', () => {
 
   it('reads semantic identifiers from the synthetic event when nativeEvent lacks fiber metadata', () => {
     initJourneyTracking();
+    enableJourneyConsumer();
     const component = render(
       <JourneyWrapper>
         <Text>child</Text>
@@ -424,7 +483,50 @@ describe('journey runtime', () => {
       bufferedEvents: 1,
       capturing: true,
       initialized: true,
+      touchCaptureEnabled: true,
       wrapperInstalled: true,
     }));
+  });
+
+  it('supports disabling touch capture while keeping the rest of journey tracking enabled', () => {
+    const wrapperSpy = jest.spyOn(AppRegistry, 'setWrapperComponentProvider');
+    const navigation = {
+      addListener: jest.fn(() => () => {}),
+      getCurrentRoute: jest.fn(() => ({ key: 'home-key', name: 'Home' })),
+    };
+
+    initJourneyTracking({ navigationContainerRef: navigation, touchCapture: false });
+    enableJourneyConsumer();
+
+    expect(wrapperSpy).not.toHaveBeenCalled();
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        k: 'screen',
+        v: 'Screen',
+        m: { id: 'screen', sc: 'Home', ac: 'appear' },
+      }),
+    ]);
+
+    const component = render(
+      <JourneyWrapper>
+        <Text>child</Text>
+      </JourneyWrapper>
+    );
+
+    const wrapper = component.UNSAFE_getByType(View);
+    fireEvent(wrapper, 'touchStart', {
+      nativeEvent: { pageX: 9, pageY: 10, target: 90 },
+    });
+    fireEvent(wrapper, 'touchEnd', {
+      nativeEvent: { pageX: 9, pageY: 10, target: 90 },
+    });
+
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        k: 'screen',
+        v: 'Screen',
+        m: { id: 'screen', sc: 'Home', ac: 'appear' },
+      }),
+    ]);
   });
 });

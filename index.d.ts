@@ -7,11 +7,13 @@ export type JourneyRuntimeStats = {
   capturing: boolean;
   currentRoute: { key?: string; name: string } | null;
   initialized: boolean;
+  touchCaptureEnabled: boolean;
   wrapperInstalled: boolean;
 };
 
 export type JourneyTrackingOptions = {
   navigationContainerRef?: unknown;
+  touchCapture?: boolean;
   debug?: boolean;
   onStats?: (stats: JourneyRuntimeStats) => void;
 };

@@ -11,12 +11,20 @@ const state = {
   navigationCleanup: null,
   navigationTarget: null,
   statsListener: null,
+  touchCaptureEnabled: true,
   wrapperInstalled: false,
 };
 
 const isFunction = (value) => typeof value === 'function';
 const numericIdentifierPattern = /^\d+$/;
 const getEventPayload = (event) => event?.nativeEvent || event || null;
+const baseSetWrapperComponentProvider = AppRegistry && isFunction(AppRegistry.setWrapperComponentProvider)
+  ? AppRegistry.setWrapperComponentProvider.bind(AppRegistry)
+  : null;
+let appRegistrySetterPatched = false;
+let externalWrapperProvider = null;
+let installingJourneyWrapperProvider = false;
+let originalSetWrapperComponentProvider = baseSetWrapperComponentProvider;
 
 const normalizeNavigationTarget = (target) => {
   if (!target) {
@@ -47,6 +55,7 @@ const getJourneyRuntimeStats = () => ({
   capturing: state.capturing,
   currentRoute: state.currentRoute ? { ...state.currentRoute } : null,
   initialized: state.initialized,
+  touchCaptureEnabled: state.touchCaptureEnabled,
   wrapperInstalled: state.wrapperInstalled,
 });
 
@@ -63,6 +72,10 @@ const configureRuntime = (options = {}) => {
 
   if (Object.prototype.hasOwnProperty.call(options, 'onStats')) {
     state.statsListener = isFunction(options.onStats) ? options.onStats : null;
+  }
+
+  if (Object.prototype.hasOwnProperty.call(options, 'touchCapture')) {
+    state.touchCaptureEnabled = options.touchCapture !== false;
   }
 
   publishStats();
@@ -123,23 +136,107 @@ const pushEvent = (event) => {
   publishStats();
 };
 
-const installWrapperProvider = () => {
-  if (state.wrapperInstalled || !AppRegistry || !isFunction(AppRegistry.setWrapperComponentProvider)) {
+const createPassthroughWrapperProvider = () => () => {
+  const React = require('react');
+
+  return function JourneyPassthroughWrapper({ children }) {
+    return React.createElement(React.Fragment, null, children);
+  };
+};
+
+const createComposedWrapperProvider = () => (appParameters) => {
+  const React = require('react');
+  const JourneyWrapper = require('./wrapper').default;
+  const ExternalWrapper = externalWrapperProvider ? externalWrapperProvider(appParameters) : null;
+
+  if (!ExternalWrapper) {
+    return JourneyWrapper;
+  }
+
+  return function ComposedJourneyWrapper({ children }) {
+    return React.createElement(
+      ExternalWrapper,
+      null,
+      React.createElement(JourneyWrapper, null, children)
+    );
+  };
+};
+
+const patchWrapperProviderSetter = () => {
+  if (appRegistrySetterPatched) {
+    return true;
+  }
+
+  if (!AppRegistry || !isFunction(AppRegistry.setWrapperComponentProvider)) {
+    return false;
+  }
+
+  originalSetWrapperComponentProvider = AppRegistry.setWrapperComponentProvider.bind(AppRegistry);
+  AppRegistry.setWrapperComponentProvider = (provider) => {
+    if (!installingJourneyWrapperProvider) {
+      externalWrapperProvider = provider || null;
+    }
+
+    if (installingJourneyWrapperProvider || !state.touchCaptureEnabled) {
+      return originalSetWrapperComponentProvider(provider);
+    }
+
+    installingJourneyWrapperProvider = true;
+    try {
+      return originalSetWrapperComponentProvider(createComposedWrapperProvider());
+    } finally {
+      installingJourneyWrapperProvider = false;
+      state.wrapperInstalled = true;
+      publishStats();
+    }
+  };
+  appRegistrySetterPatched = true;
+  return true;
+};
+
+const syncWrapperProvider = () => {
+  if (!state.touchCaptureEnabled || !patchWrapperProviderSetter()) {
+    if (!state.touchCaptureEnabled && originalSetWrapperComponentProvider) {
+      if (!state.wrapperInstalled && !externalWrapperProvider) {
+        publishStats();
+        return;
+      }
+
+      installingJourneyWrapperProvider = true;
+      try {
+        originalSetWrapperComponentProvider(externalWrapperProvider || createPassthroughWrapperProvider());
+      } finally {
+        installingJourneyWrapperProvider = false;
+        state.wrapperInstalled = false;
+        publishStats();
+      }
+    }
     return;
   }
 
-  AppRegistry.setWrapperComponentProvider(() => require('./wrapper').default);
+  if (state.wrapperInstalled) {
+    publishStats();
+    return;
+  }
+
+  installingJourneyWrapperProvider = true;
+  try {
+    originalSetWrapperComponentProvider(createComposedWrapperProvider());
+  } finally {
+    installingJourneyWrapperProvider = false;
+  }
   state.wrapperInstalled = true;
+  publishStats();
 };
 
 export const initJourneyTracking = (options = {}) => {
   if (!state.initialized) {
     state.initialized = true;
     setCapturing(true);
-    installWrapperProvider();
   }
 
   configureRuntime(options);
+  syncWrapperProvider();
 
   if (options.navigationContainerRef) {
     registerJourneyNavigationContainer(options.navigationContainerRef);
@@ -313,10 +410,17 @@ export const resolveJourneyIdentifier = (event, fallbackIdentifier) => {
   return bestIdentifier;
 };
 
-export const isJourneyCapturing = () => state.capturing;
+export const isJourneyCapturing = () => state.capturing && state.touchCaptureEnabled && state.activeConsumers > 0;
 
 export const __unsafeResetJourneyRuntime = () => {
   clearNavigationCleanup();
+  if (AppRegistry && baseSetWrapperComponentProvider) {
+    AppRegistry.setWrapperComponentProvider = baseSetWrapperComponentProvider;
+  }
+  appRegistrySetterPatched = false;
+  externalWrapperProvider = null;
+  installingJourneyWrapperProvider = false;
+  originalSetWrapperComponentProvider = baseSetWrapperComponentProvider;
   state.activeConsumers = 0;
   state.capturing = false;
   state.currentRoute = null;
@@ -325,5 +429,6 @@ export const __unsafeResetJourneyRuntime = () => {
   state.initialized = false;
   state.navigationTarget = null;
   state.statsListener = null;
+  state.touchCaptureEnabled = true;
   state.wrapperInstalled = false;
 };
