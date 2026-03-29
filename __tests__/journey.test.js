@@ -529,4 +529,47 @@ describe('journey runtime', () => {
       }),
     ]);
   });
+
+  it('composes with wrappers registered while touch capture is disabled, once re-enabled', () => {
+    const installedProviders = [];
+    jest.spyOn(AppRegistry, 'setWrapperComponentProvider').mockImplementation((provider) => {
+      installedProviders.push(provider);
+    });
+
+    initJourneyTracking({ touchCapture: false });
+
+    const ExternalWrapper = ({ children }) => (
+      <View testID="external-wrapper">{children}</View>
+    );
+
+    AppRegistry.setWrapperComponentProvider(() => ExternalWrapper);
+    initJourneyTracking({ touchCapture: true });
+    enableJourneyConsumer();
+
+    const provider = installedProviders[installedProviders.length - 1];
+    const ComposedWrapper = provider({ rootTag: 1 });
+    const component = render(
+      <ComposedWrapper>
+        <Text>child</Text>
+      </ComposedWrapper>
+    );
+
+    expect(component.getByTestId('external-wrapper')).toBeTruthy();
+
+    const wrappers = component.UNSAFE_getAllByType(View);
+    fireEvent(wrappers[1], 'touchStart', {
+      nativeEvent: { pageX: 11, pageY: 12, target: 110 },
+    });
+    fireEvent(wrappers[1], 'touchEnd', {
+      nativeEvent: { pageX: 11, pageY: 12, target: 110 },
+    });
+
+    expect(peekJourneyEvents()).toEqual([
+      expect.objectContaining({
+        k: 'click',
+        v: 'View',
+        m: { id: '110', ac: 'tap', x: 11, y: 12 },
+      }),
+    ]);
+  });
 });
