@@ -67,6 +67,7 @@ describe('buildDebugInfo', () => {
     expect(buildDebugInfo({ custom: true }, {})).toEqual({
       custom: true,
       'dep_mocked-md5': true,
+      rnver_0_0_0: true,
       sdk_3_0_2: true,
     });
   });

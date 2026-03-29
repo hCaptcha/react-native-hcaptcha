@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import WebView from 'react-native-webview';
 import { ActivityIndicator, Linking, Platform, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
+import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
 
 import md5 from './md5';
 import hcaptchaPackage from './package.json';
@@ -69,7 +70,7 @@ const getVersionPart = (value) => (
     : null
 );
 
-const getReactNativeVersion = (value = Platform?.constants?.reactNativeVersion) => {
+const parseReactNativeVersion = (value) => {
   const candidate = value && typeof value === 'object' && value.version ? value.version : value;
   const major = getVersionPart(candidate?.major);
   const minor = getVersionPart(candidate?.minor);
@@ -81,6 +82,9 @@ const getReactNativeVersion = (value = Platform?.constants?.reactNativeVersion) 
 
   return { major, minor, patch };
 };
+
+const getReactNativeVersion = (value = Platform?.constants?.reactNativeVersion) =>
+  parseReactNativeVersion(value) || parseReactNativeVersion(ReactNativeVersion?.version);
 
 const buildDebugInfo = (debug, reactNativeVersion = Platform?.constants?.reactNativeVersion) => {
   const result = { ...(debug || {}) };
