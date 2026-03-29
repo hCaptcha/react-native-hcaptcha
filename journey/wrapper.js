@@ -132,6 +132,10 @@ const JourneyWrapper = ({ children }) => {
       return;
     }
 
+    if (!gesture.kind && snapshot.distance < DRAG_THRESHOLD_PX) {
+      return;
+    }
+
     const finalKind = gesture.kind || getGestureKind(snapshot.distance, snapshot.dx, snapshot.dy) || 'drag';
 
     if (finalKind === 'scroll') {

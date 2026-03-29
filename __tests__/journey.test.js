@@ -154,6 +154,31 @@ describe('journey runtime', () => {
     ]);
   });
 
+  it('does not emit drag events for a stationary long press', () => {
+    initJourneyTracking();
+    const nowSpy = jest.spyOn(Date, 'now');
+    let now = 1000;
+    nowSpy.mockImplementation(() => now);
+    const component = render(
+      <JourneyWrapper>
+        <Text>child</Text>
+      </JourneyWrapper>
+    );
+
+    const wrapper = component.UNSAFE_getByType(View);
+    fireEvent(wrapper, 'touchStart', {
+      nativeEvent: { pageX: 5, pageY: 6, target: 23 },
+    });
+
+    now = 1401;
+
+    fireEvent(wrapper, 'touchEnd', {
+      nativeEvent: { pageX: 5, pageY: 6, target: 23 },
+    });
+
+    expect(peekJourneyEvents()).toEqual([]);
+  });
+
   it('rounds captured touch coordinates to integers', () => {
     initJourneyTracking();
     const component = render(
