@@ -1,5 +1,22 @@
 import React from 'react';
-import { HcaptchaProps } from './Hcaptcha';
+import Hcaptcha, { HcaptchaProps } from './Hcaptcha';
+
+export type JourneyRuntimeStats = {
+  activeConsumers: number;
+  bufferedEvents: number;
+  capturing: boolean;
+  currentRoute: { key?: string; name: string } | null;
+  initialized: boolean;
+  touchCaptureEnabled: boolean;
+  wrapperInstalled: boolean;
+};
+
+export type JourneyTrackingOptions = {
+  navigationContainerRef?: unknown;
+  touchCapture?: boolean;
+  debug?: boolean;
+  onStats?: (stats: JourneyRuntimeStats) => void;
+};
 
 type ConfirmHcaptchaProps = Omit<HcaptchaProps, 'url' | 'style'> & {
   /**
@@ -31,4 +48,15 @@ export default class ConfirmHcaptcha extends React.Component<ConfirmHcaptchaProp
    * the onMessage `cancel` event
    */
   hide: (source?: any) => void;
+  /**
+   * Clears the shared journey buffer and detaches this instance from journey attachment
+   * until it is explicitly reconfigured.
+   */
+  stopEvents: () => void;
 }
+
+export function initJourneyTracking(options?: JourneyTrackingOptions): void;
+
+export function registerJourneyNavigationContainer(ref: unknown): void;
+
+export { Hcaptcha };

@@ -2,11 +2,17 @@ import React from 'react';
 import { StyleProp, ViewStyle } from 'react-native';
 import { WebViewMessageEvent } from 'react-native-webview';
 
-type HcaptchaProps = {
+export type HCaptchaVerifyParams = {
+  rqdata?: string;
+  phonePrefix?: string;
+  phoneNumber?: string;
+};
+
+export type HcaptchaProps = {
   /**
    * The callback function that runs after receiving a response, error, or when user cancels.
    */
-  onMessage?: (event: CustomWebViewMessageEvent) => void;
+  onMessage: (event: CustomWebViewMessageEvent) => void;
   /**
    * The size of the checkbox.
    */
@@ -52,6 +58,10 @@ type HcaptchaProps = {
    * Hcaptcha execution options (see Enterprise docs)
    */
   rqdata?: string;
+  /**
+   * Verification payload overrides. Values here take precedence over deprecated top-level fields.
+   */
+  verifyParams?: HCaptchaVerifyParams;
   /**
    * Enable / Disable sentry error reporting.
    */
@@ -99,6 +109,10 @@ type HcaptchaProps = {
    * Optional full phone number in E.164 format ("+44123..."), for use in MFA.
    */
   phoneNumber?: string;
+  /**
+   * Enable automatic user journey injection.
+   */
+  userJourney?: boolean;
 }
 
 interface CustomWebViewMessageEvent extends WebViewMessageEvent {

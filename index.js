@@ -2,10 +2,53 @@ import React, { PureComponent } from 'react';
 import { Modal, SafeAreaView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import Hcaptcha from './Hcaptcha';
 import PropTypes from 'prop-types';
+import { clearJourneyEvents, disableJourneyConsumer, enableJourneyConsumer } from './journey';
+export { initJourneyTracking, registerJourneyNavigationContainer } from './journey';
+export { default as Hcaptcha } from './Hcaptcha';
 
 class ConfirmHcaptcha extends PureComponent {
   state = {
+    journeyStopped: false,
     show: false,
+  };
+  hasJourneyConsumer = false;
+  getJourneyEnabled(props = this.props, state = this.state) {
+    return Boolean(props.userJourney && !state.journeyStopped);
+  }
+  componentDidMount() {
+    this.syncJourneyConsumer(false, this.getJourneyEnabled());
+  }
+  componentDidUpdate(prevProps, prevState) {
+    if (prevProps.userJourney !== this.props.userJourney && prevState.journeyStopped) {
+      this.setState({ journeyStopped: false });
+      return;
+    }
+
+    this.syncJourneyConsumer(
+      this.getJourneyEnabled(prevProps, prevState),
+      this.getJourneyEnabled()
+    );
+  }
+  componentWillUnmount() {
+    this.syncJourneyConsumer(this.getJourneyEnabled(), false);
+  }
+  syncJourneyConsumer(previousValue, nextValue) {
+    if (!previousValue && nextValue && !this.hasJourneyConsumer) {
+      enableJourneyConsumer();
+      this.hasJourneyConsumer = true;
+    } else if (previousValue && !nextValue && this.hasJourneyConsumer) {
+      disableJourneyConsumer();
+      this.hasJourneyConsumer = false;
+    }
+  }
+  stopEvents = () => {
+    if (this.hasJourneyConsumer) {
+      disableJourneyConsumer();
+      this.hasJourneyConsumer = false;
+    }
+
+    clearJourneyEvents();
+    this.setState({ journeyStopped: true });
   };
   show = () => {
     this.setState({ show: true });
@@ -42,9 +85,11 @@ class ConfirmHcaptcha extends PureComponent {
       useSafeAreaView,
       phonePrefix,
       phoneNumber,
+      verifyParams,
     } = this.props;
 
     const WrapperComponent = useSafeAreaView === false ? View : SafeAreaView;
+    const journeyEnabled = this.getJourneyEnabled();
 
     return (
       <WrapperComponent style={styles.wrapper}>
@@ -71,6 +116,9 @@ class ConfirmHcaptcha extends PureComponent {
           debug={debug}
           phonePrefix={phonePrefix}
           phoneNumber={phoneNumber}
+          userJourney={journeyEnabled}
+          verifyParams={verifyParams}
+          _journeyManagedExternally={true}
         />
       </WrapperComponent>
     );
@@ -158,7 +206,7 @@ ConfirmHcaptcha.propTypes = {
   siteKey: PropTypes.string.isRequired,
   passiveSiteKey: PropTypes.bool,
   baseUrl: PropTypes.string,
-  onMessage: PropTypes.func,
+  onMessage: PropTypes.func.isRequired,
   languageCode: PropTypes.string,
   orientation: PropTypes.string,
   backgroundColor: PropTypes.string,
@@ -178,6 +226,12 @@ ConfirmHcaptcha.propTypes = {
   debug: PropTypes.object,
   phonePrefix: PropTypes.string,
   phoneNumber: PropTypes.string,
+  userJourney: PropTypes.bool,
+  verifyParams: PropTypes.shape({
+    phoneNumber: PropTypes.string,
+    phonePrefix: PropTypes.string,
+    rqdata: PropTypes.string,
+  }),
 };
 
 ConfirmHcaptcha.defaultProps = {
@@ -201,6 +255,8 @@ ConfirmHcaptcha.defaultProps = {
   debug: {},
   phonePrefix: null,
   phoneNumber: null,
+  userJourney: false,
+  verifyParams: undefined,
 };
 
 export default ConfirmHcaptcha;

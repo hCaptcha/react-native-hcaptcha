@@ -57,21 +57,25 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
             script.src = hcaptchaConfig.apiUrl;
             document.head.appendChild(script);
           };
+          var hcaptchaWidgetId = null;
+          var setData = function(data) {
+            hcaptcha.setData(hcaptchaWidgetId, data || {});
+          };
+          var execute = function() {
+            hcaptcha.execute(hcaptchaWidgetId);
+          };
+          var reset = function() {
+            hcaptcha.reset(hcaptchaWidgetId);
+          };
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
+              hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
+              window.ReactNativeWebView.postMessage("__hcaptcha_ready__");
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
             } catch (e) {
               console.log("challenge failed to render:", e);
-              window.ReactNativeWebView.postMessage(e.name);
-            }
-            try {
-              console.log("showing challenge");
-              hcaptcha.execute(getExecuteOpts());
-            } catch (e) {
-              console.log("failed to show challenge:", e);
               window.ReactNativeWebView.postMessage(e.name);
             }
           };
@@ -107,23 +111,6 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
               config.theme = theme;
             }
             return config;
-          };
-          const getExecuteOpts = function() {
-            var opts = {};
-            const rqdata = hcaptchaConfig.rqdata;
-            const phonePrefix = hcaptchaConfig.phonePrefix;
-            const phoneNumber = hcaptchaConfig.phoneNumber;
-
-            if (rqdata) {
-              opts.rqdata = rqdata;
-            }
-            if (phonePrefix) {
-              opts.mfa_phoneprefix = phonePrefix;
-            }
-            if (phoneNumber) {
-              opts.mfa_phone = phoneNumber;
-            }
-            return opts;
           };
           loadApiScript();
         </script>
