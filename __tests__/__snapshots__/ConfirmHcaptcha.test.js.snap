@@ -112,7 +112,7 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_3_0_2":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
+          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_4_0_0":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
         <script type="text/javascript">
