@@ -1,0 +1,6 @@
+[env]
+_.path = "{{ cwd }}/bin"
+
+[tools]
+node = "24.16.0"
+yarn = "1.22.22"

@@ -158,8 +158,28 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
   } else {
     // https://github.com/facebook/react-native/issues/29977 - react-native doesn't work with symlinks so `cp` instead
     const destLibDir = path.join(projectPath, 'react-native-hcaptcha');
-    const excludes = ['__e2e__/host', '__tests__', '__mocks__', 'node_modules', '.git', 'output', '.reassure'].map(e => `--exclude=${e}`).join(' ');
+    const excludes = [
+      '__e2e__/host',
+      '__tests__',
+      '__mocks__',
+      'node_modules',
+      '.git',
+      'output',
+      '.reassure',
+      'package-lock.json',
+      'yarn.lock',
+    ].map(e => `--exclude=${e}`).join(' ');
     execSync(`rsync -a ${excludes} ${libRoot}/ ${destLibDir}/`, { stdio: 'inherit' });
+
+    const copiedPkgPath = path.join(destLibDir, 'package.json');
+    const copiedPkg = JSON.parse(fs.readFileSync(copiedPkgPath, 'utf8'));
+    delete copiedPkg.devDependencies;
+    delete copiedPkg.packageManager;
+    if (copiedPkg.scripts?.prepare) {
+      delete copiedPkg.scripts.prepare;
+    }
+    fs.writeFileSync(copiedPkgPath, JSON.stringify(copiedPkg, null, 2) + '\n');
+
     execSync('npm i --save file:./react-native-hcaptcha', packageManagerOptions);
     execSync(`npm i --save --dev ${devPackages}`, packageManagerOptions);
     execSync(`npm i --save ${peerPackages}`, packageManagerOptions);

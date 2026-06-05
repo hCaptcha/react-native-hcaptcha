@@ -42,29 +42,22 @@ PATCH: bugfix only.
 
 ### Generate test app
 
-For `expo` test app
+For `expo` test app:
+- `yarn example --expo`
+- `yarn run android`
 
-- `cd react-native-hcaptcha`
-- `yarn example --expo
-- `yarn android` or `npm run android`
-
-For `react-native` test app
-
-- `cd react-native-hcaptcha`
+For `react-native` test app:
 - `yarn example`
-- `yarn android` or `npm run android`
+- `yarn run android`
 
 For the local Android emulator regression E2E added in this repo:
-
-- `cd react-native-hcaptcha`
 - ensure Android SDK, emulator, and an AVD are installed
-- run `npm run test:e2e:android-local`
+- run `yarn run test:e2e:android-local`
 - inspect artifacts in [`output/android-e2e`](./output/android-e2e) if the run fails
 
 For iOS instead the last step do:
-
 - `pushd ios; env USE_HERMES=0 pod install; popd`
-- `yarn ios` or `npm run ios`
+- `yarn run ios`
 
 ### Known issues
 

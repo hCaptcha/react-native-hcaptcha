@@ -11,7 +11,7 @@ hCaptcha wrapper for React Native (Android and iOS)
 
 1. Install package:
 - Using NPM
-   `npm install @hcaptcha/react-native-hcaptcha` 
+   `npm install @hcaptcha/react-native-hcaptcha`
 - Using Yarn
    `yarn add @hcaptcha/react-native-hcaptcha`
 2. Import package:
@@ -21,7 +21,7 @@ Full examples for expo and react-native, as well as debugging guides, are in [MA
 
 ## Demo
 
-See live demo in [Snack](https://snack.expo.io/rTUn6wTjW).
+See live demo in [Snack](https://snack.expo.dev/@ds-imi/example-app-react-native-hcaptcha?platform=ios).
 
 ## Usage
 
