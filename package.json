@@ -1,6 +1,6 @@
 {
   "name": "@hcaptcha/react-native-hcaptcha",
-  "version": "4.0.0",
+  "version": "4.0.1-alpha",
   "description": "hCaptcha Library for React Native (both Android and iOS)",
   "main": "index.js",
   "scripts": {
