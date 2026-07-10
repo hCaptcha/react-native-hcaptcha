@@ -19,6 +19,7 @@ describe('ConfirmHcaptcha', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
     jest.clearAllMocks();
+    jest.useRealTimers();
     __unsafeResetJourneyRuntime();
   });
 
@@ -32,11 +33,18 @@ describe('ConfirmHcaptcha', () => {
     );
     const instance = getInstance(component);
 
+    expect(component.UNSAFE_queryByType(Hcaptcha)).toBeNull();
+
     act(() => {
       instance.show();
     });
 
-    expect(component).toMatchSnapshot();
+    expect(getModal(component).props.visible).toBe(true);
+    expect(getHcaptchaChild(component).props).toMatchObject({
+      siteKey: '00000000-0000-0000-0000-000000000000',
+      url: 'https://hcaptcha.com',
+      languageCode: 'en',
+    });
   });
 
   it('forwards every shared prop to the embedded Hcaptcha component', () => {
@@ -100,16 +108,21 @@ describe('ConfirmHcaptcha', () => {
     });
   });
 
-  it('renders nothing until show() is called', () => {
-    const component = render(
-      <ConfirmHcaptcha
-        siteKey="00000000-0000-0000-0000-000000000000"
-        baseUrl="https://hcaptcha.com"
-        languageCode="en"
-      />
-    );
 
-    expect(component.toJSON()).toBeNull();
+  it('does not mount a visual or passive WebView before show() is called', () => {
+    [false, true].forEach((passiveSiteKey) => {
+      const component = render(
+        <ConfirmHcaptcha
+          siteKey="00000000-0000-0000-0000-000000000000"
+          passiveSiteKey={passiveSiteKey}
+          baseUrl="https://hcaptcha.com"
+          onMessage={jest.fn()}
+        />
+      );
+
+      expect(component.toJSON()).toBeNull();
+      expect(component.UNSAFE_queryByType(Hcaptcha)).toBeNull();
+    });
   });
 
   it('applies wrapper-only props to the modal and backdrop container', () => {
@@ -251,6 +264,7 @@ describe('ConfirmHcaptcha', () => {
     });
 
     expect(component.toJSON()).toBeNull();
+    expect(component.UNSAFE_queryByType(Hcaptcha)).toBeNull();
     expect(onMessage).not.toHaveBeenCalled();
 
     act(() => {
@@ -262,6 +276,7 @@ describe('ConfirmHcaptcha', () => {
     });
 
     expect(component.toJSON()).toBeNull();
+    expect(component.UNSAFE_queryByType(Hcaptcha)).toBeNull();
     expect(onMessage).toHaveBeenCalledWith({ nativeEvent: { data: 'cancel' } });
   });
 
@@ -467,6 +482,7 @@ describe('ConfirmHcaptcha', () => {
 
     expect(onMessage).toHaveBeenCalledWith({ nativeEvent: { data: 'cancel' } });
     expect(component.toJSON()).toBeNull();
+    expect(component.UNSAFE_queryByType(Hcaptcha)).toBeNull();
 
     onMessage.mockClear();
 
@@ -480,5 +496,6 @@ describe('ConfirmHcaptcha', () => {
 
     expect(onMessage).toHaveBeenCalledWith({ nativeEvent: { data: 'cancel' } });
     expect(component.toJSON()).toBeNull();
+    expect(component.UNSAFE_queryByType(Hcaptcha)).toBeNull();
   });
 });
