@@ -5,7 +5,10 @@ import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
 
 import md5 from './md5';
 import hcaptchaPackage from './package.json';
-import { reportApiLoadFailure } from './loaderSentry';
+import {
+  reportApiLoadFailure,
+  reportApiLoadTimeout,
+} from './loaderSentry';
 import { generateWebViewContent } from './webviewContent';
 import {
   HCAPTCHA_LOADER_PREFIX,
@@ -222,6 +225,10 @@ const Hcaptcha = ({
   const tokenTimeout = 120000;
   const loadingTimeout = 15000;
   const [isLoading, setIsLoading] = useState(true);
+  const apiLoadAttemptsRef = useRef(0);
+  const apiLoadFailureReportedRef = useRef(false);
+  const apiLoadStartedAtRef = useRef(Date.now());
+  const isLoadingRef = useRef(true);
   const journeyEnabled = Boolean(userJourney);
   const hasJourneyConsumerRef = useRef(false);
   const webViewRef = useRef(null);
@@ -281,13 +288,24 @@ const Hcaptcha = ({
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (isLoading) {
-        onMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } });
+      if (!isLoadingRef.current) {
+        return;
       }
+
+      if (sentry && !apiLoadFailureReportedRef.current) {
+        reportApiLoadTimeout({
+          attempts: apiLoadAttemptsRef.current,
+          elapsedMs: loadingTimeout,
+          jsSrc: jsSrc || 'https://js.hcaptcha.com/1/api.js',
+          siteKey,
+        });
+      }
+
+      onMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } });
     }, loadingTimeout);
 
     return () => clearTimeout(timeoutId);
-  }, [isLoading, onMessage]);
+  }, [jsSrc, onMessage, sentry, siteKey]);
 
   useEffect(() => () => {
     if (webViewRef.current) {
@@ -322,20 +340,39 @@ const Hcaptcha = ({
     injectVerifyData(true);
   };
 
+  const markLoadingComplete = () => {
+    if (!isLoadingRef.current) {
+      return;
+    }
+
+    isLoadingRef.current = false;
+    setIsLoading(false);
+  };
+
   const handleInternalMessage = (message) => {
     switch (message.type) {
+      case 'load-started':
+        apiLoadAttemptsRef.current = message.attempts;
+
+        return;
+
       case 'load-failed':
+        apiLoadAttemptsRef.current = message.attempts;
+
         if (sentry) {
           reportApiLoadFailure({
             attempts: message.attempts,
+            elapsedMs: Date.now() - apiLoadStartedAtRef.current,
             jsSrc: jsSrc || 'https://js.hcaptcha.com/1/api.js',
             siteKey,
           });
+          apiLoadFailureReportedRef.current = true;
         }
 
         return;
 
       case 'api-ready':
+        markLoadingComplete();
         injectVerifyData();
 
         return;
@@ -346,18 +383,17 @@ const Hcaptcha = ({
   };
 
   const handleChallengeMessage = (event) => {
+    markLoadingComplete();
     event.reset = reset;
     event.success = true;
 
-    if (event.nativeEvent.data === 'open') {
-      setIsLoading(false);
-    } else if (event.nativeEvent.data.length > 35) {
+    if (event.nativeEvent.data.length > 35) {
       const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
       event.markUsed = () => clearTimeout(expiredTokenTimerId);
       if (journeyEnabled) {
         clearJourneyEvents();
       }
-    } else /* error */ {
+    } else if (event.nativeEvent.data !== 'open') {
       event.success = false;
     }
 

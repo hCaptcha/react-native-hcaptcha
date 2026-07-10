@@ -14,6 +14,16 @@ describe('WebView internal messages', () => {
   it('parses loader events', () => {
     expect(parseInternalWebViewMessage(
       HCAPTCHA_LOADER_PREFIX + JSON.stringify({
+        type: 'load-started',
+        attempts: 1,
+      })
+    )).toEqual({
+      type: 'load-started',
+      attempts: 1,
+    });
+
+    expect(parseInternalWebViewMessage(
+      HCAPTCHA_LOADER_PREFIX + JSON.stringify({
         type: 'load-failed',
         attempts: 3,
       })

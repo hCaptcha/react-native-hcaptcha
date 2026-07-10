@@ -6,7 +6,10 @@ import { ActivityIndicator, Linking, TouchableWithoutFeedback } from 'react-nati
 import Hcaptcha, {
   HCAPTCHA_READY_EVENT,
 } from '../Hcaptcha';
-import { reportApiLoadFailure } from '../loaderSentry';
+import {
+  reportApiLoadFailure,
+  reportApiLoadTimeout,
+} from '../loaderSentry';
 import { __unsafeResetJourneyRuntime, emitJourneyEvent, initJourneyTracking, peekJourneyEvents } from '../journey';
 import { HCAPTCHA_LOADER_PREFIX } from '../webviewMessages';
 import {
@@ -17,6 +20,7 @@ import {
 
 jest.mock('../loaderSentry', () => ({
   reportApiLoadFailure: jest.fn(),
+  reportApiLoadTimeout: jest.fn(),
 }));
 
 const LONG_TOKEN = '10000000-aaaa-bbbb-cccc-000000000001';
@@ -36,10 +40,11 @@ describe('Hcaptcha', () => {
   const getInlineScripts = (component) =>
     [...getWebViewHtml(component).matchAll(/<script type="text\/javascript">([\s\S]*?)<\/script>/g)]
       .map((match) => match[1]);
-  const getLoaderPosts = (postMessageMock) => postMessageMock.mock.calls
+  const getLoaderPosts = (postMessageMock, type) => postMessageMock.mock.calls
     .map(([value]) => value)
     .filter((value) => typeof value === 'string' && value.startsWith(HCAPTCHA_LOADER_PREFIX))
-    .map((value) => JSON.parse(value.slice(HCAPTCHA_LOADER_PREFIX.length)));
+    .map((value) => JSON.parse(value.slice(HCAPTCHA_LOADER_PREFIX.length)))
+    .filter((event) => !type || event.type === type);
   const createLoaderRuntime = (component) => {
     const appendedScripts = [];
     const removedScripts = [];
@@ -287,6 +292,9 @@ describe('Hcaptcha', () => {
     vm.runInContext(runtimeScript, context);
 
     expect(appendedScripts).toHaveLength(1);
+    expect(getLoaderPosts(postMessageMock, 'load-started')).toEqual([
+      { type: 'load-started', attempts: 1 },
+    ]);
     expect(appendedScripts[0]).toMatchObject({
       async: true,
       defer: true,
@@ -348,7 +356,7 @@ describe('Hcaptcha', () => {
 
     appendedScripts[0].onerror();
     expect(removedScripts).toHaveLength(1);
-    expect(getLoaderPosts(postMessageMock)).toEqual([]);
+    expect(getLoaderPosts(postMessageMock, 'load-failed')).toEqual([]);
 
     act(() => {
       jest.advanceTimersByTime(retryDelay);
@@ -361,8 +369,13 @@ describe('Hcaptcha', () => {
     appendedScripts[2].onerror();
 
     expect(appendedScripts).toHaveLength(maxRetries + 1);
-    expect(getLoaderPosts(postMessageMock)).toEqual([
+    expect(getLoaderPosts(postMessageMock, 'load-failed')).toEqual([
       { type: 'load-failed', attempts: maxRetries + 1 },
+    ]);
+    expect(getLoaderPosts(postMessageMock, 'load-started')).toEqual([
+      { type: 'load-started', attempts: 1 },
+      { type: 'load-started', attempts: 2 },
+      { type: 'load-started', attempts: 3 },
     ]);
 
     act(() => {
@@ -390,7 +403,7 @@ describe('Hcaptcha', () => {
     });
 
     expect(appendedScripts).toHaveLength(1);
-    expect(getLoaderPosts(postMessageMock)).toEqual([]);
+    expect(getLoaderPosts(postMessageMock, 'load-failed')).toEqual([]);
   });
 
   it('reports terminal loader failures internally only when sentry is enabled', () => {
@@ -419,6 +432,7 @@ describe('Hcaptcha', () => {
 
     expect(reportApiLoadFailure).toHaveBeenCalledWith({
       attempts: maxRetries + 1,
+      elapsedMs: expect.any(Number),
       jsSrc: 'https://js.hcaptcha.com/1/api.js',
       siteKey: '00000000-0000-0000-0000-000000000000',
     });
@@ -596,6 +610,136 @@ describe('Hcaptcha', () => {
       jest.advanceTimersByTime(15000);
     });
 
+    expect(onMessage).toHaveBeenCalledWith({
+      nativeEvent: {
+        data: 'error',
+        description: 'loading timeout',
+      },
+    });
+    expect(reportApiLoadTimeout).not.toHaveBeenCalled();
+  });
+
+  it('reports a genuine loading timeout internally when sentry is enabled', () => {
+    jest.useFakeTimers();
+    const onMessage = jest.fn();
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={onMessage}
+        sentry={true}
+      />
+    );
+
+    act(() => {
+      getWebView(component).props.onMessage({
+        nativeEvent: {
+          data: HCAPTCHA_LOADER_PREFIX + JSON.stringify({
+            type: 'load-started',
+            attempts: 1,
+          }),
+        },
+      });
+      jest.advanceTimersByTime(15000);
+    });
+
+    expect(reportApiLoadTimeout).toHaveBeenCalledWith({
+      attempts: 1,
+      elapsedMs: 15000,
+      jsSrc: 'https://js.hcaptcha.com/1/api.js',
+      siteKey: '00000000-0000-0000-0000-000000000000',
+    });
+    expect(onMessage).toHaveBeenCalledWith({
+      nativeEvent: {
+        data: 'error',
+        description: 'loading timeout',
+      },
+    });
+  });
+
+  it('does not emit a passive loading timeout after api.js becomes ready', () => {
+    jest.useFakeTimers();
+    const onMessage = jest.fn();
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={onMessage}
+        sentry={true}
+      />
+    );
+
+    act(() => {
+      getWebView(component).props.onMessage({
+        nativeEvent: { data: HCAPTCHA_READY_EVENT },
+      });
+      jest.advanceTimersByTime(15000);
+    });
+
+    expect(onMessage).not.toHaveBeenCalled();
+    expect(reportApiLoadTimeout).not.toHaveBeenCalled();
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('execute();'));
+  });
+
+  it('does not treat a terminal loader failure as readiness', () => {
+    jest.useFakeTimers();
+    const onMessage = jest.fn();
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={onMessage}
+        sentry={false}
+      />
+    );
+
+    act(() => {
+      getWebView(component).props.onMessage({
+        nativeEvent: {
+          data: HCAPTCHA_LOADER_PREFIX + JSON.stringify({
+            type: 'load-failed',
+            attempts: 3,
+          }),
+        },
+      });
+      jest.advanceTimersByTime(15000);
+    });
+
+    expect(onMessage).toHaveBeenCalledWith({
+      nativeEvent: {
+        data: 'error',
+        description: 'loading timeout',
+      },
+    });
+    expect(reportApiLoadTimeout).not.toHaveBeenCalled();
+  });
+
+  it('does not report a terminal loader failure again as a timeout', () => {
+    jest.useFakeTimers();
+    const onMessage = jest.fn();
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={onMessage}
+        sentry={true}
+      />
+    );
+
+    act(() => {
+      getWebView(component).props.onMessage({
+        nativeEvent: {
+          data: HCAPTCHA_LOADER_PREFIX + JSON.stringify({
+            type: 'load-failed',
+            attempts: 3,
+          }),
+        },
+      });
+      jest.advanceTimersByTime(15000);
+    });
+
+    expect(reportApiLoadFailure).toHaveBeenCalledTimes(1);
+    expect(reportApiLoadTimeout).not.toHaveBeenCalled();
     expect(onMessage).toHaveBeenCalledWith({
       nativeEvent: {
         data: 'error',

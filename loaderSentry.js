@@ -29,11 +29,19 @@ const getLoaderSentry = () => {
   return loaderSentry;
 };
 
-const reportApiLoadFailure = ({ attempts, jsSrc, siteKey }) => {
+const reportApiLoadIssue = ({
+  attempts,
+  elapsedMs,
+  errorMessage,
+  jsSrc,
+  reason,
+  siteKey,
+}) => {
   try {
     const { Scope } = getSentryModule();
     const scope = new Scope();
     scope.setTags({
+      api_loader_reason: reason,
       platform: Platform.OS,
       sdk: '@hcaptcha/react-native-hcaptcha',
       sdk_version: hcaptchaPackage.version,
@@ -43,10 +51,17 @@ const reportApiLoadFailure = ({ attempts, jsSrc, siteKey }) => {
       scope.setTag('sitekey', siteKey);
     }
 
-    scope.setContext('api_loader', {
+    const loaderContext = {
       attempts,
       js_src: jsSrc,
-    });
+      reason,
+    };
+
+    if (typeof elapsedMs === 'number') {
+      loaderContext.elapsed_ms = elapsedMs;
+    }
+
+    scope.setContext('api_loader', loaderContext);
 
     scope.setContext('react_native', {
       model: Platform.constants?.Model || Platform.constants?.model,
@@ -55,7 +70,7 @@ const reportApiLoadFailure = ({ attempts, jsSrc, siteKey }) => {
     });
 
     getLoaderSentry().captureException(
-      new Error('hCaptcha api.js failed to load'),
+      new Error(errorMessage),
       scope
     );
   } catch (_) {
@@ -63,4 +78,26 @@ const reportApiLoadFailure = ({ attempts, jsSrc, siteKey }) => {
   }
 };
 
-export { reportApiLoadFailure };
+const reportApiLoadFailure = ({ attempts, elapsedMs, jsSrc, siteKey }) => {
+  reportApiLoadIssue({
+    attempts,
+    elapsedMs,
+    errorMessage: 'hCaptcha api.js failed to load',
+    jsSrc,
+    reason: 'script-error',
+    siteKey,
+  });
+};
+
+const reportApiLoadTimeout = ({ attempts, elapsedMs, jsSrc, siteKey }) => {
+  reportApiLoadIssue({
+    attempts,
+    elapsedMs,
+    errorMessage: 'hCaptcha api.js loading timed out',
+    jsSrc,
+    reason: 'timeout',
+    siteKey,
+  });
+};
+
+export { reportApiLoadFailure, reportApiLoadTimeout };

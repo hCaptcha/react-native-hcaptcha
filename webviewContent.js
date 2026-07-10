@@ -26,6 +26,11 @@ const generateWebViewContent = ({
           var apiRetryTimerId = null;
           var apiScript = null;
 
+          // Keep loader lifecycle messages internal to the React Native SDK.
+          var postLoaderEvent = function(event) {
+            window.ReactNativeWebView.postMessage("${loaderMessagePrefix}" + JSON.stringify(event));
+          };
+
           // Remove failed or cancelled script elements from the document.
           var removeApiScript = function(script) {
             if (script && script.parentNode) {
@@ -40,6 +45,11 @@ const generateWebViewContent = ({
             }
 
             apiLoadAttempts += 1;
+            postLoaderEvent({
+              type: "load-started",
+              attempts: apiLoadAttempts
+            });
+
             var script = document.createElement('script');
             apiScript = script;
             script.async = true;
@@ -63,10 +73,10 @@ const generateWebViewContent = ({
                 apiLoadReject(error);
               }
 
-              window.ReactNativeWebView.postMessage("${loaderMessagePrefix}" + JSON.stringify({
+              postLoaderEvent({
                 type: "load-failed",
                 attempts: apiLoadAttempts
-              }));
+              });
             };
 
             document.head.appendChild(script);
