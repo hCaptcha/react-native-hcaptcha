@@ -27,6 +27,7 @@ const patchPostMessageJsCode = `(${String(function () {
 })})();`;
 
 const HCAPTCHA_READY_EVENT = '__hcaptcha_ready__';
+const HCAPTCHA_LOADER_URL = 'https://unpkg.com/@hcaptcha/loader@latest/dist/index.es5.js';
 
 const serializeForInlineScript = (value) =>
   JSON.stringify(value)
@@ -232,6 +233,7 @@ const Hcaptcha = ({
       apiUrl,
       backgroundColor: backgroundColor ?? '',
       debugInfo,
+      loaderSentry: Boolean(sentry),
       phoneNumber: phoneNumber ?? null,
       phonePrefix: phonePrefix ?? null,
       rqdata: rqdata ?? null,
@@ -239,7 +241,7 @@ const Hcaptcha = ({
       size: normalizedSize,
       theme: normalizedTheme,
     }),
-    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, phoneNumber, phonePrefix, rqdata, siteKey]
+    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, phoneNumber, phonePrefix, rqdata, sentry, siteKey]
   );
 
   const generateTheWebViewContent = useMemo(
@@ -254,13 +256,22 @@ const Hcaptcha = ({
           var hcaptchaConfig = ${serializedWebViewConfig};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
+        <script type="text/javascript" src="${HCAPTCHA_LOADER_URL}"></script>
         <script type="text/javascript">
           var loadApiScript = function() {
-            var script = document.createElement('script');
-            script.async = true;
-            script.defer = true;
-            script.src = hcaptchaConfig.apiUrl;
-            document.head.appendChild(script);
+            var apiUrl = hcaptchaConfig.apiUrl.split('?');
+            var scriptSource = apiUrl.shift();
+            var query = apiUrl.join('?').split('&').filter(function(param) {
+              return param.indexOf('onload=') !== 0;
+            }).join('&');
+
+            window.hCaptchaLoader({
+              query: query,
+              scriptSource: scriptSource,
+              sentry: hcaptchaConfig.loaderSentry
+            }).then(onloadCallback).catch(function(error) {
+              window.ReactNativeWebView.postMessage((error && error.name) || 'error');
+            });
           };
           var hcaptchaWidgetId = null;
           var setData = function(data) {
