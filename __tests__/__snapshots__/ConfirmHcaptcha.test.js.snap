@@ -112,13 +112,11 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          // Make SDK metadata available to api.js before it loads.
-          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026sentry=false\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_4_0_0":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
+          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_4_0_0":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) {
             window[entry[0]] = entry[1];
           });
 
-          // Track loader attempts without changing @hcaptcha/loader itself.
           var apiLoadAttempts = 0;
           var apiLoadObserver = null;
           var loaderLifecycleComplete = false;
@@ -126,10 +124,6 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
 
           var postLoaderEvent = function(event) {
             window.ReactNativeWebView.postMessage("__hcaptcha_loader__:" + JSON.stringify(event));
-          };
-
-          var getLoaderElapsed = function() {
-            return Date.now() - loaderLifecycleStartedAt;
           };
 
           var stopObservingApiScripts = function() {
@@ -149,7 +143,7 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             postLoaderEvent(Object.assign({
               type: type,
               attempts: apiLoadAttempts,
-              elapsedMs: getLoaderElapsed()
+              elapsedMs: Date.now() - loaderLifecycleStartedAt
             }, details || {}));
           };
 
@@ -161,7 +155,6 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
         </script>
         <script type="text/javascript" src="https://unpkg.com/@hcaptcha/loader@2.3.0/dist/index.es5.js" onerror="onLoaderSourceError()"></script>
         <script type="text/javascript">
-          // Bridge React Native commands to the rendered hCaptcha widget.
           var hcaptchaWidgetId = null;
 
           var setData = function(data) {
@@ -176,19 +169,14 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             hcaptcha.reset(hcaptchaWidgetId);
           };
 
-          // Render the widget after api.js becomes ready.
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-
               hcaptchaWidgetId = hcaptcha.render(
                 "hcaptcha-container",
                 getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size)
               );
-
               window.ReactNativeWebView.postMessage("__hcaptcha_ready__");
-
-              // Render is synchronous; the widget can now receive verification data.
               console.log("challenge render complete");
             } catch (error) {
               console.log("challenge failed to render:", error);
@@ -196,7 +184,6 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             }
           };
 
-          // Forward widget lifecycle events and tokens to React Native.
           var onDataCallback = function(response) {
             window.ReactNativeWebView.postMessage(response);
           };
@@ -224,7 +211,6 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             window.ReactNativeWebView.postMessage(error);
           };
 
-          // Keep all widget callbacks in one render configuration object.
           var getRenderConfig = function(siteKey, theme, size) {
             var config = {
               sitekey: siteKey,
@@ -244,7 +230,6 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             return config;
           };
 
-          // Observe every api.js script inserted by @hcaptcha/loader, including retries.
           var observeApiLoadAttempts = function(scriptSource) {
             if (typeof MutationObserver !== "function") {
               return;
@@ -263,7 +248,7 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
                     postLoaderEvent({
                       type: "load-started",
                       attempts: apiLoadAttempts,
-                      elapsedMs: getLoaderElapsed()
+                      elapsedMs: Date.now() - loaderLifecycleStartedAt
                     });
                   }
                 });
@@ -273,7 +258,6 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             apiLoadObserver.observe(document.head, { childList: true });
           };
 
-          // Delegate loading and retries to the pinned @hcaptcha/loader bundle.
           var loadApiScript = function() {
             if (typeof window.hCaptchaLoader !== "function") {
               finishLoaderLifecycle("load-failed", {
@@ -294,7 +278,6 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             window.hCaptchaLoader({
               query: query,
               scriptSource: scriptSource,
-              // RN owns loader diagnostics to include native device context.
               sentry: false
             }).then(function() {
               finishLoaderLifecycle("load-succeeded");
