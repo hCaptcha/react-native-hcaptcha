@@ -25,9 +25,6 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "<rootDir>/__e2e__/"
-    ],
-    "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|@hcaptcha/sentry)/)"
     ]
   },
   "repository": {

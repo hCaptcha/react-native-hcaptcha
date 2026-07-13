@@ -6,16 +6,6 @@ import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
 import md5 from './md5';
 import hcaptchaPackage from './package.json';
 import {
-  reportApiLoadFailure,
-  reportApiLoadTimeout,
-} from './loaderSentry';
-import { generateWebViewContent } from './webviewContent';
-import {
-  HCAPTCHA_LOADER_PREFIX,
-  HCAPTCHA_READY_EVENT,
-  parseInternalWebViewMessage,
-} from './webviewMessages';
-import {
   clearJourneyEvents,
   disableJourneyConsumer,
   enableJourneyConsumer,
@@ -35,6 +25,85 @@ const patchPostMessageJsCode = `(${String(function () {
   };
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })})();`;
+
+const HCAPTCHA_READY_EVENT = '__hcaptcha_ready__';
+const HCAPTCHA_LOADER_PREFIX = '__hcaptcha_loader__:';
+const HCAPTCHA_LOADER_URL = 'https://unpkg.com/@hcaptcha/loader@2.3.0/dist/index.es5.js';
+const SENTRY_DSN = 'https://d233059272824702afc8c43834c4912d@sentry.hcaptcha.com/6';
+
+let loaderSentry;
+let sentryModule;
+
+const reportApiLoadIssue = ({
+  attempts,
+  elapsedMs,
+  errorMessage,
+  jsSrc,
+  reason,
+  siteKey,
+}) => {
+  try {
+    if (!sentryModule) {
+      sentryModule = require('@hcaptcha/sentry');
+    }
+
+    const { Scope, Sentry } = sentryModule;
+    const scope = new Scope();
+    scope.setTags({
+      api_loader_reason: reason,
+      platform: Platform.OS,
+      sdk: '@hcaptcha/react-native-hcaptcha',
+      sdk_version: hcaptchaPackage.version,
+    });
+
+    if (siteKey) {
+      scope.setTag('sitekey', siteKey);
+    }
+
+    scope.setContext('api_loader', {
+      attempts,
+      elapsed_ms: elapsedMs,
+      js_src: jsSrc,
+      reason,
+    });
+    scope.setContext('react_native', {
+      model: Platform.constants?.Model || Platform.constants?.model,
+      os_version: Platform.Version,
+      version: Platform.constants?.reactNativeVersion,
+    });
+
+    if (!loaderSentry) {
+      loaderSentry = new Sentry({
+        dsn: SENTRY_DSN,
+        environment: 'production',
+        release: `react-native-hcaptcha@${hcaptchaPackage.version}`,
+      });
+    }
+
+    loaderSentry.captureException(new Error(errorMessage), scope);
+  } catch (_) {
+    // Diagnostics must never interfere with the challenge flow.
+  }
+};
+
+const parseInternalWebViewMessage = (message) => {
+  if (message === HCAPTCHA_READY_EVENT) {
+    return { type: 'widget-ready' };
+  }
+
+  if (typeof message !== 'string' || !message.startsWith(HCAPTCHA_LOADER_PREFIX)) {
+    return null;
+  }
+
+  try {
+    const loaderEvent = JSON.parse(message.slice(HCAPTCHA_LOADER_PREFIX.length));
+    return loaderEvent && typeof loaderEvent.type === 'string'
+      ? loaderEvent
+      : { type: 'invalid' };
+  } catch (_) {
+    return { type: 'invalid' };
+  }
+};
 
 const serializeForInlineScript = (value) =>
   JSON.stringify(value)
@@ -154,8 +223,7 @@ const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, 
   }
 
   for (let [key, value] of Object.entries({ host: effectiveHost, hl, custom: typeof theme === 'object', sentry, endpoint, assethost, imghost, reportapi, orientation })) {
-    const shouldInclude = key === 'sentry' ? typeof value === 'boolean' : Boolean(value);
-    if (shouldInclude) {
+    if (value) {
       url += `&${key}=${encodeURIComponent(value)}`;
     }
   }
@@ -257,11 +325,198 @@ const Hcaptcha = ({
   );
 
   const webViewContent = useMemo(
-    () => generateWebViewContent({
-      loaderMessagePrefix: HCAPTCHA_LOADER_PREFIX,
-      readyEvent: HCAPTCHA_READY_EVENT,
-      serializedConfig: serializedWebViewConfig,
-    }),
+    () => `<!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="ie=edge">
+        <script type="text/javascript">
+          var hcaptchaConfig = ${serializedWebViewConfig};
+          Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) {
+            window[entry[0]] = entry[1];
+          });
+
+          var apiLoadAttempts = 0;
+          var apiLoadObserver = null;
+          var loaderLifecycleComplete = false;
+          var loaderLifecycleStartedAt = Date.now();
+
+          var postLoaderEvent = function(event) {
+            window.ReactNativeWebView.postMessage("${HCAPTCHA_LOADER_PREFIX}" + JSON.stringify(event));
+          };
+
+          var stopObservingApiScripts = function() {
+            if (apiLoadObserver) {
+              apiLoadObserver.disconnect();
+              apiLoadObserver = null;
+            }
+          };
+
+          var finishLoaderLifecycle = function(type, details) {
+            if (loaderLifecycleComplete) {
+              return;
+            }
+
+            loaderLifecycleComplete = true;
+            stopObservingApiScripts();
+            postLoaderEvent(Object.assign({
+              type: type,
+              attempts: apiLoadAttempts,
+              elapsedMs: Date.now() - loaderLifecycleStartedAt
+            }, details || {}));
+          };
+
+          var onLoaderSourceError = function() {
+            finishLoaderLifecycle("load-failed", {
+              reason: "loader-script-error"
+            });
+          };
+        </script>
+        <script type="text/javascript" src="${HCAPTCHA_LOADER_URL}" onerror="onLoaderSourceError()"></script>
+        <script type="text/javascript">
+          var hcaptchaWidgetId = null;
+
+          var setData = function(data) {
+            hcaptcha.setData(hcaptchaWidgetId, data || {});
+          };
+
+          var execute = function() {
+            hcaptcha.execute(hcaptchaWidgetId);
+          };
+
+          var reset = function() {
+            hcaptcha.reset(hcaptchaWidgetId);
+          };
+
+          var onloadCallback = function() {
+            try {
+              console.log("challenge onload starting");
+              hcaptchaWidgetId = hcaptcha.render(
+                "hcaptcha-container",
+                getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size)
+              );
+              window.ReactNativeWebView.postMessage("${HCAPTCHA_READY_EVENT}");
+              console.log("challenge render complete");
+            } catch (error) {
+              console.log("challenge failed to render:", error);
+              window.ReactNativeWebView.postMessage((error && error.name) || "error");
+            }
+          };
+
+          var onDataCallback = function(response) {
+            window.ReactNativeWebView.postMessage(response);
+          };
+
+          var onCancel = function() {
+            window.ReactNativeWebView.postMessage("challenge-closed");
+          };
+
+          var onOpen = function() {
+            document.body.style.backgroundColor = hcaptchaConfig.backgroundColor;
+            window.ReactNativeWebView.postMessage("open");
+            console.log("challenge opened");
+          };
+
+          var onDataExpiredCallback = function(error) {
+            window.ReactNativeWebView.postMessage(error);
+          };
+
+          var onChalExpiredCallback = function(error) {
+            window.ReactNativeWebView.postMessage(error);
+          };
+
+          var onDataErrorCallback = function(error) {
+            console.warn("challenge error callback fired");
+            window.ReactNativeWebView.postMessage(error);
+          };
+
+          var getRenderConfig = function(siteKey, theme, size) {
+            var config = {
+              sitekey: siteKey,
+              size: size,
+              callback: onDataCallback,
+              "close-callback": onCancel,
+              "open-callback": onOpen,
+              "expired-callback": onDataExpiredCallback,
+              "chalexpired-callback": onChalExpiredCallback,
+              "error-callback": onDataErrorCallback
+            };
+
+            if (theme) {
+              config.theme = theme;
+            }
+
+            return config;
+          };
+
+          var observeApiLoadAttempts = function(scriptSource) {
+            if (typeof MutationObserver !== "function") {
+              return;
+            }
+
+            apiLoadObserver = new MutationObserver(function(mutations) {
+              mutations.forEach(function(mutation) {
+                Array.prototype.forEach.call(mutation.addedNodes || [], function(node) {
+                  if (
+                    node
+                    && node.tagName === "SCRIPT"
+                    && typeof node.src === "string"
+                    && node.src.indexOf(scriptSource) === 0
+                  ) {
+                    apiLoadAttempts += 1;
+                    postLoaderEvent({
+                      type: "load-started",
+                      attempts: apiLoadAttempts,
+                      elapsedMs: Date.now() - loaderLifecycleStartedAt
+                    });
+                  }
+                });
+              });
+            });
+
+            apiLoadObserver.observe(document.head, { childList: true });
+          };
+
+          var loadApiScript = function() {
+            if (typeof window.hCaptchaLoader !== "function") {
+              finishLoaderLifecycle("load-failed", {
+                reason: "loader-unavailable"
+              });
+              window.ReactNativeWebView.postMessage("error");
+              return;
+            }
+
+            var apiUrl = hcaptchaConfig.apiUrl.split("?");
+            var scriptSource = apiUrl.shift();
+            var query = apiUrl.join("?").split("&").filter(function(param) {
+              return param.indexOf("onload=") !== 0;
+            }).join("&");
+
+            observeApiLoadAttempts(scriptSource);
+
+            window.hCaptchaLoader({
+              query: query,
+              scriptSource: scriptSource,
+              sentry: false
+            }).then(function() {
+              finishLoaderLifecycle("load-succeeded");
+              onloadCallback();
+            }).catch(function(error) {
+              finishLoaderLifecycle("load-failed", {
+                reason: "script-error"
+              });
+              window.ReactNativeWebView.postMessage((error && error.name) || "error");
+            });
+          };
+
+          loadApiScript();
+        </script>
+      </head>
+      <body>
+        <div id="hcaptcha-container"></div>
+      </body>
+      </html>`,
     [serializedWebViewConfig]
   );
 
@@ -288,10 +543,12 @@ const Hcaptcha = ({
       }
 
       if (sentry && !apiLoadFailureReportedRef.current) {
-        reportApiLoadTimeout({
+        reportApiLoadIssue({
           attempts: apiLoadAttemptsRef.current,
           elapsedMs: loadingTimeout,
+          errorMessage: 'hCaptcha api.js loading timed out',
           jsSrc: apiScriptSource,
+          reason: 'timeout',
           siteKey,
         });
       }
@@ -349,11 +606,12 @@ const Hcaptcha = ({
         apiLoadAttemptsRef.current = message.attempts;
 
         if (sentry && !apiLoadFailureReportedRef.current) {
-          reportApiLoadFailure({
+          reportApiLoadIssue({
             attempts: message.attempts,
             elapsedMs: message.elapsedMs,
+            errorMessage: 'hCaptcha loader failed to load api.js',
             jsSrc: apiScriptSource,
-            reason: message.reason,
+            reason: message.reason || 'script-error',
             siteKey,
           });
           apiLoadFailureReportedRef.current = true;

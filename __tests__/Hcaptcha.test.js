@@ -5,17 +5,25 @@ import { ActivityIndicator, Linking, TouchableWithoutFeedback } from 'react-nati
 
 import Hcaptcha, { HCAPTCHA_READY_EVENT } from '../Hcaptcha';
 import { __unsafeResetJourneyRuntime, emitJourneyEvent, initJourneyTracking, peekJourneyEvents } from '../journey';
-import { reportApiLoadFailure, reportApiLoadTimeout } from '../loaderSentry';
-import { HCAPTCHA_LOADER_PREFIX } from '../webviewMessages';
 import {
   getLastInjectJavaScriptMock,
   resetWebViewMockState,
   setWebViewMessageData,
 } from 'react-native-webview';
 
-jest.mock('../loaderSentry', () => ({
-  reportApiLoadFailure: jest.fn(),
-  reportApiLoadTimeout: jest.fn(),
+const HCAPTCHA_LOADER_PREFIX = '__hcaptcha_loader__:';
+const mockCaptureException = jest.fn();
+const mockSetContext = jest.fn();
+
+jest.mock('@hcaptcha/sentry', () => ({
+  Scope: jest.fn(() => ({
+    setContext: mockSetContext,
+    setTag: jest.fn(),
+    setTags: jest.fn(),
+  })),
+  Sentry: jest.fn(() => ({
+    captureException: mockCaptureException,
+  })),
 }));
 
 const LONG_TOKEN = '10000000-aaaa-bbbb-cccc-000000000001';
@@ -472,12 +480,16 @@ describe('Hcaptcha', () => {
       jest.advanceTimersByTime(15000);
     });
 
-    expect(reportApiLoadTimeout).toHaveBeenCalledWith({
+    expect(mockSetContext).toHaveBeenCalledWith('api_loader', {
       attempts: 2,
-      elapsedMs: 15000,
-      jsSrc: 'https://first-party.example/1/api.js',
-      siteKey: '00000000-0000-0000-0000-000000000000',
+      elapsed_ms: 15000,
+      js_src: 'https://first-party.example/1/api.js',
+      reason: 'timeout',
     });
+    expect(mockCaptureException).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'hCaptcha api.js loading timed out' }),
+      expect.anything()
+    );
   });
 
   it('reports terminal loader failures internally without exposing diagnostic messages', () => {
@@ -504,13 +516,16 @@ describe('Hcaptcha', () => {
       });
     });
 
-    expect(reportApiLoadFailure).toHaveBeenCalledWith({
+    expect(mockSetContext).toHaveBeenCalledWith('api_loader', {
       attempts: 3,
-      elapsedMs: 2400,
-      jsSrc: 'https://hcaptcha.com/1/api.js',
+      elapsed_ms: 2400,
+      js_src: 'https://hcaptcha.com/1/api.js',
       reason: 'script-error',
-      siteKey: '00000000-0000-0000-0000-000000000000',
     });
+    expect(mockCaptureException).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'hCaptcha loader failed to load api.js' }),
+      expect.anything()
+    );
     expect(onMessage).not.toHaveBeenCalled();
   });
 
@@ -535,7 +550,7 @@ describe('Hcaptcha', () => {
     });
 
     expect(onMessage).not.toHaveBeenCalled();
-    expect(reportApiLoadTimeout).not.toHaveBeenCalled();
+    expect(mockCaptureException).not.toHaveBeenCalled();
     expect(component.UNSAFE_queryByType(TouchableWithoutFeedback)).toBeNull();
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('execute();'));
   });
