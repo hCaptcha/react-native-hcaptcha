@@ -112,32 +112,16 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_4_0_0":true},"sentry":false,"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
+          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_4_0_0":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
         <script type="text/javascript">
-          window.__hcaptcha_loader_inline__ = true;
-        </script>
-        <script type="text/javascript">
           var loadApiScript = function() {
-            if (typeof window.hCaptchaLoader !== 'function') {
-              window.ReactNativeWebView.postMessage('error');
-              return;
-            }
-
-            var apiUrl = hcaptchaConfig.apiUrl.split('?');
-            var scriptSource = apiUrl.shift();
-            var query = apiUrl.join('?').split('&').filter(function(param) {
-              return param.indexOf('onload=') !== 0;
-            }).join('&');
-
-            window.hCaptchaLoader({
-              query: query,
-              scriptSource: scriptSource,
-              sentry: hcaptchaConfig.sentry
-            }).then(onloadCallback).catch(function(error) {
-              window.ReactNativeWebView.postMessage((error && error.name) || 'error');
-            });
+            var script = document.createElement('script');
+            script.async = true;
+            script.defer = true;
+            script.src = hcaptchaConfig.apiUrl;
+            document.head.appendChild(script);
           };
           var hcaptchaWidgetId = null;
           var setData = function(data) {
