@@ -11,7 +11,6 @@ import {
   setWebViewMessageData,
 } from 'react-native-webview';
 
-const HCAPTCHA_LOADER_PREFIX = '__hcaptcha_loader__:';
 const mockCaptureException = jest.fn();
 const mockSetContext = jest.fn();
 
@@ -190,17 +189,9 @@ describe('Hcaptcha', () => {
     const renderMock = jest.fn(() => 'widget-id');
     const executeMock = jest.fn();
     const postMessageMock = jest.fn();
-    const observerDisconnectMock = jest.fn();
-    let observerCallback;
     const loaderCatchMock = jest.fn();
     const loaderMock = jest.fn(() => ({
       then: (callback) => {
-        observerCallback([{
-          addedNodes: [{
-            tagName: 'SCRIPT',
-            src: 'https://hcaptcha.com/1/api.js?render=explicit',
-          }],
-        }]);
         callback();
         return { catch: loaderCatchMock };
       },
@@ -213,20 +204,12 @@ describe('Hcaptcha', () => {
       },
       document: {
         body: { style: {} },
-        head: {},
       },
       hcaptcha: {
         execute: executeMock,
         render: renderMock,
         setData: jest.fn(),
       },
-      MutationObserver: jest.fn((callback) => {
-        observerCallback = callback;
-        return {
-          disconnect: observerDisconnectMock,
-          observe: jest.fn(),
-        };
-      }),
       window: null,
     };
 
@@ -241,7 +224,7 @@ describe('Hcaptcha', () => {
     vm.runInContext(runtimeScript, context);
 
     expect(getWebViewHtml(component)).toContain(
-      '<script type="text/javascript" src="https://unpkg.com/@hcaptcha/loader@2.3.0/dist/index.es5.js" onerror="onLoaderSourceError()"></script>'
+      '<script type="text/javascript" src="https://unpkg.com/@hcaptcha/loader@2.3.0/dist/index.es5.js"></script>'
     );
     expect(loaderMock).toHaveBeenCalledTimes(1);
     const loaderParams = loaderMock.mock.calls[0][0];
@@ -255,13 +238,6 @@ describe('Hcaptcha', () => {
     });
     expect(new URLSearchParams(loaderParams.query).has('onload')).toBe(false);
     expect(typeof context.onloadCallback).toBe('function');
-    expect(observerDisconnectMock).toHaveBeenCalledTimes(1);
-    expect(postMessageMock).toHaveBeenCalledWith(expect.stringContaining(
-      HCAPTCHA_LOADER_PREFIX + '{"type":"load-started","attempts":1'
-    ));
-    expect(postMessageMock).toHaveBeenCalledWith(expect.stringContaining(
-      HCAPTCHA_LOADER_PREFIX + '{"type":"load-succeeded","attempts":1'
-    ));
 
     expect(renderMock).toHaveBeenCalledWith('hcaptcha-container', expect.objectContaining({
       sitekey: '00000000-0000-0000-0000-000000000000',
@@ -284,7 +260,7 @@ describe('Hcaptcha', () => {
     expect(postMessageMock).toHaveBeenCalledWith('open');
   });
 
-  it('reports an internal loader failure when the pinned loader bundle is unavailable', () => {
+  it('reports an error when the pinned loader bundle is unavailable', () => {
     const component = render(
       <Hcaptcha
         siteKey="00000000-0000-0000-0000-000000000000"
@@ -309,16 +285,7 @@ describe('Hcaptcha', () => {
     vm.runInContext(bootstrapScript, context);
     vm.runInContext(runtimeScript, context);
 
-    expect(postMessageMock).toHaveBeenNthCalledWith(
-      1,
-      expect.stringContaining(
-        HCAPTCHA_LOADER_PREFIX + '{"type":"load-failed","attempts":0'
-      )
-    );
-    expect(postMessageMock.mock.calls[0][0]).toContain(
-      '"reason":"loader-unavailable"'
-    );
-    expect(postMessageMock).toHaveBeenNthCalledWith(2, 'error');
+    expect(postMessageMock).toHaveBeenCalledWith('error');
   });
 
   it('serializes every HTML-facing prop safely before embedding it', () => {
@@ -457,7 +424,7 @@ describe('Hcaptcha', () => {
   it('reports the existing loading timeout with loader context when Sentry is enabled', () => {
     jest.useFakeTimers();
     const onMessage = jest.fn();
-    const component = render(
+    render(
       <Hcaptcha
         siteKey="00000000-0000-0000-0000-000000000000"
         url="https://hcaptcha.com"
@@ -468,65 +435,18 @@ describe('Hcaptcha', () => {
     );
 
     act(() => {
-      getWebView(component).props.onMessage({
-        nativeEvent: {
-          data: HCAPTCHA_LOADER_PREFIX + JSON.stringify({
-            type: 'load-started',
-            attempts: 2,
-            elapsedMs: 1000,
-          }),
-        },
-      });
       jest.advanceTimersByTime(15000);
     });
 
-    expect(mockSetContext).toHaveBeenCalledWith('api_loader', {
-      attempts: 2,
+    expect(mockSetContext).toHaveBeenCalledWith('api_loader', expect.objectContaining({
       elapsed_ms: 15000,
       js_src: 'https://first-party.example/1/api.js',
       reason: 'timeout',
-    });
+    }));
     expect(mockCaptureException).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'hCaptcha api.js loading timed out' }),
       expect.anything()
     );
-  });
-
-  it('reports terminal loader failures internally without exposing diagnostic messages', () => {
-    const onMessage = jest.fn();
-    const component = render(
-      <Hcaptcha
-        siteKey="00000000-0000-0000-0000-000000000000"
-        url="https://hcaptcha.com"
-        sentry={true}
-        onMessage={onMessage}
-      />
-    );
-
-    act(() => {
-      getWebView(component).props.onMessage({
-        nativeEvent: {
-          data: HCAPTCHA_LOADER_PREFIX + JSON.stringify({
-            type: 'load-failed',
-            attempts: 3,
-            elapsedMs: 2400,
-            reason: 'script-error',
-          }),
-        },
-      });
-    });
-
-    expect(mockSetContext).toHaveBeenCalledWith('api_loader', {
-      attempts: 3,
-      elapsed_ms: 2400,
-      js_src: 'https://hcaptcha.com/1/api.js',
-      reason: 'script-error',
-    });
-    expect(mockCaptureException).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'hCaptcha loader failed to load api.js' }),
-      expect.anything()
-    );
-    expect(onMessage).not.toHaveBeenCalled();
   });
 
   it('treats widget readiness as loading completion for passive challenges', () => {

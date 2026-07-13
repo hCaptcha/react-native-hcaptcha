@@ -112,48 +112,12 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_4_0_0":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
+          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_4_0_0":true},"loaderSentry":false,"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) {
             window[entry[0]] = entry[1];
           });
-
-          var apiLoadAttempts = 0;
-          var apiLoadObserver = null;
-          var loaderLifecycleComplete = false;
-          var loaderLifecycleStartedAt = Date.now();
-
-          var postLoaderEvent = function(event) {
-            window.ReactNativeWebView.postMessage("__hcaptcha_loader__:" + JSON.stringify(event));
-          };
-
-          var stopObservingApiScripts = function() {
-            if (apiLoadObserver) {
-              apiLoadObserver.disconnect();
-              apiLoadObserver = null;
-            }
-          };
-
-          var finishLoaderLifecycle = function(type, details) {
-            if (loaderLifecycleComplete) {
-              return;
-            }
-
-            loaderLifecycleComplete = true;
-            stopObservingApiScripts();
-            postLoaderEvent(Object.assign({
-              type: type,
-              attempts: apiLoadAttempts,
-              elapsedMs: Date.now() - loaderLifecycleStartedAt
-            }, details || {}));
-          };
-
-          var onLoaderSourceError = function() {
-            finishLoaderLifecycle("load-failed", {
-              reason: "loader-script-error"
-            });
-          };
         </script>
-        <script type="text/javascript" src="https://unpkg.com/@hcaptcha/loader@2.3.0/dist/index.es5.js" onerror="onLoaderSourceError()"></script>
+        <script type="text/javascript" src="https://unpkg.com/@hcaptcha/loader@2.3.0/dist/index.es5.js"></script>
         <script type="text/javascript">
           var hcaptchaWidgetId = null;
 
@@ -230,39 +194,8 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             return config;
           };
 
-          var observeApiLoadAttempts = function(scriptSource) {
-            if (typeof MutationObserver !== "function") {
-              return;
-            }
-
-            apiLoadObserver = new MutationObserver(function(mutations) {
-              mutations.forEach(function(mutation) {
-                Array.prototype.forEach.call(mutation.addedNodes || [], function(node) {
-                  if (
-                    node
-                    && node.tagName === "SCRIPT"
-                    && typeof node.src === "string"
-                    && node.src.indexOf(scriptSource) === 0
-                  ) {
-                    apiLoadAttempts += 1;
-                    postLoaderEvent({
-                      type: "load-started",
-                      attempts: apiLoadAttempts,
-                      elapsedMs: Date.now() - loaderLifecycleStartedAt
-                    });
-                  }
-                });
-              });
-            });
-
-            apiLoadObserver.observe(document.head, { childList: true });
-          };
-
           var loadApiScript = function() {
             if (typeof window.hCaptchaLoader !== "function") {
-              finishLoaderLifecycle("load-failed", {
-                reason: "loader-unavailable"
-              });
               window.ReactNativeWebView.postMessage("error");
               return;
             }
@@ -273,19 +206,11 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
               return param.indexOf("onload=") !== 0;
             }).join("&");
 
-            observeApiLoadAttempts(scriptSource);
-
             window.hCaptchaLoader({
               query: query,
               scriptSource: scriptSource,
-              sentry: false
-            }).then(function() {
-              finishLoaderLifecycle("load-succeeded");
-              onloadCallback();
-            }).catch(function(error) {
-              finishLoaderLifecycle("load-failed", {
-                reason: "script-error"
-              });
+              sentry: hcaptchaConfig.loaderSentry
+            }).then(onloadCallback).catch(function(error) {
               window.ReactNativeWebView.postMessage((error && error.name) || "error");
             });
           };
