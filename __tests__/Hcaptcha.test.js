@@ -204,14 +204,13 @@ describe('Hcaptcha', () => {
     sandbox.window.ReactNativeWebView = { postMessage: postMessageMock };
 
     const context = vm.createContext(sandbox);
-    const [bootstrapScript, runtimeScript] = getInlineScripts(component);
+    const [bootstrapScript, loaderScript, runtimeScript] = getInlineScripts(component);
 
     vm.runInContext(bootstrapScript, context);
     vm.runInContext(runtimeScript, context);
 
-    expect(getWebViewHtml(component)).toContain(
-      '<script type="text/javascript" src="https://unpkg.com/@hcaptcha/loader@2.3.0/dist/index.es5.js"></script>'
-    );
+    expect(loaderScript).toContain('window.__hcaptcha_loader_inline__ = true;');
+    expect(getWebViewHtml(component)).not.toContain('unpkg.com');
     expect(loaderMock).toHaveBeenCalledTimes(1);
     const loaderParams = loaderMock.mock.calls[0][0];
     expect(loaderParams.scriptSource).toBe('https://hcaptcha.com/1/api.js');
@@ -266,7 +265,7 @@ describe('Hcaptcha', () => {
     sandbox.window.ReactNativeWebView = { postMessage: postMessageMock };
 
     const context = vm.createContext(sandbox);
-    const [bootstrapScript, runtimeScript] = getInlineScripts(component);
+    const [bootstrapScript, , runtimeScript] = getInlineScripts(component);
 
     vm.runInContext(bootstrapScript, context);
     vm.runInContext(runtimeScript, context);
