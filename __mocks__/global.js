@@ -1,8 +1,4 @@
 jest.mock('react-native-webview');
-jest.mock('@hcaptcha/loader/inline', () => ({
-  __esModule: true,
-  default: 'window.__hcaptcha_loader_inline__ = true;',
-}));
 jest.mock('react', () => {
   let ActualReact = jest.requireActual('react');
   return {
