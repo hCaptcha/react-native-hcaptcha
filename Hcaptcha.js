@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import hCaptchaLoaderInlineScript from '@hcaptcha/loader/inline';
 import WebView from 'react-native-webview';
 import { ActivityIndicator, Linking, Platform, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
@@ -27,7 +28,6 @@ const patchPostMessageJsCode = `(${String(function () {
 })})();`;
 
 const HCAPTCHA_READY_EVENT = '__hcaptcha_ready__';
-const HCAPTCHA_LOADER_URL = 'https://unpkg.com/@hcaptcha/loader@2.3.0/dist/index.es5.js';
 
 const serializeForInlineScript = (value) =>
   JSON.stringify(value)
@@ -234,7 +234,7 @@ const Hcaptcha = ({
       apiUrl,
       backgroundColor: backgroundColor ?? '',
       debugInfo,
-      loaderSentry: Boolean(sentry),
+      sentry: Boolean(sentry),
       phoneNumber: phoneNumber ?? null,
       phonePrefix: phonePrefix ?? null,
       rqdata: rqdata ?? null,
@@ -257,7 +257,9 @@ const Hcaptcha = ({
           var hcaptchaConfig = ${serializedWebViewConfig};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
-        <script type="text/javascript" src="${HCAPTCHA_LOADER_URL}"></script>
+        <script type="text/javascript">
+          ${hCaptchaLoaderInlineScript}
+        </script>
         <script type="text/javascript">
           var loadApiScript = function() {
             if (typeof window.hCaptchaLoader !== 'function') {
@@ -274,7 +276,7 @@ const Hcaptcha = ({
             window.hCaptchaLoader({
               query: query,
               scriptSource: scriptSource,
-              sentry: hcaptchaConfig.loaderSentry
+              sentry: hcaptchaConfig.sentry
             }).then(onloadCallback).catch(function(error) {
               window.ReactNativeWebView.postMessage((error && error.name) || 'error');
             });
