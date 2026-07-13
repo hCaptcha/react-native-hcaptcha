@@ -6,6 +6,16 @@ import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
 import md5 from './md5';
 import hcaptchaPackage from './package.json';
 import {
+  reportApiLoadFailure,
+  reportApiLoadTimeout,
+} from './loaderSentry';
+import { generateWebViewContent } from './webviewContent';
+import {
+  HCAPTCHA_LOADER_PREFIX,
+  HCAPTCHA_READY_EVENT,
+  parseInternalWebViewMessage,
+} from './webviewMessages';
+import {
   clearJourneyEvents,
   disableJourneyConsumer,
   enableJourneyConsumer,
@@ -25,9 +35,6 @@ const patchPostMessageJsCode = `(${String(function () {
   };
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })})();`;
-
-const HCAPTCHA_READY_EVENT = '__hcaptcha_ready__';
-const HCAPTCHA_LOADER_URL = 'https://unpkg.com/@hcaptcha/loader@latest/dist/index.es5.js';
 
 const serializeForInlineScript = (value) =>
   JSON.stringify(value)
@@ -147,7 +154,8 @@ const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, 
   }
 
   for (let [key, value] of Object.entries({ host: effectiveHost, hl, custom: typeof theme === 'object', sentry, endpoint, assethost, imghost, reportapi, orientation })) {
-    if (value) {
+    const shouldInclude = key === 'sentry' ? typeof value === 'boolean' : Boolean(value);
+    if (shouldInclude) {
       url += `&${key}=${encodeURIComponent(value)}`;
     }
   }
@@ -214,14 +222,19 @@ const Hcaptcha = ({
   const tokenTimeout = 120000;
   const loadingTimeout = 15000;
   const [isLoading, setIsLoading] = useState(true);
+  const apiLoadAttemptsRef = useRef(0);
+  const apiLoadFailureReportedRef = useRef(false);
+  const isLoadingRef = useRef(true);
   const journeyEnabled = Boolean(userJourney);
   const hasJourneyConsumerRef = useRef(false);
+  const webViewRef = useRef(null);
   const normalizedTheme = useMemo(() => normalizeTheme(theme), [theme]);
   const normalizedSize = useMemo(() => normalizeSize(size), [size]);
   const apiUrl = useMemo(
     () => buildHcaptchaApiUrl(jsSrc, siteKey, languageCode, normalizedTheme, host, sentry, endpoint, assethost, imghost, reportapi, orientation),
     [jsSrc, siteKey, languageCode, normalizedTheme, host, sentry, endpoint, assethost, imghost, reportapi, orientation]
   );
+  const apiScriptSource = useMemo(() => apiUrl.split('?')[0], [apiUrl]);
 
   const debugInfo = useMemo(
     () => buildDebugInfo(debug),
@@ -233,7 +246,6 @@ const Hcaptcha = ({
       apiUrl,
       backgroundColor: backgroundColor ?? '',
       debugInfo,
-      loaderSentry: Boolean(sentry),
       phoneNumber: phoneNumber ?? null,
       phonePrefix: phonePrefix ?? null,
       rqdata: rqdata ?? null,
@@ -241,100 +253,15 @@ const Hcaptcha = ({
       size: normalizedSize,
       theme: normalizedTheme,
     }),
-    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, phoneNumber, phonePrefix, rqdata, sentry, siteKey]
+    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, phoneNumber, phonePrefix, rqdata, siteKey]
   );
 
-  const generateTheWebViewContent = useMemo(
-    () =>
-     `<!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <script type="text/javascript">
-          var hcaptchaConfig = ${serializedWebViewConfig};
-          Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
-        </script>
-        <script type="text/javascript" src="${HCAPTCHA_LOADER_URL}"></script>
-        <script type="text/javascript">
-          var loadApiScript = function() {
-            var apiUrl = hcaptchaConfig.apiUrl.split('?');
-            var scriptSource = apiUrl.shift();
-            var query = apiUrl.join('?').split('&').filter(function(param) {
-              return param.indexOf('onload=') !== 0;
-            }).join('&');
-
-            window.hCaptchaLoader({
-              query: query,
-              scriptSource: scriptSource,
-              sentry: hcaptchaConfig.loaderSentry
-            }).then(onloadCallback).catch(function(error) {
-              window.ReactNativeWebView.postMessage((error && error.name) || 'error');
-            });
-          };
-          var hcaptchaWidgetId = null;
-          var setData = function(data) {
-            hcaptcha.setData(hcaptchaWidgetId, data || {});
-          };
-          var execute = function() {
-            hcaptcha.execute(hcaptchaWidgetId);
-          };
-          var reset = function() {
-            hcaptcha.reset(hcaptchaWidgetId);
-          };
-          var onloadCallback = function() {
-            try {
-              console.log("challenge onload starting");
-              hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
-              window.ReactNativeWebView.postMessage("${HCAPTCHA_READY_EVENT}");
-              // have loaded by this point; render is sync.
-              console.log("challenge render complete");
-            } catch (e) {
-              console.log("challenge failed to render:", e);
-              window.ReactNativeWebView.postMessage(e.name);
-            }
-          };
-          var onDataCallback = function(response) {
-            window.ReactNativeWebView.postMessage(response);
-          };
-          var onCancel = function() {
-            window.ReactNativeWebView.postMessage("challenge-closed");
-          };
-          var onOpen = function() {
-            document.body.style.backgroundColor = hcaptchaConfig.backgroundColor;
-            window.ReactNativeWebView.postMessage("open");
-            console.log("challenge opened");
-          };
-          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
-          var onDataErrorCallback = function(error) {
-            console.warn("challenge error callback fired");
-            window.ReactNativeWebView.postMessage(error);
-          };
-          const getRenderConfig = function(siteKey, theme, size) {
-            var config = {
-              sitekey: siteKey,
-              size: size,
-              callback: onDataCallback,
-              "close-callback": onCancel,
-              "open-callback": onOpen,
-              "expired-callback": onDataExpiredCallback,
-              "chalexpired-callback": onChalExpiredCallback,
-              "error-callback": onDataErrorCallback
-            };
-            if (theme) {
-              config.theme = theme;
-            }
-            return config;
-          };
-          loadApiScript();
-        </script>
-      </head>
-      <body>
-        <div id="hcaptcha-container"></div>
-      </body>
-      </html>`,
+  const webViewContent = useMemo(
+    () => generateWebViewContent({
+      loaderMessagePrefix: HCAPTCHA_LOADER_PREFIX,
+      readyEvent: HCAPTCHA_READY_EVENT,
+      serializedConfig: serializedWebViewConfig,
+    }),
     [serializedWebViewConfig]
   );
 
@@ -356,15 +283,25 @@ const Hcaptcha = ({
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (isLoading) {
-        onMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } });
+      if (!isLoadingRef.current) {
+        return;
       }
+
+      if (sentry && !apiLoadFailureReportedRef.current) {
+        reportApiLoadTimeout({
+          attempts: apiLoadAttemptsRef.current,
+          elapsedMs: loadingTimeout,
+          jsSrc: apiScriptSource,
+          siteKey,
+        });
+      }
+
+      onMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } });
     }, loadingTimeout);
 
     return () => clearTimeout(timeoutId);
-  }, [isLoading, onMessage]);
+  }, [apiScriptSource, onMessage, sentry, siteKey]);
 
-  const webViewRef = useRef(null);
   const injectVerifyData = (resetFirst = false) => {
     if (!webViewRef.current) {
       return;
@@ -392,6 +329,77 @@ const Hcaptcha = ({
     injectVerifyData(true);
   };
 
+  const markLoadingComplete = () => {
+    if (!isLoadingRef.current) {
+      return;
+    }
+
+    isLoadingRef.current = false;
+    setIsLoading(false);
+  };
+
+  const handleInternalMessage = (message) => {
+    switch (message.type) {
+      case 'load-started':
+      case 'load-succeeded':
+        apiLoadAttemptsRef.current = message.attempts;
+        return;
+
+      case 'load-failed':
+        apiLoadAttemptsRef.current = message.attempts;
+
+        if (sentry && !apiLoadFailureReportedRef.current) {
+          reportApiLoadFailure({
+            attempts: message.attempts,
+            elapsedMs: message.elapsedMs,
+            jsSrc: apiScriptSource,
+            reason: message.reason,
+            siteKey,
+          });
+          apiLoadFailureReportedRef.current = true;
+        }
+
+        return;
+
+      case 'widget-ready':
+        markLoadingComplete();
+        injectVerifyData();
+        return;
+
+      default:
+        return;
+    }
+  };
+
+  const handleChallengeMessage = (event) => {
+    markLoadingComplete();
+    event.reset = reset;
+    event.success = true;
+
+    if (event.nativeEvent.data.length > 35) {
+      const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
+      event.markUsed = () => clearTimeout(expiredTokenTimerId);
+      if (journeyEnabled) {
+        clearJourneyEvents();
+      }
+    } else if (event.nativeEvent.data !== 'open') {
+      event.success = false;
+    }
+
+    onMessage(event);
+  };
+
+  const handleWebViewMessage = (event) => {
+    const internalMessage = parseInternalWebViewMessage(event.nativeEvent.data);
+
+    if (internalMessage) {
+      handleInternalMessage(internalMessage);
+      return;
+    }
+
+    handleChallengeMessage(event);
+  };
+
   return (
     <View style={styles.container}>
       <WebView
@@ -417,33 +425,13 @@ const Hcaptcha = ({
           return true;
         }}
         mixedContentMode={'always'}
-        onMessage={(e) => {
-          if (e.nativeEvent.data === HCAPTCHA_READY_EVENT) {
-            injectVerifyData();
-            return;
-          }
-
-          e.reset = reset;
-          e.success = true;
-          if (e.nativeEvent.data === 'open') {
-            setIsLoading(false);
-          } else if (e.nativeEvent.data.length > 35) {
-            const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
-            e.markUsed = () => clearTimeout(expiredTokenTimerId);
-            if (journeyEnabled) {
-              clearJourneyEvents();
-            }
-          } else /* error */ {
-            e.success = false;
-          }
-          onMessage(e);
-        }}
+        onMessage={handleWebViewMessage}
         javaScriptEnabled
         injectedJavaScript={patchPostMessageJsCode}
         automaticallyAdjustContentInsets
         style={[styles.webview, style]}
         source={{
-          html: generateTheWebViewContent,
+          html: webViewContent,
           baseUrl: `${url}`,
         }}
       />
