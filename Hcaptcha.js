@@ -28,43 +28,6 @@ const patchPostMessageJsCode = `(${String(function () {
 
 const HCAPTCHA_READY_EVENT = '__hcaptcha_ready__';
 const HCAPTCHA_LOADER_URL = 'https://unpkg.com/@hcaptcha/loader@2.3.0/dist/index.es5.js';
-const SENTRY_DSN = 'https://d233059272824702afc8c43834c4912d@sentry.hcaptcha.com/6';
-
-let loaderSentry;
-
-const reportApiLoadTimeout = ({ elapsedMs, jsSrc, siteKey }) => {
-  try {
-    const { Scope, Sentry } = require('@hcaptcha/sentry');
-    const scope = new Scope();
-    scope.setTag('api_loader_reason', 'timeout');
-
-    if (siteKey) {
-      scope.setTag('sitekey', siteKey);
-    }
-
-    scope.setContext('api_loader', {
-      elapsed_ms: elapsedMs,
-      js_src: jsSrc,
-      reason: 'timeout',
-      platform: Platform.OS,
-      model: Platform.constants?.Model || Platform.constants?.model,
-      os_version: Platform.Version,
-      react_native_version: Platform.constants?.reactNativeVersion,
-    });
-
-    if (!loaderSentry) {
-      loaderSentry = new Sentry({
-        dsn: SENTRY_DSN,
-        environment: 'production',
-        release: `react-native-hcaptcha@${hcaptchaPackage.version}`,
-      });
-    }
-
-    loaderSentry.captureException(new Error('hCaptcha api.js loading timed out'), scope);
-  } catch (_) {
-    // Diagnostics must never interfere with the challenge flow.
-  }
-};
 
 const serializeForInlineScript = (value) =>
   JSON.stringify(value)
@@ -400,19 +363,12 @@ const Hcaptcha = ({
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (isLoadingRef.current) {
-        if (sentry) {
-          reportApiLoadTimeout({
-            elapsedMs: loadingTimeout,
-            jsSrc: jsSrc || 'https://hcaptcha.com/1/api.js',
-            siteKey,
-          });
-        }
         onMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } });
       }
     }, loadingTimeout);
 
     return () => clearTimeout(timeoutId);
-  }, [jsSrc, onMessage, sentry, siteKey]);
+  }, [onMessage]);
 
   const webViewRef = useRef(null);
   const injectVerifyData = (resetFirst = false) => {

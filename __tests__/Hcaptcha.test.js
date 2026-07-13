@@ -11,20 +11,6 @@ import {
   setWebViewMessageData,
 } from 'react-native-webview';
 
-const mockCaptureException = jest.fn();
-const mockSetContext = jest.fn();
-
-jest.mock('@hcaptcha/sentry', () => ({
-  Scope: jest.fn(() => ({
-    setContext: mockSetContext,
-    setTag: jest.fn(),
-    setTags: jest.fn(),
-  })),
-  Sentry: jest.fn(() => ({
-    captureException: mockCaptureException,
-  })),
-}));
-
 const LONG_TOKEN = '10000000-aaaa-bbbb-cccc-000000000001';
 
 describe('Hcaptcha', () => {
@@ -421,34 +407,6 @@ describe('Hcaptcha', () => {
     });
   });
 
-  it('reports the existing loading timeout with loader context when Sentry is enabled', () => {
-    jest.useFakeTimers();
-    const onMessage = jest.fn();
-    render(
-      <Hcaptcha
-        siteKey="00000000-0000-0000-0000-000000000000"
-        url="https://hcaptcha.com"
-        sentry={true}
-        jsSrc="https://first-party.example/1/api.js"
-        onMessage={onMessage}
-      />
-    );
-
-    act(() => {
-      jest.advanceTimersByTime(15000);
-    });
-
-    expect(mockSetContext).toHaveBeenCalledWith('api_loader', expect.objectContaining({
-      elapsed_ms: 15000,
-      js_src: 'https://first-party.example/1/api.js',
-      reason: 'timeout',
-    }));
-    expect(mockCaptureException).toHaveBeenCalledWith(
-      expect.objectContaining({ message: 'hCaptcha api.js loading timed out' }),
-      expect.anything()
-    );
-  });
-
   it('treats widget readiness as loading completion for passive challenges', () => {
     jest.useFakeTimers();
     const onMessage = jest.fn();
@@ -470,7 +428,6 @@ describe('Hcaptcha', () => {
     });
 
     expect(onMessage).not.toHaveBeenCalled();
-    expect(mockCaptureException).not.toHaveBeenCalled();
     expect(component.UNSAFE_queryByType(TouchableWithoutFeedback)).toBeNull();
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('execute();'));
   });
