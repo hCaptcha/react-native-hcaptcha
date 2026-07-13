@@ -1,45 +1,10 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+const HCAPTCHA_LOADER_URL = 'https://unpkg.com/@hcaptcha/loader@2.3.0/dist/index.es5.js';
 
-exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
-<View
-  style={
-    {
-      "flex": 1,
-    }
-  }
->
-  <WebView
-    automaticallyAdjustContentInsets={true}
-    injectedJavaScript="(function () {
-  var originalPostMessage = window.ReactNativeWebView.postMessage;
-  var patchedPostMessage = function patchedPostMessage(message, targetOrigin, transfer) {
-    originalPostMessage(message, targetOrigin, transfer);
-  };
-  patchedPostMessage.toString = function () {
-    return String(Object.hasOwnProperty).replace('hasOwnProperty', 'postMessage');
-  };
-  window.ReactNativeWebView.postMessage = patchedPostMessage;
-})();"
-    javaScriptEnabled={true}
-    mixedContentMode="always"
-    onMessage={[Function]}
-    onShouldStartLoadWithRequest={[Function]}
-    originWhitelist={
-      [
-        "*",
-      ]
-    }
-    ref={
-      {
-        "current": {
-          "injectJavaScript": [MockFunction],
-        },
-      }
-    }
-    source={
-      {
-        "baseUrl": "https://hcaptcha.com",
-        "html": "<!DOCTYPE html>
+const generateWebViewContent = ({
+  loaderMessagePrefix,
+  readyEvent,
+  serializedConfig,
+}) => `<!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
@@ -47,7 +12,7 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
           // Make SDK metadata available to api.js before it loads.
-          var hcaptchaConfig = {"apiUrl":"https://hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=missing-sitekey.react-native.hcaptcha.com\\u0026custom=true","backgroundColor":"","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_4_0_0":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"","size":"invisible","theme":["test_key"]};
+          var hcaptchaConfig = ${serializedConfig};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) {
             window[entry[0]] = entry[1];
           });
@@ -59,7 +24,7 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
           var loaderLifecycleStartedAt = Date.now();
 
           var postLoaderEvent = function(event) {
-            window.ReactNativeWebView.postMessage("__hcaptcha_loader__:" + JSON.stringify(event));
+            window.ReactNativeWebView.postMessage("${loaderMessagePrefix}" + JSON.stringify(event));
           };
 
           var getLoaderElapsed = function() {
@@ -93,7 +58,7 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
             });
           };
         </script>
-        <script type="text/javascript" src="https://unpkg.com/@hcaptcha/loader@2.3.0/dist/index.es5.js" onerror="onLoaderSourceError()"></script>
+        <script type="text/javascript" src="${HCAPTCHA_LOADER_URL}" onerror="onLoaderSourceError()"></script>
         <script type="text/javascript">
           // Bridge React Native commands to the rendered hCaptcha widget.
           var hcaptchaWidgetId = null;
@@ -120,7 +85,7 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
                 getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size)
               );
 
-              window.ReactNativeWebView.postMessage("__hcaptcha_ready__");
+              window.ReactNativeWebView.postMessage("${readyEvent}");
 
               // Render is synchronous; the widget can now receive verification data.
               console.log("challenge render complete");
@@ -247,18 +212,6 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
       <body>
         <div id="hcaptcha-container"></div>
       </body>
-      </html>",
-      }
-    }
-    style={
-      [
-        {
-          "backgroundColor": "transparent",
-          "width": "100%",
-        },
-        undefined,
-      ]
-    }
-  />
-</View>
-`;
+      </html>`;
+
+export { generateWebViewContent };
