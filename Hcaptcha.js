@@ -136,24 +136,41 @@ const buildVerifyData = ({
 const buildVerifyInjectionScript = (payload, resetFirst = false) =>
   `try { ${resetFirst ? 'reset(); ' : ''}setData(${serializeForInlineScript(payload)}); execute(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;`;
 
-const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, assethost, imghost, reportapi, orientation) => {
-  var url = `${jsSrc || 'https://hcaptcha.com/1/api.js'}?render=explicit&onload=onloadCallback`;
-
-  let effectiveHost;
+const getHcaptchaHost = (host, siteKey) => {
   if (host) {
-    effectiveHost = encodeURIComponent(host);
+    return host;
+  } else if (siteKey) {
+    return `${siteKey}.react-native.hcaptcha.com`;
   } else {
-    effectiveHost = (siteKey || 'missing-sitekey') + '.react-native.hcaptcha.com';
+    return 'missing-sitekey.react-native.hcaptcha.com';
   }
-
-  for (let [key, value] of Object.entries({ host: effectiveHost, hl, custom: typeof theme === 'object', sentry, endpoint, assethost, imghost, reportapi, orientation })) {
-    if (value) {
-      url += `&${key}=${encodeURIComponent(value)}`;
-    }
-  }
-
-  return url;
 };
+
+const buildHcaptchaLoaderConfig = ({
+  scriptSource,
+  siteKey,
+  hl,
+  theme,
+  host,
+  sentry,
+  endpoint,
+  assethost,
+  imghost,
+  reportapi,
+  orientation,
+}) => ({
+  scriptSource,
+  render: 'explicit',
+  host: getHcaptchaHost(host, siteKey),
+  hl,
+  custom: typeof theme === 'object',
+  sentry: Boolean(sentry),
+  endpoint,
+  assethost,
+  imghost,
+  reportapi,
+  orientation,
+});
 
 /**
  *
@@ -219,8 +236,20 @@ const Hcaptcha = ({
   const hasJourneyConsumerRef = useRef(false);
   const normalizedTheme = useMemo(() => normalizeTheme(theme), [theme]);
   const normalizedSize = useMemo(() => normalizeSize(size), [size]);
-  const apiUrl = useMemo(
-    () => buildHcaptchaApiUrl(jsSrc, siteKey, languageCode, normalizedTheme, host, sentry, endpoint, assethost, imghost, reportapi, orientation),
+  const loaderConfig = useMemo(
+    () => buildHcaptchaLoaderConfig({
+      scriptSource: jsSrc,
+      siteKey,
+      hl: languageCode,
+      theme: normalizedTheme,
+      host,
+      sentry,
+      endpoint,
+      assethost,
+      imghost,
+      reportapi,
+      orientation,
+    }),
     [jsSrc, siteKey, languageCode, normalizedTheme, host, sentry, endpoint, assethost, imghost, reportapi, orientation]
   );
 
@@ -231,10 +260,9 @@ const Hcaptcha = ({
 
   const serializedWebViewConfig = useMemo(
     () => serializeForInlineScript({
-      apiUrl,
+      loaderConfig,
       backgroundColor: backgroundColor ?? '',
       debugInfo,
-      sentry: Boolean(sentry),
       phoneNumber: phoneNumber ?? null,
       phonePrefix: phonePrefix ?? null,
       rqdata: rqdata ?? null,
@@ -242,7 +270,7 @@ const Hcaptcha = ({
       size: normalizedSize,
       theme: normalizedTheme,
     }),
-    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, phoneNumber, phonePrefix, rqdata, sentry, siteKey]
+    [loaderConfig, backgroundColor, debugInfo, normalizedSize, normalizedTheme, phoneNumber, phonePrefix, rqdata, siteKey]
   );
 
   const generateTheWebViewContent = useMemo(
@@ -267,17 +295,7 @@ const Hcaptcha = ({
               return;
             }
 
-            var apiUrl = hcaptchaConfig.apiUrl.split('?');
-            var scriptSource = apiUrl.shift();
-            var query = apiUrl.join('?').split('&').filter(function(param) {
-              return param.indexOf('onload=') !== 0;
-            }).join('&');
-
-            window.hCaptchaLoader({
-              query: query,
-              scriptSource: scriptSource,
-              sentry: hcaptchaConfig.sentry
-            }).then(onloadCallback).catch(function(error) {
+            window.hCaptchaLoader(hcaptchaConfig.loaderConfig).then(onloadCallback).catch(function(error) {
               window.ReactNativeWebView.postMessage((error && error.name) || 'error');
             });
           };
