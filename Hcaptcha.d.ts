@@ -14,6 +14,14 @@ export type HcaptchaProps = {
    */
   onMessage: (event: CustomWebViewMessageEvent) => void;
   /**
+   * Runs after the hCaptcha API loads.
+   */
+  onLoad?: () => void;
+  /**
+   * Runs when hCaptcha is ready to execute.
+   */
+  onReady?: () => void;
+  /**
    * The size of the checkbox.
    */
   size: 'invisible' | 'normal' | 'compact';

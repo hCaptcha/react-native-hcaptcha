@@ -27,6 +27,7 @@ const patchPostMessageJsCode = `(${String(function () {
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })})();`;
 
+const HCAPTCHA_LOAD_EVENT = '__hcaptcha_load__';
 const HCAPTCHA_READY_EVENT = '__hcaptcha_ready__';
 
 const serializeForInlineScript = (value) =>
@@ -173,6 +174,8 @@ const buildHcaptchaLoaderConfig = ({
 /**
  *
  * @param {*} onMessage: callback after receiving response, error, or when user cancels
+ * @param {function} onLoad: callback after the hCaptcha API loads
+ * @param {function} onReady: callback when hCaptcha is ready to execute
  * @param {*} siteKey: your hCaptcha sitekey
  * @param {string} size: The size of the widget, can be 'invisible', 'compact' or 'normal'. 'checkbox' is kept as a legacy alias for 'normal'. Default: 'invisible'
  * @param {*} style: custom style
@@ -200,6 +203,8 @@ const buildHcaptchaLoaderConfig = ({
  */
 const Hcaptcha = ({
   onMessage,
+  onLoad,
+  onReady,
   size,
   siteKey,
   style,
@@ -307,6 +312,7 @@ const Hcaptcha = ({
             hcaptcha.reset(hcaptchaWidgetId);
           };
           var onloadCallback = function() {
+            window.ReactNativeWebView.postMessage("${HCAPTCHA_LOAD_EVENT}");
             try {
               console.log("challenge onload starting");
               hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size, hcaptchaConfig.orientation));
@@ -444,8 +450,18 @@ const Hcaptcha = ({
         }}
         mixedContentMode={'always'}
         onMessage={(e) => {
+          if (e.nativeEvent.data === HCAPTCHA_LOAD_EVENT) {
+            if (onLoad) {
+              onLoad();
+            }
+            return;
+          }
+
           if (e.nativeEvent.data === HCAPTCHA_READY_EVENT) {
             injectVerifyData();
+            if (onReady) {
+              onReady();
+            }
             return;
           }
 

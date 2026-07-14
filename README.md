@@ -285,7 +285,7 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 - The UI defaults to the "invisible" mode of the JS SDK, i.e. no checkbox is displayed.
 - If you need to test displaying the challenge modal, set your sitekey to "Always Challenge" mode in the hCaptcha dashboard.
 - You can `import { Hcaptcha } from '@hcaptcha/react-native-hcaptcha';` to customize the UI yourself.
-- hCaptcha loading is restricted to a 15-second timeout; an `error` will be sent via `onMessage` if it fails to load due to network issues.
+- The legacy 15-second loading timeout event is deprecated and should not be treated as a terminal failure. Do not hide or unmount hCaptcha when it occurs. Use `onReady` to detect successful initialization and `script-error` from `onMessage` to detect failure after loader retries are exhausted.
 
 ## Journey Capture Caveats
 
@@ -344,6 +344,8 @@ For new code, prefer:
 | siteKey _(required)_ | string | The hCaptcha siteKey |
 | size | string | The size of the widget, can be 'invisible', 'compact' or 'normal'. `checkbox` is also accepted as a legacy alias for `normal`. Default: 'invisible' |
 | onMessage | Function (see [here](https://github.com/react-native-webview/react-native-webview/blob/master/src/WebViewTypes.ts#L299)) | Required. Runs after receiving a response, error, or when user cancels. |
+| onLoad | Function | Runs after the hCaptcha API loads. |
+| onReady | Function | Runs when hCaptcha is ready to execute. |
 | languageCode | string | Default language for hCaptcha; overrides phone defaults. A complete list of supported languages and their codes can be found [here](https://docs.hcaptcha.com/languages/) |
 | showLoading | boolean | Whether to show a loading indicator while the hCaptcha web content loads |
 | closableLoading | boolean | Allow user to cancel hcaptcha during loading by touch loader overlay |

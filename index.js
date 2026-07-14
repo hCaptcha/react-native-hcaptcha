@@ -68,6 +68,8 @@ class ConfirmHcaptcha extends PureComponent {
       languageCode,
       orientation,
       onMessage,
+      onLoad,
+      onReady,
       showLoading,
       closableLoading,
       loadingIndicatorColor,
@@ -98,6 +100,8 @@ class ConfirmHcaptcha extends PureComponent {
           size={size}
           siteKey={siteKey}
           onMessage={onMessage}
+          onLoad={onLoad}
+          onReady={onReady}
           languageCode={languageCode}
           showLoading={showLoading}
           closableLoading={closableLoading}
@@ -207,6 +211,8 @@ ConfirmHcaptcha.propTypes = {
   passiveSiteKey: PropTypes.bool,
   baseUrl: PropTypes.string,
   onMessage: PropTypes.func.isRequired,
+  onLoad: PropTypes.func,
+  onReady: PropTypes.func,
   languageCode: PropTypes.string,
   orientation: PropTypes.string,
   backgroundColor: PropTypes.string,
@@ -237,6 +243,8 @@ ConfirmHcaptcha.propTypes = {
 ConfirmHcaptcha.defaultProps = {
   size: 'invisible',
   passiveSiteKey: false,
+  onLoad: undefined,
+  onReady: undefined,
   showLoading: false,
   closableLoading: false,
   orientation: 'portrait',
