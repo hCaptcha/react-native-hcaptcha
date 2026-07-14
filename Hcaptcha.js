@@ -229,7 +229,6 @@ const Hcaptcha = ({
   const tokenTimeout = 120000;
   const loadingTimeout = 15000;
   const [isLoading, setIsLoading] = useState(true);
-  const isLoadingRef = useRef(true);
   const journeyEnabled = Boolean(userJourney);
   const hasJourneyConsumerRef = useRef(false);
   const normalizedTheme = useMemo(() => normalizeTheme(theme), [theme]);
@@ -383,13 +382,13 @@ const Hcaptcha = ({
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (isLoadingRef.current) {
+      if (isLoading) {
         onMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } });
       }
     }, loadingTimeout);
 
     return () => clearTimeout(timeoutId);
-  }, [onMessage]);
+  }, [isLoading, onMessage]);
 
   const webViewRef = useRef(null);
   const injectVerifyData = (resetFirst = false) => {
@@ -446,8 +445,6 @@ const Hcaptcha = ({
         mixedContentMode={'always'}
         onMessage={(e) => {
           if (e.nativeEvent.data === HCAPTCHA_READY_EVENT) {
-            isLoadingRef.current = false;
-            setIsLoading(false);
             injectVerifyData();
             return;
           }
@@ -455,7 +452,6 @@ const Hcaptcha = ({
           e.reset = reset;
           e.success = true;
           if (e.nativeEvent.data === 'open') {
-            isLoadingRef.current = false;
             setIsLoading(false);
           } else if (e.nativeEvent.data.length > 35) {
             const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
