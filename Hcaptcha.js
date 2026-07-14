@@ -157,7 +157,6 @@ const buildHcaptchaLoaderConfig = ({
   assethost,
   imghost,
   reportapi,
-  orientation,
 }) => ({
   scriptSource,
   render: 'explicit',
@@ -169,7 +168,6 @@ const buildHcaptchaLoaderConfig = ({
   assethost,
   imghost,
   reportapi,
-  orientation,
 });
 
 /**
@@ -248,9 +246,8 @@ const Hcaptcha = ({
       assethost,
       imghost,
       reportapi,
-      orientation,
     }),
-    [jsSrc, siteKey, languageCode, normalizedTheme, host, sentry, endpoint, assethost, imghost, reportapi, orientation]
+    [jsSrc, siteKey, languageCode, normalizedTheme, host, sentry, endpoint, assethost, imghost, reportapi]
   );
 
   const debugInfo = useMemo(
@@ -265,12 +262,13 @@ const Hcaptcha = ({
       debugInfo,
       phoneNumber: phoneNumber ?? null,
       phonePrefix: phonePrefix ?? null,
+      orientation: orientation ?? null,
       rqdata: rqdata ?? null,
       siteKey: siteKey || '',
       size: normalizedSize,
       theme: normalizedTheme,
     }),
-    [loaderConfig, backgroundColor, debugInfo, normalizedSize, normalizedTheme, phoneNumber, phonePrefix, rqdata, siteKey]
+    [loaderConfig, backgroundColor, debugInfo, normalizedSize, normalizedTheme, orientation, phoneNumber, phonePrefix, rqdata, siteKey]
   );
 
   const generateTheWebViewContent = useMemo(
@@ -296,7 +294,7 @@ const Hcaptcha = ({
             }
 
             window.hCaptchaLoader(hcaptchaConfig.loaderConfig).then(onloadCallback).catch(function(error) {
-              window.ReactNativeWebView.postMessage((error && error.name) || 'error');
+              window.ReactNativeWebView.postMessage((error && error.message) || (error && error.name) || 'error');
             });
           };
           var hcaptchaWidgetId = null;
@@ -312,7 +310,7 @@ const Hcaptcha = ({
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
+              hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size, hcaptchaConfig.orientation));
               window.ReactNativeWebView.postMessage("${HCAPTCHA_READY_EVENT}");
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
@@ -338,7 +336,7 @@ const Hcaptcha = ({
             console.warn("challenge error callback fired");
             window.ReactNativeWebView.postMessage(error);
           };
-          const getRenderConfig = function(siteKey, theme, size) {
+          const getRenderConfig = function(siteKey, theme, size, orientation) {
             var config = {
               sitekey: siteKey,
               size: size,
@@ -351,6 +349,9 @@ const Hcaptcha = ({
             };
             if (theme) {
               config.theme = theme;
+            }
+            if (orientation) {
+              config.orientation = orientation;
             }
             return config;
           };
