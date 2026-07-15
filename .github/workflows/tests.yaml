@@ -84,10 +84,10 @@ jobs:
         platform: [ android ]
         pm: [ npm, yarn ]
         include:
-        - os: macos-latest
+        - os: macos-15
           platform: ios
           pm: npm
-        - os: macos-latest
+        - os: macos-15
           platform: ios
           pm: yarn
     steps:
