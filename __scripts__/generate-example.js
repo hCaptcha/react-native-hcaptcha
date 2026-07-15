@@ -150,7 +150,7 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
   const projectPackage = JSON.parse(fs.readFileSync(path.join(projectPath, 'package.json'), 'utf8'));
   const reactNativeVersion = projectPackage.dependencies['react-native'];
   const peerPackages = 'react-native-webview';
-  const devPackages = `typescript @babel/preset-env @react-native/jest-preset@${reactNativeVersion}`;
+  const devPackages = `typescript @react-native/jest-preset@${reactNativeVersion}`;
 
   console.warn('Installing dependencies...');
   if (packageManager === 'yarn') {
