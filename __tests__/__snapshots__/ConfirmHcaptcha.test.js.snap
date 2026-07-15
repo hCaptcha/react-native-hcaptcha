@@ -112,16 +112,22 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          var hcaptchaConfig = {"apiUrl":"https://js.hcaptcha.com/1/api.js?render=explicit\\u0026onload=onloadCallback\\u0026host=00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com\\u0026hl=en\\u0026orientation=portrait","backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_4_0_0":true},"phoneNumber":null,"phonePrefix":null,"rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
+          var hcaptchaConfig = {"loaderConfig":{"scriptSource":"https://js.hcaptcha.com/1/api.js","render":"explicit","host":"00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com","hl":"en","custom":false,"sentry":false},"backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_4_0_0":true},"phoneNumber":null,"phonePrefix":null,"orientation":"portrait","rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
         <script type="text/javascript">
+          window.hCaptchaLoader = function(config) { window.hCaptchaLoaderConfig = config; return Promise.resolve(window.hcaptcha); };
+        </script>
+        <script type="text/javascript">
           var loadApiScript = function() {
-            var script = document.createElement('script');
-            script.async = true;
-            script.defer = true;
-            script.src = hcaptchaConfig.apiUrl;
-            document.head.appendChild(script);
+            if (typeof window.hCaptchaLoader !== 'function') {
+              window.ReactNativeWebView.postMessage('error');
+              return;
+            }
+
+            window.hCaptchaLoader(hcaptchaConfig.loaderConfig).then(onloadCallback).catch(function(error) {
+              window.ReactNativeWebView.postMessage((error && error.message) || (error && error.name) || 'error');
+            });
           };
           var hcaptchaWidgetId = null;
           var setData = function(data) {
@@ -136,7 +142,7 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
+              hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size, hcaptchaConfig.orientation));
               window.ReactNativeWebView.postMessage("__hcaptcha_ready__");
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
@@ -162,7 +168,7 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             console.warn("challenge error callback fired");
             window.ReactNativeWebView.postMessage(error);
           };
-          const getRenderConfig = function(siteKey, theme, size) {
+          const getRenderConfig = function(siteKey, theme, size, orientation) {
             var config = {
               sitekey: siteKey,
               size: size,
@@ -175,6 +181,9 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             };
             if (theme) {
               config.theme = theme;
+            }
+            if (orientation) {
+              config.orientation = orientation;
             }
             return config;
           };
