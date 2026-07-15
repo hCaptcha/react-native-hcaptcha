@@ -228,6 +228,89 @@ describe('Hcaptcha', () => {
     expect(postMessageMock).toHaveBeenCalledWith('open');
   });
 
+  it('uses the published loader contract and forwards terminal failures after retries', async () => {
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        languageCode="fr"
+        theme={{ palette: { mode: 'dark' } }}
+        sentry={false}
+        jsSrc="https://proxy.example/1/api.js"
+        endpoint="https://proxy.example/api"
+        reportapi="https://proxy.example/report"
+        assethost="https://proxy.example/assets"
+        imghost="https://proxy.example/images"
+        host="mobile.example"
+        orientation="landscape"
+      />
+    );
+    const appendedScripts = [];
+    const postMessageMock = jest.fn();
+    const sandbox = {
+      console: {
+        log: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+      },
+      document: {
+        URL: 'https://hcaptcha.com',
+        body: { style: {} },
+        createElement: jest.fn(() => ({})),
+        head: {
+          appendChild: jest.fn((script) => appendedScripts.push(script)),
+        },
+      },
+      setTimeout,
+      clearTimeout,
+      window: null,
+    };
+
+    sandbox.window = sandbox;
+    sandbox.window.ReactNativeWebView = { postMessage: postMessageMock };
+    sandbox.document.defaultView = sandbox;
+    sandbox.document.head.ownerDocument = sandbox.document;
+
+    const context = vm.createContext(sandbox);
+    const [configScript, , runtimeScript] = getInlineScripts(component);
+    const actualLoaderModule = jest.requireActual('@hcaptcha/loader/inline');
+    const loaderSource = actualLoaderModule.default || actualLoaderModule;
+
+    vm.runInContext(configScript, context);
+    context.hcaptchaConfig.loaderConfig.retryDelay = 0;
+    vm.runInContext(loaderSource, context);
+    vm.runInContext(runtimeScript, context);
+
+    expect(appendedScripts).toHaveLength(1);
+    const apiUrl = new URL(appendedScripts[0].src);
+    expect(`${apiUrl.origin}${apiUrl.pathname}`).toBe('https://proxy.example/1/api.js');
+    expect(Object.fromEntries(apiUrl.searchParams.entries())).toEqual({
+      assethost: 'https://proxy.example/assets',
+      custom: 'true',
+      endpoint: 'https://proxy.example/api',
+      hl: 'fr',
+      host: 'mobile.example',
+      imghost: 'https://proxy.example/images',
+      onload: 'hCaptchaOnLoad',
+      render: 'explicit',
+      reportapi: 'https://proxy.example/report',
+      sentry: 'false',
+    });
+    expect(apiUrl.searchParams.has('orientation')).toBe(false);
+    expect(context.hcaptchaConfig.orientation).toBe('landscape');
+
+    appendedScripts[0].onerror(new Error('first failure'));
+    await waitFor(() => expect(appendedScripts).toHaveLength(2));
+    expect(postMessageMock).not.toHaveBeenCalled();
+
+    appendedScripts[1].onerror(new Error('second failure'));
+    await waitFor(() => expect(appendedScripts).toHaveLength(3));
+    expect(postMessageMock).not.toHaveBeenCalled();
+
+    appendedScripts[2].onerror(new Error('terminal failure'));
+    await waitFor(() => expect(postMessageMock).toHaveBeenCalledWith('script-error'));
+  });
+
   it('serializes every HTML-facing prop safely before embedding it', () => {
     const theme = {
       palette: {
