@@ -103,7 +103,7 @@ describe('Hcaptcha', () => {
     expect(config.debugInfo).toMatchObject({
       customDebug: 'enabled',
       'dep_mocked-md5': true,
-      sdk_4_0_0: true,
+      sdk_4_1_0: true,
     });
 
     expect(loaderConfig).toMatchObject({
