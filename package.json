@@ -46,7 +46,7 @@
   },
   "homepage": "https://github.com/hCaptcha/react-native-hcaptcha#readme",
   "dependencies": {
-    "@hcaptcha/loader": "2.4.0"
+    "@hcaptcha/loader": "2.4.1"
   },
   "peerDependencies": {
     "react": "*",
