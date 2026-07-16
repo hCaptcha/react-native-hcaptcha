@@ -146,7 +146,7 @@ const getHcaptchaHost = (host, siteKey) => {
   }
 };
 
-const buildHcaptchaLoaderConfig = ({
+function buildHcaptchaLoaderConfig({
   scriptSource,
   siteKey,
   hl,
@@ -157,18 +157,20 @@ const buildHcaptchaLoaderConfig = ({
   assethost,
   imghost,
   reportapi,
-}) => ({
-  scriptSource: scriptSource || 'https://hcaptcha.com/1/api.js',
-  render: 'explicit',
-  host: getHcaptchaHost(host, siteKey),
-  hl,
-  custom: typeof theme === 'object',
-  sentry,
-  endpoint,
-  assethost,
-  imghost,
-  reportapi,
-});
+}) {
+  return {
+    scriptSource: scriptSource || 'https://hcaptcha.com/1/api.js',
+    render: 'explicit',
+    host: getHcaptchaHost(host, siteKey),
+    hl,
+    custom: typeof theme === 'object',
+    sentry,
+    endpoint,
+    assethost,
+    imghost,
+    reportapi,
+  };
+}
 
 /**
  *
