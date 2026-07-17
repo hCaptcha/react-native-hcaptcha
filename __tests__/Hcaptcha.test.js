@@ -446,6 +446,31 @@ describe('Hcaptcha', () => {
     });
   });
 
+  it('does not emit a loading timeout after the widget becomes ready in passive flows', () => {
+    jest.useFakeTimers();
+    const onMessage = jest.fn();
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={onMessage}
+      />
+    );
+
+    act(() => {
+      getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } });
+      jest.advanceTimersByTime(15000);
+    });
+
+    expect(onMessage).not.toHaveBeenCalledWith({
+      nativeEvent: {
+        data: 'error',
+        description: 'loading timeout',
+      },
+    });
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('execute();'));
+  });
+
   it('forwards open messages, marks them as successful, and hides the loading overlay', async () => {
     const onMessage = jest.fn();
     setWebViewMessageData('open');
