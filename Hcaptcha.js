@@ -421,6 +421,14 @@ const Hcaptcha = ({
     injectVerifyData(true);
   };
 
+  const retryApiLoad = () => {
+    if (!webViewRef.current) {
+      return;
+    }
+
+    webViewRef.current.injectJavaScript('loadApiScript(); true;');
+  };
+
   return (
     <View style={styles.container}>
       <WebView
@@ -455,7 +463,11 @@ const Hcaptcha = ({
             return;
           }
 
-          e.reset = reset;
+          if (e.nativeEvent.data === 'script-error') {
+            e.reset = retryApiLoad;
+          } else {
+            e.reset = reset;
+          }
           e.success = true;
           if (e.nativeEvent.data === 'open') {
           } else if (e.nativeEvent.data.length > 35) {

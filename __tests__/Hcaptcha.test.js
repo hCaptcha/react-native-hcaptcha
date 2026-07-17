@@ -613,6 +613,35 @@ describe('Hcaptcha', () => {
     });
   });
 
+  it('restarts the API loader when resetting a terminal script load error', () => {
+    const onMessage = jest.fn();
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={onMessage}
+      />
+    );
+
+    act(() => {
+      getWebView(component).props.onMessage({ nativeEvent: { data: 'script-error' } });
+    });
+
+    expect(onMessage).toHaveBeenCalledWith(expect.objectContaining({
+      success: false,
+      reset: expect.any(Function),
+      nativeEvent: expect.objectContaining({ data: 'script-error' }),
+    }));
+
+    const [{ reset }] = onMessage.mock.calls[0];
+
+    act(() => {
+      reset();
+    });
+
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith('loadApiScript(); true;');
+  });
+
   it('uses verifyParams over legacy props and injects buffered journey data', () => {
     initJourneyTracking();
     emitJourneyEvent('click', 'View', { id: 'screen', ac: 'tap', x: 1, y: 2 });
