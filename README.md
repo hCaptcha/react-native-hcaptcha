@@ -239,6 +239,10 @@ If your app encounters an `error` event, you can reset the hCaptcha SDK flow by 
 
 `event.reset()` rebuilds the verification payload from the current props and the current buffered journey immediately before retrying.
 
+The SDK automatically retries loading `api.js` after transient failures. If all attempts fail, `script-error` is sent via `onMessage`.
+
+The 15-second `loading timeout` message does not stop initialization and should not be treated as a terminal loading failure.
+
 ## Dependencies
 
 1. [react-native-webview](https://github.com/react-native-community/react-native-webview)
@@ -285,7 +289,6 @@ Otherwise, you should pass in the preferred device locale, e.g. fetched from `ge
 - The UI defaults to the "invisible" mode of the JS SDK, i.e. no checkbox is displayed.
 - If you need to test displaying the challenge modal, set your sitekey to "Always Challenge" mode in the hCaptcha dashboard.
 - You can `import { Hcaptcha } from '@hcaptcha/react-native-hcaptcha';` to customize the UI yourself.
-- hCaptcha loading is restricted to a 15-second timeout; an `error` will be sent via `onMessage` if it fails to load due to network issues.
 
 ## Journey Capture Caveats
 
@@ -353,7 +356,7 @@ For new code, prefer:
 | rqdata | string | **Deprecated**: Use `rqdata` in `HCaptchaVerifyParams` instead. Will be removed in future releases. See Enterprise docs. |
 | verifyParams | object | Verification payload overrides passed to `hcaptcha.setData(...)` immediately before verification. Supports `rqdata`, `phonePrefix`, and `phoneNumber`. |
 | userJourney | boolean | When `true`, attaches the current shared journey buffer to the verification payload as `userjourney`. It also enables automatic touch capture by default while a `userJourney` captcha instance is mounted. Use `initJourneyTracking({ touchCapture: false })` to keep User Journeys enabled without automatic touch capture. |
-| sentry | boolean | sentry error reporting (see Enterprise docs) |
+| sentry | boolean | Enables hCaptcha error reporting, including API loading failures. Set to `false` to disable (see Enterprise docs). |
 | jsSrc | string | The url of api.js. Default: https://js.hcaptcha.com/1/api.js (Override only if using first-party hosting feature.) |
 | endpoint | string | Point hCaptcha JS Ajax Requests to alternative API Endpoint. Default: https://api.hcaptcha.com (Override only if using first-party hosting feature.) |
 | reportapi | string | Point hCaptcha Bug Reporting Request to alternative API Endpoint. Default: https://accounts.hcaptcha.com (Override only if using first-party hosting feature.) |

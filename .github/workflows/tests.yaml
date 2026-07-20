@@ -84,10 +84,10 @@ jobs:
         platform: [ android ]
         pm: [ npm, yarn ]
         include:
-        - os: macos-latest
+        - os: macos-15
           platform: ios
           pm: npm
-        - os: macos-latest
+        - os: macos-15
           platform: ios
           pm: yarn
     steps:
@@ -137,7 +137,7 @@ jobs:
         include:
         - os: ubuntu-latest
           platform: android
-        - os: macos-latest
+        - os: macos-15
           platform: ios
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

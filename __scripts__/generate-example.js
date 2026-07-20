@@ -147,8 +147,10 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
   const mainPackage = '@hcaptcha/react-native-hcaptcha';
   const libRoot = process.cwd();
   const libPathFromProject = path.relative(projectPath, libRoot);
+  const projectPackage = JSON.parse(fs.readFileSync(path.join(projectPath, 'package.json'), 'utf8'));
+  const reactNativeVersion = projectPackage.dependencies['react-native'];
   const peerPackages = 'react-native-webview';
-  const devPackages = 'typescript @babel/preset-env';
+  const devPackages = `typescript @react-native/jest-preset@${reactNativeVersion}`;
 
   console.warn('Installing dependencies...');
   if (packageManager === 'yarn') {
@@ -161,7 +163,7 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
     const excludes = ['__e2e__/host', '__tests__', '__mocks__', 'node_modules', '.git', 'output', '.reassure'].map(e => `--exclude=${e}`).join(' ');
     execSync(`rsync -a ${excludes} ${libRoot}/ ${destLibDir}/`, { stdio: 'inherit' });
     execSync('npm i --save file:./react-native-hcaptcha', packageManagerOptions);
-    execSync(`npm i --save --dev ${devPackages}`, packageManagerOptions);
+    execSync(`npm i --save-dev ${devPackages}`, packageManagerOptions);
     execSync(`npm i --save ${peerPackages}`, packageManagerOptions);
   }
 

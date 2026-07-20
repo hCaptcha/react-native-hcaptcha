@@ -244,7 +244,6 @@ ConfirmHcaptcha.defaultProps = {
   loadingIndicatorColor: null,
   theme: 'light',
   rqdata: null,
-  sentry: false,
   jsSrc: 'https://js.hcaptcha.com/1/api.js',
   endpoint: undefined,
   reportapi: undefined,

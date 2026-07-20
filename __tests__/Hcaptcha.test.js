@@ -23,8 +23,7 @@ describe('Hcaptcha', () => {
 
     return JSON.parse(match[1]);
   };
-  const getApiQueryParams = (component) =>
-    Object.fromEntries(new URL(getSerializedConfig(component).apiUrl).searchParams.entries());
+  const getLoaderConfig = (component) => getSerializedConfig(component).loaderConfig;
   const getInlineScripts = (component) =>
     [...getWebViewHtml(component).matchAll(/<script type="text\/javascript">([\s\S]*?)<\/script>/g)]
       .map((match) => match[1]);
@@ -43,7 +42,7 @@ describe('Hcaptcha', () => {
     expect(component).toMatchSnapshot();
   });
 
-  it('maps every Hcaptcha prop into WebView props, serialized config, and query params', () => {
+  it('maps every Hcaptcha prop into WebView props and serialized config', () => {
     const style = { borderWidth: 2 };
     const debug = { customDebug: 'enabled' };
     const onMessage = jest.fn();
@@ -77,7 +76,7 @@ describe('Hcaptcha', () => {
 
     const webView = getWebView(component);
     const config = getSerializedConfig(component);
-    const query = getApiQueryParams(component);
+    const loaderConfig = getLoaderConfig(component);
     const activityIndicator = component.UNSAFE_getByType(ActivityIndicator);
 
     expect(webView.props.source.baseUrl).toBe('https://base.url');
@@ -99,26 +98,27 @@ describe('Hcaptcha', () => {
     expect(config.rqdata).toBe('{"some":"data"}');
     expect(config.phonePrefix).toBe('44');
     expect(config.phoneNumber).toBe('+441234567890');
+    expect(config.orientation).toBe('landscape');
     expect(config.verifyData).toBeUndefined();
     expect(config.debugInfo).toMatchObject({
       customDebug: 'enabled',
       'dep_mocked-md5': true,
-      sdk_4_0_0: true,
+      sdk_4_1_0: true,
     });
 
-    expect(query).toMatchObject({
+    expect(loaderConfig).toMatchObject({
+      scriptSource: 'https://all.props/api-endpoint',
       render: 'explicit',
-      onload: 'onloadCallback',
       host: 'all-props-host',
       hl: 'fr',
-      sentry: 'true',
+      sentry: true,
       endpoint: 'https://all.props/endpoint',
       assethost: 'https://all.props/assethost',
       imghost: 'https://all.props/imghost',
       reportapi: 'https://all.props/reportapi',
-      orientation: 'landscape',
+      custom: false,
     });
-    expect(query.custom).toBeUndefined();
+    expect(loaderConfig.orientation).toBeUndefined();
   });
 
   it('normalizes the legacy checkbox size alias to the JS SDK normal size', () => {
@@ -133,7 +133,7 @@ describe('Hcaptcha', () => {
     expect(getSerializedConfig(component).size).toBe('normal');
   });
 
-  it('normalizes object and JSON-string themes into object config and custom=true query params', () => {
+  it('normalizes object and JSON-string themes into object config and custom loader config', () => {
     const customTheme = {
       palette: {
         mode: 'dark',
@@ -155,11 +155,11 @@ describe('Hcaptcha', () => {
       );
 
       expect(getSerializedConfig(component).theme).toEqual(customTheme);
-      expect(getApiQueryParams(component).custom).toBe('true');
+      expect(getLoaderConfig(component).custom).toBe(true);
     });
   });
 
-  it('loads the external api script dynamically and signals RN when the widget is ready', () => {
+  it('loads hCaptcha through the loader and signals RN when the widget is ready', async () => {
     const component = render(
       <Hcaptcha
         siteKey="00000000-0000-0000-0000-000000000000"
@@ -172,7 +172,6 @@ describe('Hcaptcha', () => {
       />
     );
     const config = getSerializedConfig(component);
-    const appendedScripts = [];
     const renderMock = jest.fn(() => 'widget-id');
     const executeMock = jest.fn();
     const postMessageMock = jest.fn();
@@ -184,12 +183,6 @@ describe('Hcaptcha', () => {
       },
       document: {
         body: { style: {} },
-        createElement: jest.fn(() => ({})),
-        head: {
-          appendChild: jest.fn((node) => {
-            appendedScripts.push(node);
-          }),
-        },
       },
       hcaptcha: {
         execute: executeMock,
@@ -203,21 +196,16 @@ describe('Hcaptcha', () => {
     sandbox.window.ReactNativeWebView = { postMessage: postMessageMock };
 
     const context = vm.createContext(sandbox);
-    const [bootstrapScript, runtimeScript] = getInlineScripts(component);
+    const [configScript, loaderScript, runtimeScript] = getInlineScripts(component);
 
-    vm.runInContext(bootstrapScript, context);
+    vm.runInContext(configScript, context);
+    vm.runInContext(loaderScript, context);
     vm.runInContext(runtimeScript, context);
 
-    expect(appendedScripts).toHaveLength(1);
-    expect(appendedScripts[0]).toMatchObject({
-      async: true,
-      defer: true,
-      src: config.apiUrl,
-    });
+    expect(context.hCaptchaLoaderConfig).toEqual(config.loaderConfig);
     expect(typeof context.onloadCallback).toBe('function');
-    expect(new URL(appendedScripts[0].src).searchParams.get('onload')).toBe('onloadCallback');
 
-    context.onloadCallback();
+    await waitFor(() => expect(renderMock).toHaveBeenCalled());
 
     expect(renderMock).toHaveBeenCalledWith('hcaptcha-container', expect.objectContaining({
       sitekey: '00000000-0000-0000-0000-000000000000',
@@ -238,6 +226,89 @@ describe('Hcaptcha', () => {
     renderConfig['open-callback']();
     expect(context.document.body.style.backgroundColor).toBe(config.backgroundColor);
     expect(postMessageMock).toHaveBeenCalledWith('open');
+  });
+
+  it('uses the published loader contract and forwards terminal failures after retries', async () => {
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        languageCode="fr"
+        theme={{ palette: { mode: 'dark' } }}
+        sentry={false}
+        jsSrc="https://proxy.example/1/api.js"
+        endpoint="https://proxy.example/api"
+        reportapi="https://proxy.example/report"
+        assethost="https://proxy.example/assets"
+        imghost="https://proxy.example/images"
+        host="mobile.example"
+        orientation="landscape"
+      />
+    );
+    const appendedScripts = [];
+    const postMessageMock = jest.fn();
+    const sandbox = {
+      console: {
+        log: jest.fn(),
+        warn: jest.fn(),
+        error: jest.fn(),
+      },
+      document: {
+        URL: 'https://hcaptcha.com',
+        body: { style: {} },
+        createElement: jest.fn(() => ({})),
+        head: {
+          appendChild: jest.fn((script) => appendedScripts.push(script)),
+        },
+      },
+      setTimeout,
+      clearTimeout,
+      window: null,
+    };
+
+    sandbox.window = sandbox;
+    sandbox.window.ReactNativeWebView = { postMessage: postMessageMock };
+    sandbox.document.defaultView = sandbox;
+    sandbox.document.head.ownerDocument = sandbox.document;
+
+    const context = vm.createContext(sandbox);
+    const [configScript, , runtimeScript] = getInlineScripts(component);
+    const actualLoaderModule = jest.requireActual('@hcaptcha/loader/inline');
+    const loaderSource = actualLoaderModule.default || actualLoaderModule;
+
+    vm.runInContext(configScript, context);
+    context.hcaptchaConfig.loaderConfig.retryDelay = 0;
+    vm.runInContext(loaderSource, context);
+    vm.runInContext(runtimeScript, context);
+
+    expect(appendedScripts).toHaveLength(1);
+    const apiUrl = new URL(appendedScripts[0].src);
+    expect(`${apiUrl.origin}${apiUrl.pathname}`).toBe('https://proxy.example/1/api.js');
+    expect(Object.fromEntries(apiUrl.searchParams.entries())).toEqual({
+      assethost: 'https://proxy.example/assets',
+      custom: 'true',
+      endpoint: 'https://proxy.example/api',
+      hl: 'fr',
+      host: 'mobile.example',
+      imghost: 'https://proxy.example/images',
+      onload: 'hCaptchaOnLoad',
+      render: 'explicit',
+      reportapi: 'https://proxy.example/report',
+      sentry: 'false',
+    });
+    expect(apiUrl.searchParams.has('orientation')).toBe(false);
+    expect(context.hcaptchaConfig.orientation).toBe('landscape');
+
+    appendedScripts[0].onerror(new Error('first failure'));
+    await waitFor(() => expect(appendedScripts).toHaveLength(2));
+    expect(postMessageMock).not.toHaveBeenCalled();
+
+    appendedScripts[1].onerror(new Error('second failure'));
+    await waitFor(() => expect(appendedScripts).toHaveLength(3));
+    expect(postMessageMock).not.toHaveBeenCalled();
+
+    appendedScripts[2].onerror(new Error('terminal failure'));
+    await waitFor(() => expect(postMessageMock).toHaveBeenCalledWith('script-error'));
   });
 
   it('serializes every HTML-facing prop safely before embedding it', () => {
@@ -272,7 +343,7 @@ describe('Hcaptcha', () => {
 
     const html = getWebViewHtml(component);
     const config = getSerializedConfig(component);
-    const query = getApiQueryParams(component);
+    const loaderConfig = getLoaderConfig(component);
 
     expect(html).toContain('var hcaptchaConfig = ');
     expect(html).toContain('hcaptcha.setData(hcaptchaWidgetId, data || {});');
@@ -288,15 +359,17 @@ describe('Hcaptcha', () => {
     expect(config.theme).toEqual(theme);
     expect(config.debugInfo['</script><script>alert("debug")</script>']).toBe('</script><script>alert("value")</script>');
 
-    expect(query.hl).toBe('en"</script><script>alert("lang")</script>');
-    expect(query.host).toBe(encodeURIComponent('host"</script><script>alert("host")</script>'));
-    expect(query.endpoint).toBe('https://example.com/endpoint?</script><script>alert("endpoint")</script>');
-    expect(query.reportapi).toBe('https://example.com/reportapi?</script><script>alert("reportapi")</script>');
-    expect(query.assethost).toBe('https://example.com/assethost?</script><script>alert("asset")</script>');
-    expect(query.imghost).toBe('https://example.com/imghost?</script><script>alert("image")</script>');
-    expect(query.orientation).toBe('landscape"</script><script>alert("orientation")</script>');
-    expect(query.sentry).toBe('true');
-    expect(query.custom).toBe('true');
+    expect(loaderConfig.scriptSource).toBe('https://example.com/api.js?x=</script><script>alert("src")</script>');
+    expect(loaderConfig.hl).toBe('en"</script><script>alert("lang")</script>');
+    expect(loaderConfig.host).toBe('host"</script><script>alert("host")</script>');
+    expect(loaderConfig.endpoint).toBe('https://example.com/endpoint?</script><script>alert("endpoint")</script>');
+    expect(loaderConfig.reportapi).toBe('https://example.com/reportapi?</script><script>alert("reportapi")</script>');
+    expect(loaderConfig.assethost).toBe('https://example.com/assethost?</script><script>alert("asset")</script>');
+    expect(loaderConfig.imghost).toBe('https://example.com/imghost?</script><script>alert("image")</script>');
+    expect(config.orientation).toBe('landscape"</script><script>alert("orientation")</script>');
+    expect(loaderConfig.orientation).toBeUndefined();
+    expect(loaderConfig.sentry).toBe(true);
+    expect(loaderConfig.custom).toBe(true);
   });
 
   it('does not render a loading overlay when showLoading is false', () => {
@@ -371,6 +444,31 @@ describe('Hcaptcha', () => {
         description: 'loading timeout',
       },
     });
+  });
+
+  it('does not emit a loading timeout after the widget becomes ready in passive flows', () => {
+    jest.useFakeTimers();
+    const onMessage = jest.fn();
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={onMessage}
+      />
+    );
+
+    act(() => {
+      getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } });
+      jest.advanceTimersByTime(15000);
+    });
+
+    expect(onMessage).not.toHaveBeenCalledWith({
+      nativeEvent: {
+        data: 'error',
+        description: 'loading timeout',
+      },
+    });
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('execute();'));
   });
 
   it('forwards open messages, marks them as successful, and hides the loading overlay', async () => {
@@ -513,6 +611,35 @@ describe('Hcaptcha', () => {
         nativeEvent: expect.objectContaining({ data: 'webview-error' }),
       }));
     });
+  });
+
+  it('restarts the API loader when resetting a terminal script load error', () => {
+    const onMessage = jest.fn();
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={onMessage}
+      />
+    );
+
+    act(() => {
+      getWebView(component).props.onMessage({ nativeEvent: { data: 'script-error' } });
+    });
+
+    expect(onMessage).toHaveBeenCalledWith(expect.objectContaining({
+      success: false,
+      reset: expect.any(Function),
+      nativeEvent: expect.objectContaining({ data: 'script-error' }),
+    }));
+
+    const [{ reset }] = onMessage.mock.calls[0];
+
+    act(() => {
+      reset();
+    });
+
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith('loadApiScript(); true;');
   });
 
   it('uses verifyParams over legacy props and injects buffered journey data', () => {

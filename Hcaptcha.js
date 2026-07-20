@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import hCaptchaLoaderInlineScript from '@hcaptcha/loader/inline';
 import WebView from 'react-native-webview';
 import { ActivityIndicator, Linking, Platform, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
@@ -135,24 +136,41 @@ const buildVerifyData = ({
 const buildVerifyInjectionScript = (payload, resetFirst = false) =>
   `try { ${resetFirst ? 'reset(); ' : ''}setData(${serializeForInlineScript(payload)}); execute(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;`;
 
-const buildHcaptchaApiUrl = (jsSrc, siteKey, hl, theme, host, sentry, endpoint, assethost, imghost, reportapi, orientation) => {
-  var url = `${jsSrc || 'https://hcaptcha.com/1/api.js'}?render=explicit&onload=onloadCallback`;
-
-  let effectiveHost;
+const getHcaptchaHost = (host, siteKey) => {
   if (host) {
-    effectiveHost = encodeURIComponent(host);
+    return host;
+  } else if (siteKey) {
+    return `${siteKey}.react-native.hcaptcha.com`;
   } else {
-    effectiveHost = (siteKey || 'missing-sitekey') + '.react-native.hcaptcha.com';
+    return 'missing-sitekey.react-native.hcaptcha.com';
   }
-
-  for (let [key, value] of Object.entries({ host: effectiveHost, hl, custom: typeof theme === 'object', sentry, endpoint, assethost, imghost, reportapi, orientation })) {
-    if (value) {
-      url += `&${key}=${encodeURIComponent(value)}`;
-    }
-  }
-
-  return url;
 };
+
+function buildHcaptchaLoaderConfig({
+  scriptSource,
+  siteKey,
+  hl,
+  theme,
+  host,
+  sentry,
+  endpoint,
+  assethost,
+  imghost,
+  reportapi,
+}) {
+  return {
+    scriptSource: scriptSource || 'https://hcaptcha.com/1/api.js',
+    render: 'explicit',
+    host: getHcaptchaHost(host, siteKey),
+    hl,
+    custom: typeof theme === 'object',
+    sentry,
+    endpoint,
+    assethost,
+    imghost,
+    reportapi,
+  };
+}
 
 /**
  *
@@ -213,13 +231,25 @@ const Hcaptcha = ({
   const tokenTimeout = 120000;
   const loadingTimeout = 15000;
   const [isLoading, setIsLoading] = useState(true);
+  const isLoadingRef = useRef(true);
   const journeyEnabled = Boolean(userJourney);
   const hasJourneyConsumerRef = useRef(false);
   const normalizedTheme = useMemo(() => normalizeTheme(theme), [theme]);
   const normalizedSize = useMemo(() => normalizeSize(size), [size]);
-  const apiUrl = useMemo(
-    () => buildHcaptchaApiUrl(jsSrc, siteKey, languageCode, normalizedTheme, host, sentry, endpoint, assethost, imghost, reportapi, orientation),
-    [jsSrc, siteKey, languageCode, normalizedTheme, host, sentry, endpoint, assethost, imghost, reportapi, orientation]
+  const loaderConfig = useMemo(
+    () => buildHcaptchaLoaderConfig({
+      scriptSource: jsSrc,
+      siteKey,
+      hl: languageCode,
+      theme: normalizedTheme,
+      host,
+      sentry,
+      endpoint,
+      assethost,
+      imghost,
+      reportapi,
+    }),
+    [jsSrc, siteKey, languageCode, normalizedTheme, host, sentry, endpoint, assethost, imghost, reportapi]
   );
 
   const debugInfo = useMemo(
@@ -229,17 +259,18 @@ const Hcaptcha = ({
 
   const serializedWebViewConfig = useMemo(
     () => serializeForInlineScript({
-      apiUrl,
+      loaderConfig,
       backgroundColor: backgroundColor ?? '',
       debugInfo,
       phoneNumber: phoneNumber ?? null,
       phonePrefix: phonePrefix ?? null,
+      orientation: orientation ?? null,
       rqdata: rqdata ?? null,
       siteKey: siteKey || '',
       size: normalizedSize,
       theme: normalizedTheme,
     }),
-    [apiUrl, backgroundColor, debugInfo, normalizedSize, normalizedTheme, phoneNumber, phonePrefix, rqdata, siteKey]
+    [loaderConfig, backgroundColor, debugInfo, normalizedSize, normalizedTheme, orientation, phoneNumber, phonePrefix, rqdata, siteKey]
   );
 
   const generateTheWebViewContent = useMemo(
@@ -255,12 +286,18 @@ const Hcaptcha = ({
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
         <script type="text/javascript">
+          ${hCaptchaLoaderInlineScript}
+        </script>
+        <script type="text/javascript">
           var loadApiScript = function() {
-            var script = document.createElement('script');
-            script.async = true;
-            script.defer = true;
-            script.src = hcaptchaConfig.apiUrl;
-            document.head.appendChild(script);
+            if (typeof window.hCaptchaLoader !== 'function') {
+              window.ReactNativeWebView.postMessage('error');
+              return;
+            }
+
+            window.hCaptchaLoader(hcaptchaConfig.loaderConfig).then(onloadCallback).catch(function(error) {
+              window.ReactNativeWebView.postMessage((error && error.message) || (error && error.name) || 'error');
+            });
           };
           var hcaptchaWidgetId = null;
           var setData = function(data) {
@@ -275,7 +312,7 @@ const Hcaptcha = ({
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
-              hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size));
+              hcaptchaWidgetId = hcaptcha.render("hcaptcha-container", getRenderConfig(hcaptchaConfig.siteKey, hcaptchaConfig.theme, hcaptchaConfig.size, hcaptchaConfig.orientation));
               window.ReactNativeWebView.postMessage("${HCAPTCHA_READY_EVENT}");
               // have loaded by this point; render is sync.
               console.log("challenge render complete");
@@ -301,7 +338,7 @@ const Hcaptcha = ({
             console.warn("challenge error callback fired");
             window.ReactNativeWebView.postMessage(error);
           };
-          const getRenderConfig = function(siteKey, theme, size) {
+          const getRenderConfig = function(siteKey, theme, size, orientation) {
             var config = {
               sitekey: siteKey,
               size: size,
@@ -314,6 +351,9 @@ const Hcaptcha = ({
             };
             if (theme) {
               config.theme = theme;
+            }
+            if (orientation) {
+              config.orientation = orientation;
             }
             return config;
           };
@@ -345,13 +385,13 @@ const Hcaptcha = ({
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (isLoading) {
+      if (isLoadingRef.current) {
         onMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } });
       }
     }, loadingTimeout);
 
     return () => clearTimeout(timeoutId);
-  }, [isLoading, onMessage]);
+  }, [onMessage]);
 
   const webViewRef = useRef(null);
   const injectVerifyData = (resetFirst = false) => {
@@ -381,6 +421,14 @@ const Hcaptcha = ({
     injectVerifyData(true);
   };
 
+  const retryApiLoad = () => {
+    if (!webViewRef.current) {
+      return;
+    }
+
+    webViewRef.current.injectJavaScript('loadApiScript(); true;');
+  };
+
   return (
     <View style={styles.container}>
       <WebView
@@ -407,15 +455,21 @@ const Hcaptcha = ({
         }}
         mixedContentMode={'always'}
         onMessage={(e) => {
+          isLoadingRef.current = false;
+          setIsLoading(false);
+
           if (e.nativeEvent.data === HCAPTCHA_READY_EVENT) {
             injectVerifyData();
             return;
           }
 
-          e.reset = reset;
+          if (e.nativeEvent.data === 'script-error') {
+            e.reset = retryApiLoad;
+          } else {
+            e.reset = reset;
+          }
           e.success = true;
           if (e.nativeEvent.data === 'open') {
-            setIsLoading(false);
           } else if (e.nativeEvent.data.length > 35) {
             const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
             e.markUsed = () => clearTimeout(expiredTokenTimerId);
