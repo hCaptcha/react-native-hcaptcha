@@ -1,5 +1,8 @@
 import React from 'react';
-import Hcaptcha, { HcaptchaProps } from './Hcaptcha';
+import Hcaptcha, {
+  HCaptchaHandle,
+  HcaptchaProps,
+} from './Hcaptcha';
 
 export type JourneyRuntimeStats = {
   activeConsumers: number;
@@ -18,7 +21,7 @@ export type JourneyTrackingOptions = {
   onStats?: (stats: JourneyRuntimeStats) => void;
 };
 
-type ConfirmHcaptchaProps = Omit<HcaptchaProps, 'url' | 'style'> & {
+type ConfirmHcaptchaProps = Omit<HcaptchaProps, 'url' | 'style' | 'autoExecute' | 'onReady'> & {
   /**
    * Indicates whether the passive mode is enabled; when true, the modal won't be shown at all
    */
@@ -59,4 +62,12 @@ export function initJourneyTracking(options?: JourneyTrackingOptions): void;
 
 export function registerJourneyNavigationContainer(ref: unknown): void;
 
-export { Hcaptcha };
+export const Hcaptcha: React.ForwardRefExoticComponent<
+  HcaptchaProps & React.RefAttributes<HCaptchaHandle>
+>;
+export type {
+  CustomWebViewMessageEvent,
+  HCaptchaHandle,
+  HCaptchaVerifyParams,
+  HcaptchaProps,
+} from './Hcaptcha';

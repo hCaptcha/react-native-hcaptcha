@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "prepare": "husky",
-    "test": "jest --testPathIgnorePatterns=\\.perf-test\\.js$",
+    "test": "jest",
+    "test:types": "tsc -p __tests__/types/tsconfig.json",
     "test:e2e:setup": "node __scripts__/setup-e2e-host.js",
     "test:e2e:install:android": "adb install -r __e2e__/host/android/app/build/outputs/apk/debug/app-debug.apk",
     "test:e2e:install:ios": "xcrun simctl install booted __e2e__/host/ios/build/Build/Products/Debug-iphonesimulator/react_native_hcaptcha_example.app",
@@ -22,9 +23,14 @@
     "setupFiles": [
       "<rootDir>/__mocks__/global.js"
     ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/__e2e__/host/"
+    ],
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "<rootDir>/__e2e__/"
+      "<rootDir>/__e2e__/",
+      "<rootDir>/__tests__/types/",
+      "\\.perf-test\\.js$"
     ]
   },
   "repository": {
@@ -64,6 +70,7 @@
     "@react-native/babel-preset": "^0.78.0",
     "@react-native/eslint-config": "^0.78.0",
     "@testing-library/react-native": "^13.2.0",
+    "@types/react": "^19.2.17",
     "eslint": "^8.19.0",
     "eslint-plugin-react-native": "^5.0.0",
     "husky": "^9.1.7",

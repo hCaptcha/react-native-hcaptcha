@@ -228,6 +228,7 @@ ConfirmHcaptcha.propTypes = {
   phoneNumber: PropTypes.string,
   userJourney: PropTypes.bool,
   verifyParams: PropTypes.shape({
+    mfaEmail: PropTypes.string,
     phoneNumber: PropTypes.string,
     phonePrefix: PropTypes.string,
     rqdata: PropTypes.string,

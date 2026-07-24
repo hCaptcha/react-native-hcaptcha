@@ -88,11 +88,12 @@ Use `verifyParams` for request data passed to `hcaptcha.setData(...)` immediatel
     rqdata: enterpriseRqdata,
     phonePrefix: '44',
     phoneNumber: '+44123456789',
+    mfaEmail: 'user@example.com',
   }}
 />
 ```
 
-Legacy top-level `rqdata`, `phonePrefix`, and `phoneNumber` props still work, but `verifyParams` takes precedence and should be preferred for new code.
+Legacy top-level `rqdata`, `phonePrefix`, and `phoneNumber` props still work, but `verifyParams` takes precedence and should be preferred for new code. `mfaEmail` is available through `verifyParams`.
 
 ### User Journeys (Enterprise)
 
@@ -192,6 +193,43 @@ import { Hcaptcha } from '@hcaptcha/react-native-hcaptcha';
   onMessage={onMessage}
 />
 ```
+
+To preload hCaptcha, keep the inline component mounted with `autoExecute={false}` and execute it later through its ref. Verification parameters passed to `execute()` apply only to that attempt and take precedence over the component props.
+
+```js
+import React, { useRef } from 'react';
+import { Button, View } from 'react-native';
+import { Hcaptcha } from '@hcaptcha/react-native-hcaptcha';
+
+export default function Example() {
+  const captchaRef = useRef(null);
+
+  return (
+    <View>
+      <Button
+        title="Continue"
+        onPress={() => captchaRef.current?.execute({
+          rqdata: 'current-enterprise-rqdata',
+        })}
+      />
+      <Button
+        title="Cancel challenge"
+        onPress={() => captchaRef.current?.close()}
+      />
+      <Hcaptcha
+        ref={captchaRef}
+        autoExecute={false}
+        siteKey="your-site-key"
+        url="https://hcaptcha.com"
+        onReady={() => console.log('hCaptcha is ready')}
+        onMessage={onMessage}
+      />
+    </View>
+  );
+}
+```
+
+The inline component must remain mounted between initialization and execution. The surrounding view is responsible for positioning it when a visual challenge is shown. Calling `close()` dismisses an active challenge without unmounting the preloaded widget.
 
 ### Handling the post-issuance expiration lifecycle
 
@@ -347,6 +385,8 @@ For new code, prefer:
 | siteKey _(required)_ | string | The hCaptcha siteKey |
 | size | string | The size of the widget, can be 'invisible', 'compact' or 'normal'. `checkbox` is also accepted as a legacy alias for `normal`. Default: 'invisible' |
 | onMessage | Function (see [here](https://github.com/react-native-webview/react-native-webview/blob/master/src/WebViewTypes.ts#L299)) | Required. Runs after receiving a response, error, or when user cancels. |
+| onReady _(inline component only)_ | Function | Runs when hCaptcha has loaded and rendered the widget. |
+| autoExecute _(inline component only)_ | boolean | Whether to execute automatically after hCaptcha is ready. Defaults to `true`; set to `false` to preload the component. |
 | languageCode | string | Default language for hCaptcha; overrides phone defaults. A complete list of supported languages and their codes can be found [here](https://docs.hcaptcha.com/languages/) |
 | showLoading | boolean | Whether to show a loading indicator while the hCaptcha web content loads |
 | closableLoading | boolean | Allow user to cancel hcaptcha during loading by touch loader overlay |
@@ -354,7 +394,7 @@ For new code, prefer:
 | backgroundColor | string | The background color code that will be applied to the main HTML element |
 | theme | string\|object | The theme can be 'light', 'dark', 'contrast' or a custom theme object (see Enterprise docs) |
 | rqdata | string | **Deprecated**: Use `rqdata` in `HCaptchaVerifyParams` instead. Will be removed in future releases. See Enterprise docs. |
-| verifyParams | object | Verification payload overrides passed to `hcaptcha.setData(...)` immediately before verification. Supports `rqdata`, `phonePrefix`, and `phoneNumber`. |
+| verifyParams | object | Verification payload overrides passed to `hcaptcha.setData(...)` immediately before verification. Supports `rqdata`, `phonePrefix`, `phoneNumber`, and `mfaEmail`. |
 | userJourney | boolean | When `true`, attaches the current shared journey buffer to the verification payload as `userjourney`. It also enables automatic touch capture by default while a `userJourney` captcha instance is mounted. Use `initJourneyTracking({ touchCapture: false })` to keep User Journeys enabled without automatic touch capture. |
 | sentry | boolean | Enables hCaptcha error reporting, including API loading failures. Set to `false` to disable (see Enterprise docs). |
 | jsSrc | string | The url of api.js. Default: https://js.hcaptcha.com/1/api.js (Override only if using first-party hosting feature.) |

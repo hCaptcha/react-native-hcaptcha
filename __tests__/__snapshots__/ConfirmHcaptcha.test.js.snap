@@ -139,6 +139,9 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
           var reset = function() {
             hcaptcha.reset(hcaptchaWidgetId);
           };
+          var closeChallenge = function() {
+            hcaptcha.close(hcaptchaWidgetId);
+          };
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
@@ -162,8 +165,8 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             window.ReactNativeWebView.postMessage("open");
             console.log("challenge opened");
           };
-          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onDataExpiredCallback = function() { window.ReactNativeWebView.postMessage("expired"); };
+          var onChalExpiredCallback = function() { window.ReactNativeWebView.postMessage("challenge-expired"); };
           var onDataErrorCallback = function(error) {
             console.warn("challenge error callback fired");
             window.ReactNativeWebView.postMessage(error);

@@ -1,4 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import hCaptchaLoaderInlineScript from '@hcaptcha/loader/inline';
 import WebView from 'react-native-webview';
 import { ActivityIndicator, Linking, Platform, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
@@ -116,6 +124,7 @@ const buildVerifyData = ({
   const finalRqdata = normalizedVerifyParams.rqdata ?? rqdata ?? undefined;
   const finalPhonePrefix = normalizedVerifyParams.phonePrefix ?? phonePrefix ?? undefined;
   const finalPhoneNumber = normalizedVerifyParams.phoneNumber ?? phoneNumber ?? undefined;
+  const finalMfaEmail = normalizedVerifyParams.mfaEmail ?? undefined;
 
   if (finalRqdata) {
     data.rqdata = finalRqdata;
@@ -125,6 +134,9 @@ const buildVerifyData = ({
   }
   if (finalPhoneNumber) {
     data.mfa_phone = finalPhoneNumber;
+  }
+  if (finalMfaEmail) {
+    data.mfa_email = finalMfaEmail;
   }
   if (Array.isArray(userJourney) && userJourney.length > 0) {
     data.userjourney = userJourney;
@@ -175,6 +187,8 @@ function buildHcaptchaLoaderConfig({
 /**
  *
  * @param {*} onMessage: callback after receiving response, error, or when user cancels
+ * @param {function} onReady: callback when hCaptcha is ready to execute
+ * @param {boolean} autoExecute: execute automatically after hCaptcha is ready
  * @param {*} siteKey: your hCaptcha sitekey
  * @param {string} size: The size of the widget, can be 'invisible', 'compact' or 'normal'. 'checkbox' is kept as a legacy alias for 'normal'. Default: 'invisible'
  * @param {*} style: custom style
@@ -200,8 +214,10 @@ function buildHcaptchaLoaderConfig({
  * @param {boolean} userJourney: Enable automatic user journey injection
  * @param {object} verifyParams: Verification payload overrides
  */
-const Hcaptcha = ({
+const Hcaptcha = forwardRef(({
   onMessage,
+  onReady,
+  autoExecute = true,
   size,
   siteKey,
   style,
@@ -227,11 +243,18 @@ const Hcaptcha = ({
   userJourney,
   verifyParams,
   _journeyManagedExternally,
-}) => {
+}, ref) => {
   const tokenTimeout = 120000;
   const loadingTimeout = 15000;
   const [isLoading, setIsLoading] = useState(true);
   const isLoadingRef = useRef(true);
+  const isReadyRef = useRef(false);
+  const hasExecutedRef = useRef(false);
+  const lastExecutionVerifyParamsRef = useRef(undefined);
+  const pendingExecutionRef = useRef({
+    pending: false,
+    verifyParams: undefined,
+  });
   const journeyEnabled = Boolean(userJourney);
   const hasJourneyConsumerRef = useRef(false);
   const normalizedTheme = useMemo(() => normalizeTheme(theme), [theme]);
@@ -309,6 +332,9 @@ const Hcaptcha = ({
           var reset = function() {
             hcaptcha.reset(hcaptchaWidgetId);
           };
+          var closeChallenge = function() {
+            hcaptcha.close(hcaptchaWidgetId);
+          };
           var onloadCallback = function() {
             try {
               console.log("challenge onload starting");
@@ -332,8 +358,8 @@ const Hcaptcha = ({
             window.ReactNativeWebView.postMessage("open");
             console.log("challenge opened");
           };
-          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onDataExpiredCallback = function() { window.ReactNativeWebView.postMessage("expired"); };
+          var onChalExpiredCallback = function() { window.ReactNativeWebView.postMessage("challenge-expired"); };
           var onDataErrorCallback = function(error) {
             console.warn("challenge error callback fired");
             window.ReactNativeWebView.postMessage(error);
@@ -394,19 +420,77 @@ const Hcaptcha = ({
   }, [onMessage]);
 
   const webViewRef = useRef(null);
-  const injectVerifyData = (resetFirst = false) => {
+  const injectVerifyData = useCallback((resetFirst = false, executionVerifyParams) => {
     if (!webViewRef.current) {
-      return;
+      return false;
     }
+
+    const finalVerifyParams = executionVerifyParams === undefined
+      ? verifyParams
+      : {
+        ...(verifyParams || {}),
+        ...executionVerifyParams,
+      };
 
     webViewRef.current.injectJavaScript(buildVerifyInjectionScript(buildVerifyData({
       phoneNumber,
       phonePrefix,
       rqdata,
       userJourney: journeyEnabled ? peekJourneyEvents() : undefined,
-      verifyParams,
+      verifyParams: finalVerifyParams,
     }), resetFirst));
-  };
+
+    return true;
+  }, [journeyEnabled, phoneNumber, phonePrefix, rqdata, verifyParams]);
+
+  const executeNow = useCallback((executionVerifyParams) => {
+    if (injectVerifyData(hasExecutedRef.current, executionVerifyParams)) {
+      hasExecutedRef.current = true;
+      lastExecutionVerifyParamsRef.current = executionVerifyParams;
+    }
+  }, [injectVerifyData]);
+
+  const execute = useCallback((executionVerifyParams) => {
+    if (!isReadyRef.current) {
+      pendingExecutionRef.current = {
+        pending: true,
+        verifyParams: executionVerifyParams,
+      };
+      return;
+    }
+
+    executeNow(executionVerifyParams);
+  }, [executeNow]);
+
+  const resetWidget = useCallback(() => {
+    pendingExecutionRef.current = {
+      pending: false,
+      verifyParams: undefined,
+    };
+    hasExecutedRef.current = false;
+    lastExecutionVerifyParamsRef.current = undefined;
+
+    if (isReadyRef.current && webViewRef.current) {
+      webViewRef.current.injectJavaScript('reset(); true;');
+    }
+  }, []);
+
+  const closeWidget = useCallback(() => {
+    pendingExecutionRef.current = {
+      pending: false,
+      verifyParams: undefined,
+    };
+
+    if (isReadyRef.current && webViewRef.current) {
+      webViewRef.current.injectJavaScript('closeChallenge(); true;');
+    }
+  }, []);
+
+  useImperativeHandle(ref, () => ({
+    execute,
+    reset: resetWidget,
+    close: closeWidget,
+  }), [closeWidget, execute, resetWidget]);
 
   // This shows ActivityIndicator till webview loads hCaptcha images
   const renderLoading = () => (
@@ -417,17 +501,21 @@ const Hcaptcha = ({
     </TouchableWithoutFeedback>
   );
 
-  const reset = () => {
-    injectVerifyData(true);
-  };
+  const retryVerification = useCallback(() => {
+    if (injectVerifyData(true, lastExecutionVerifyParamsRef.current)) {
+      hasExecutedRef.current = true;
+    }
+  }, [injectVerifyData]);
 
-  const retryApiLoad = () => {
+  const retryApiLoad = useCallback(() => {
     if (!webViewRef.current) {
       return;
     }
 
+    isReadyRef.current = false;
+    hasExecutedRef.current = false;
     webViewRef.current.injectJavaScript('loadApiScript(); true;');
-  };
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -459,19 +547,34 @@ const Hcaptcha = ({
           setIsLoading(false);
 
           if (e.nativeEvent.data === HCAPTCHA_READY_EVENT) {
-            injectVerifyData();
+            const pendingExecution = pendingExecutionRef.current;
+            pendingExecutionRef.current = {
+              pending: false,
+              verifyParams: undefined,
+            };
+            isReadyRef.current = true;
+
+            if (pendingExecution.pending) {
+              executeNow(pendingExecution.verifyParams);
+            } else if (autoExecute) {
+              executeNow();
+            }
+
+            if (onReady) {
+              onReady();
+            }
             return;
           }
 
           if (e.nativeEvent.data === 'script-error') {
             e.reset = retryApiLoad;
           } else {
-            e.reset = reset;
+            e.reset = retryVerification;
           }
           e.success = true;
           if (e.nativeEvent.data === 'open') {
           } else if (e.nativeEvent.data.length > 35) {
-            const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
+            const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset: retryVerification }), tokenTimeout);
             e.markUsed = () => clearTimeout(expiredTokenTimerId);
             if (journeyEnabled) {
               clearJourneyEvents();
@@ -493,7 +596,7 @@ const Hcaptcha = ({
       {showLoading && isLoading && renderLoading()}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -508,6 +611,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 });
+
+Hcaptcha.displayName = 'Hcaptcha';
 
 export default Hcaptcha;
 export { buildDebugInfo, buildVerifyData, HCAPTCHA_READY_EVENT };

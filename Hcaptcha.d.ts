@@ -6,6 +6,23 @@ export type HCaptchaVerifyParams = {
   rqdata?: string;
   phonePrefix?: string;
   phoneNumber?: string;
+  mfaEmail?: string;
+};
+
+export type HCaptchaHandle = {
+  /**
+   * Executes hCaptcha with optional verification parameters for this attempt.
+   * Calls made before readiness are queued until initialization completes.
+   */
+  execute: (verifyParams?: HCaptchaVerifyParams) => void;
+  /**
+   * Resets the current hCaptcha widget without executing it.
+   */
+  reset: () => void;
+  /**
+   * Closes the current challenge without unmounting the preloaded widget.
+   */
+  close: () => void;
 };
 
 export type HcaptchaProps = {
@@ -13,6 +30,15 @@ export type HcaptchaProps = {
    * The callback function that runs after receiving a response, error, or when user cancels.
    */
   onMessage: (event: CustomWebViewMessageEvent) => void;
+  /**
+   * Runs when hCaptcha has loaded and rendered the widget.
+   */
+  onReady?: () => void;
+  /**
+   * Whether to execute automatically after hCaptcha is ready.
+   * Defaults to true. Set to false to preload the inline component.
+   */
+  autoExecute?: boolean;
   /**
    * The size of the checkbox.
    */
@@ -115,10 +141,14 @@ export type HcaptchaProps = {
   userJourney?: boolean;
 }
 
-interface CustomWebViewMessageEvent extends WebViewMessageEvent {
+export interface CustomWebViewMessageEvent extends WebViewMessageEvent {
   success: boolean;
   reset: () => void;
   markUsed?: () => void;
 }
 
-export default class Hcaptcha extends React.Component<HcaptchaProps> {}
+export default class Hcaptcha extends React.Component<HcaptchaProps> {
+  execute: HCaptchaHandle['execute'];
+  reset: HCaptchaHandle['reset'];
+  close: HCaptchaHandle['close'];
+}

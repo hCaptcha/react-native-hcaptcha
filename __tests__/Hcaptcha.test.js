@@ -226,6 +226,10 @@ describe('Hcaptcha', () => {
     renderConfig['open-callback']();
     expect(context.document.body.style.backgroundColor).toBe(config.backgroundColor);
     expect(postMessageMock).toHaveBeenCalledWith('open');
+    renderConfig['expired-callback']();
+    expect(postMessageMock).toHaveBeenCalledWith('expired');
+    renderConfig['chalexpired-callback']();
+    expect(postMessageMock).toHaveBeenCalledWith('challenge-expired');
   });
 
   it('uses the published loader contract and forwards terminal failures after retries', async () => {
@@ -449,11 +453,13 @@ describe('Hcaptcha', () => {
   it('does not emit a loading timeout after the widget becomes ready in passive flows', () => {
     jest.useFakeTimers();
     const onMessage = jest.fn();
+    const onReady = jest.fn();
     const component = render(
       <Hcaptcha
         siteKey="00000000-0000-0000-0000-000000000000"
         url="https://hcaptcha.com"
         onMessage={onMessage}
+        onReady={onReady}
       />
     );
 
@@ -468,7 +474,126 @@ describe('Hcaptcha', () => {
         description: 'loading timeout',
       },
     });
+    expect(onReady).toHaveBeenCalledTimes(1);
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('execute();'));
+  });
+
+  it('preloads without executing and queues the latest execution parameters until ready', () => {
+    const captchaRef = React.createRef();
+    const onReady = jest.fn();
+    const component = render(
+      <Hcaptcha
+        ref={captchaRef}
+        autoExecute={false}
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onReady={onReady}
+      />
+    );
+
+    act(() => {
+      captchaRef.current.execute({ rqdata: 'first' });
+      captchaRef.current.execute({ rqdata: 'latest' });
+    });
+
+    expect(getLastInjectJavaScriptMock()).not.toHaveBeenCalled();
+
+    act(() => {
+      getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } });
+    });
+
+    expect(onReady).toHaveBeenCalledTimes(1);
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"rqdata":"latest"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.not.stringContaining('"rqdata":"first"'));
+  });
+
+  it('executes a preloaded widget through its ref and resets before later executions', () => {
+    const captchaRef = React.createRef();
+    const component = render(
+      <Hcaptcha
+        ref={captchaRef}
+        autoExecute={false}
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        verifyParams={{
+          mfaEmail: 'user@example.com',
+          phonePrefix: '44',
+          phoneNumber: '+44123',
+        }}
+      />
+    );
+
+    act(() => {
+      getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } });
+    });
+
+    expect(getLastInjectJavaScriptMock()).not.toHaveBeenCalled();
+
+    act(() => {
+      captchaRef.current.execute({ rqdata: 'first-attempt' });
+    });
+
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('"rqdata":"first-attempt"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('"mfa_phoneprefix":"44"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('"mfa_email":"user@example.com"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.not.stringContaining('reset();'));
+
+    act(() => {
+      captchaRef.current.execute({
+        rqdata: 'second-attempt',
+        phonePrefix: '55',
+      });
+    });
+
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('reset(); setData('));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('"rqdata":"second-attempt"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('"mfa_phoneprefix":"55"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('"mfa_phone":"+44123"'));
+
+    act(() => {
+      captchaRef.current.reset();
+    });
+
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith('reset(); true;');
+
+    act(() => {
+      captchaRef.current.execute({ rqdata: 'after-reset' });
+    });
+
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('"rqdata":"after-reset"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.not.stringContaining('reset(); setData('));
+  });
+
+  it('closes a preloaded challenge through its ref and cancels queued execution', () => {
+    const captchaRef = React.createRef();
+    const component = render(
+      <Hcaptcha
+        ref={captchaRef}
+        autoExecute={false}
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+      />
+    );
+
+    act(() => {
+      captchaRef.current.execute({ rqdata: 'cancelled-before-ready' });
+      captchaRef.current.close();
+      getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } });
+    });
+
+    expect(getLastInjectJavaScriptMock()).not.toHaveBeenCalled();
+
+    act(() => {
+      captchaRef.current.execute({ rqdata: 'active-attempt' });
+      captchaRef.current.close();
+    });
+
+    expect(getLastInjectJavaScriptMock()).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('"rqdata":"active-attempt"')
+    );
+    expect(getLastInjectJavaScriptMock()).toHaveBeenNthCalledWith(2, 'closeChallenge(); true;');
   });
 
   it('forwards open messages, marks them as successful, and hides the loading overlay', async () => {

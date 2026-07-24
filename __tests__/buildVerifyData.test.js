@@ -19,12 +19,14 @@ describe('buildVerifyData', () => {
       phonePrefix: '11',
       phoneNumber: '+111',
       verifyParams: {
+        mfaEmail: 'user@example.com',
         rqdata: 'preferred-rqdata',
         phonePrefix: '44',
         phoneNumber: '+44123',
       },
     })).toEqual({
       rqdata: 'preferred-rqdata',
+      mfa_email: 'user@example.com',
       mfa_phoneprefix: '44',
       mfa_phone: '+44123',
     });
