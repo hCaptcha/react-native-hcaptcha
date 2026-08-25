@@ -243,9 +243,69 @@ The SDK automatically retries loading `api.js` after transient failures. If all 
 
 The 15-second `loading timeout` message does not stop initialization and should not be treated as a terminal loading failure.
 
+## React Native Web
+
+The library ships a web build, so the same `ConfirmHcaptcha` / `Hcaptcha` code runs
+under [react-native-web](https://necolas.github.io/react-native-web/) with no changes
+to your app.
+
+### Install
+
+```bash
+npm install react-native-web react-dom
+```
+
+Both are optional peer dependencies — native-only apps do not need them. Alias
+`react-native` to `react-native-web` in your bundler, exactly as react-native-web
+requires. No WebView shim, `Modal` stub or animation stub is needed: react-native-web
+provides those components, and the web build renders hCaptcha directly.
+
+### How it differs from native
+
+On native the widget is isolated inside a `WebView` and the two sides talk over
+`postMessage` / `injectJavaScript`. On web the host page is already a browser, so
+`Hcaptcha.web.js` loads `api.js` with [`@hcaptcha/loader`](https://github.com/hCaptcha/hcaptcha-loader)
+and renders the widget straight into the document.
+
+The public API is unchanged. `onMessage` receives the same
+`{ nativeEvent: { data } }` events with the same `success`, `reset` and `markUsed`
+fields, and `size`, `theme`, `rqdata`, `verifyParams`, MFA phone props, User Journeys,
+the 15-second loading timeout and the 120-second token expiry all behave as documented
+above.
+
+Three behaviours necessarily differ:
+
+| Prop / behaviour | On web |
+| --- | --- |
+| `backgroundColor` | Not applied to the page. On native it tints the WebView document body; on web that document is your app's own page, so the library leaves it alone. The `ConfirmHcaptcha` modal backdrop still uses it. |
+| `debug` | Debug markers are set on `window` rather than inside a WebView, because the widget now runs in the host document. |
+| `sms:` links | Handled by the browser and the hCaptcha widget directly; there is no WebView navigation to intercept, so no `sms-open-failed` event is emitted. |
+
+### Run the example
+
+```bash
+npm run web
+```
+
+Serves `Example.Web.js` on <http://localhost:8080>. To exercise the token path without
+solving a visual challenge, switch the example's `siteKey` to hCaptcha's always-pass
+test key `10000000-ffff-ffff-ffff-000000000001`.
+
+### Tests
+
+```bash
+npm run test:native   # react-native suite
+npm run test:web      # react-native-web suite (jsdom)
+npm test              # both
+```
+
+The web suite stubs only the network fetch of `api.js` and the widget API it installs
+on `window`; the component itself renders for real.
+
 ## Dependencies
 
-1. [react-native-webview](https://github.com/react-native-community/react-native-webview)
+1. [react-native-webview](https://github.com/react-native-community/react-native-webview) (native only)
+2. [react-native-web](https://necolas.github.io/react-native-web/) and `react-dom` (web only, optional)
 
 
 ## Building on iOS
