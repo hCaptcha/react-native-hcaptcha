@@ -17,7 +17,8 @@
     "perf:compare": "reassure --compare",
     "test:native": "jest --testPathIgnorePatterns=\\.perf-test\\.js$",
     "test:web": "jest --config jest.web.config.js",
-    "web": "webpack serve --config webpack.web.config.js --mode development"
+    "web": "webpack serve --config webpack.web.config.js --mode development",
+    "build:web": "webpack --config webpack.web.config.js --mode production"
   },
   "jest": {
     "preset": "react-native",
