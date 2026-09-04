@@ -1,11 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import hCaptchaLoaderInlineScript from '@hcaptcha/loader/inline';
 import WebView from 'react-native-webview';
-import { ActivityIndicator, Linking, Platform, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
-import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
+import { ActivityIndicator, Linking, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 
-import md5 from './md5';
-import hcaptchaPackage from './package.json';
+import {
+  buildDebugInfo,
+  buildHcaptchaLoaderConfig,
+  buildVerifyData,
+  HCAPTCHA_READY_EVENT,
+  LOADING_TIMEOUT,
+  normalizeSize,
+  normalizeTheme,
+  serializeForInlineScript,
+  TOKEN_MIN_LENGTH,
+  TOKEN_TIMEOUT,
+} from './hcaptchaShared';
 import {
   clearJourneyEvents,
   disableJourneyConsumer,
@@ -27,150 +36,8 @@ const patchPostMessageJsCode = `(${String(function () {
   window.ReactNativeWebView.postMessage = patchedPostMessage;
 })})();`;
 
-const HCAPTCHA_READY_EVENT = '__hcaptcha_ready__';
-
-const serializeForInlineScript = (value) =>
-  JSON.stringify(value)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
-
-const normalizeTheme = (value) => {
-  if (value == null) {
-    return null;
-  }
-
-  if (typeof value === 'object') {
-    return value;
-  }
-
-  if (typeof value === 'string') {
-    try {
-      return JSON.parse(value);
-    } catch (_) {
-      return value;
-    }
-  }
-
-  return value;
-};
-
-const normalizeSize = (value) => {
-  if (value == null) {
-    return 'invisible';
-  }
-
-  return value === 'checkbox' ? 'normal' : value;
-};
-
-const getVersionPart = (value) => (
-  typeof value === 'number' && Number.isFinite(value) && value >= 0 && value < 100
-    ? value
-    : null
-);
-
-const parseReactNativeVersion = (value) => {
-  const candidate = value && typeof value === 'object' && value.version ? value.version : value;
-  const major = getVersionPart(candidate?.major);
-  const minor = getVersionPart(candidate?.minor);
-  const patch = getVersionPart(candidate?.patch);
-
-  if (major == null || minor == null || patch == null) {
-    return null;
-  }
-
-  return { major, minor, patch };
-};
-
-const getReactNativeVersion = (value = Platform?.constants?.reactNativeVersion) =>
-  parseReactNativeVersion(value) || parseReactNativeVersion(ReactNativeVersion?.version);
-
-const buildDebugInfo = (debug, reactNativeVersion = Platform?.constants?.reactNativeVersion) => {
-  const result = { ...(debug || {}) };
-
-  try {
-    const version = getReactNativeVersion(reactNativeVersion);
-    if (version) {
-      result[`rnver_${version.major}_${version.minor}_${version.patch}`] = true;
-    }
-    result['dep_' + md5(Object.keys(global).join(''))] = true;
-    result['sdk_' + hcaptchaPackage.version.toString().replace(/\./g, '_')] = true;
-  } catch (e) {
-    console.log(e);
-  }
-
-  return result;
-};
-
-const buildVerifyData = ({
-  phoneNumber,
-  phonePrefix,
-  rqdata,
-  userJourney,
-  verifyParams,
-}) => {
-  const normalizedVerifyParams = verifyParams || {};
-  const data = {};
-  const finalRqdata = normalizedVerifyParams.rqdata ?? rqdata ?? undefined;
-  const finalPhonePrefix = normalizedVerifyParams.phonePrefix ?? phonePrefix ?? undefined;
-  const finalPhoneNumber = normalizedVerifyParams.phoneNumber ?? phoneNumber ?? undefined;
-
-  if (finalRqdata) {
-    data.rqdata = finalRqdata;
-  }
-  if (finalPhonePrefix) {
-    data.mfa_phoneprefix = finalPhonePrefix;
-  }
-  if (finalPhoneNumber) {
-    data.mfa_phone = finalPhoneNumber;
-  }
-  if (Array.isArray(userJourney) && userJourney.length > 0) {
-    data.userjourney = userJourney;
-  }
-
-  return data;
-};
-
 const buildVerifyInjectionScript = (payload, resetFirst = false) =>
   `try { ${resetFirst ? 'reset(); ' : ''}setData(${serializeForInlineScript(payload)}); execute(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;`;
-
-const getHcaptchaHost = (host, siteKey) => {
-  if (host) {
-    return host;
-  } else if (siteKey) {
-    return `${siteKey}.react-native.hcaptcha.com`;
-  } else {
-    return 'missing-sitekey.react-native.hcaptcha.com';
-  }
-};
-
-function buildHcaptchaLoaderConfig({
-  scriptSource,
-  siteKey,
-  hl,
-  theme,
-  host,
-  sentry,
-  endpoint,
-  assethost,
-  imghost,
-  reportapi,
-}) {
-  return {
-    scriptSource: scriptSource || 'https://hcaptcha.com/1/api.js',
-    render: 'explicit',
-    host: getHcaptchaHost(host, siteKey),
-    hl,
-    custom: typeof theme === 'object',
-    sentry,
-    endpoint,
-    assethost,
-    imghost,
-    reportapi,
-  };
-}
 
 /**
  *
@@ -228,8 +95,6 @@ const Hcaptcha = ({
   verifyParams,
   _journeyManagedExternally,
 }) => {
-  const tokenTimeout = 120000;
-  const loadingTimeout = 15000;
   const [isLoading, setIsLoading] = useState(true);
   const isLoadingRef = useRef(true);
   const journeyEnabled = Boolean(userJourney);
@@ -388,7 +253,7 @@ const Hcaptcha = ({
       if (isLoadingRef.current) {
         onMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } });
       }
-    }, loadingTimeout);
+    }, LOADING_TIMEOUT);
 
     return () => clearTimeout(timeoutId);
   }, [onMessage]);
@@ -470,8 +335,8 @@ const Hcaptcha = ({
           }
           e.success = true;
           if (e.nativeEvent.data === 'open') {
-          } else if (e.nativeEvent.data.length > 35) {
-            const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
+          } else if (e.nativeEvent.data.length > TOKEN_MIN_LENGTH) {
+            const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset }), TOKEN_TIMEOUT);
             e.markUsed = () => clearTimeout(expiredTokenTimerId);
             if (journeyEnabled) {
               clearJourneyEvents();

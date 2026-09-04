@@ -1,0 +1,50 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Hcaptcha on web matches the rendered DOM snapshot 1`] = `
+<div
+  class="css-view-g5y9jx r-flex-13awgt0"
+>
+  <div
+    class="css-view-g5y9jx r-alignItems-1awozwy r-backgroundColor-1niwhzg r-flex-13awgt0 r-justifyContent-1777fci r-width-13qz1uu"
+    data-testid="hcaptcha-container"
+  />
+  <div
+    class="css-view-g5y9jx r-cursor-1loqt21 r-touchAction-1otgn73 r-bottom-1p0dtai r-justifyContent-1777fci r-left-1d2f490 r-position-u8s1d r-right-zchlnj r-top-ipm5af"
+    tabindex="0"
+  >
+    <div
+      aria-valuemax="1"
+      aria-valuemin="0"
+      class="css-view-g5y9jx r-alignItems-1awozwy r-justifyContent-1777fci"
+      role="progressbar"
+    >
+      <div
+        class="css-view-g5y9jx r-height-1r8g8re r-width-1acpoxo r-animationDuration-17bb2tj r-animationIterationCount-1muvv40 r-animationKeyframes-1yef0xd r-animationTimingFunction-1ldzwu0"
+      >
+        <svg
+          height="100%"
+          viewBox="0 0 32 32"
+          width="100%"
+        >
+          <circle
+            cx="16"
+            cy="16"
+            fill="none"
+            r="14"
+            stroke-width="4"
+            style="stroke: #1976D2; opacity: 0.2;"
+          />
+          <circle
+            cx="16"
+            cy="16"
+            fill="none"
+            r="14"
+            stroke-width="4"
+            style="stroke: #1976D2; stroke-dasharray: 80; stroke-dashoffset: 60;"
+          />
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+`;

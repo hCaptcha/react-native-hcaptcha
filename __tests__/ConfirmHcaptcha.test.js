@@ -171,7 +171,7 @@ describe('ConfirmHcaptcha', () => {
       instance.show();
     });
 
-    const hiddenContainer = component.UNSAFE_getByProps({ pointerEvents: 'none' });
+    const hiddenContainer = component.getByTestId('confirm-hcaptcha-passive');
     const safeAreaView = component.UNSAFE_getByType(SafeAreaView);
 
     expect(component.UNSAFE_queryByType(Modal)).toBeNull();
@@ -181,6 +181,7 @@ describe('ConfirmHcaptcha', () => {
         height: 1,
         left: 0,
         opacity: 0,
+        pointerEvents: 'none',
         position: 'absolute',
         top: 0,
         width: 1,

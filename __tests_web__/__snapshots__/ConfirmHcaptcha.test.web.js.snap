@@ -1,0 +1,62 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`ConfirmHcaptcha on web matches the rendered DOM snapshot 1`] = `
+<body>
+  <div />
+  <div>
+    <div
+      class="r-bottom-1p0dtai r-left-1d2f490 r-position-1xcajam r-right-zchlnj r-top-ipm5af r-zIndex-sfbmgh r-animationDuration-9daxd3 r-animationTimingFunction-leqjx2 r-animationKeyframes-xx3c9p r-opacity-6dt33c"
+    >
+      <div
+        class="r-outlineStyle-1ny4l3l"
+        role="presentation"
+        tabindex="0"
+      />
+      <div
+        class="css-view-g5y9jx"
+      >
+        <div
+          aria-modal="true"
+          class="css-view-g5y9jx r-bottom-1p0dtai r-left-1d2f490 r-position-1xcajam r-right-zchlnj r-top-ipm5af r-backgroundColor-1niwhzg"
+        >
+          <div
+            class="css-view-g5y9jx r-flex-13awgt0 r-top-ipm5af"
+          >
+            <div
+              class="css-view-g5y9jx r-flex-13awgt0 r-margin-crgep1"
+            >
+              <div
+                class="css-view-g5y9jx r-cursor-1loqt21 r-touchAction-1otgn73 r-bottom-1p0dtai r-left-1d2f490 r-position-u8s1d r-right-zchlnj r-top-ipm5af"
+                data-testid="confirm-hcaptcha-backdrop"
+                style="background-color: rgba(0, 0, 0, 0.3);"
+                tabindex="0"
+              />
+              <div
+                class="css-view-g5y9jx r-flex-13awgt0"
+              >
+                <div
+                  class="css-view-g5y9jx r-paddingBottom-97e31f r-paddingLeft-bv2aro r-paddingRight-hxflta r-paddingTop-10xqauy r-flex-13awgt0 r-justifyContent-1777fci r-overflow-1udh08x"
+                >
+                  <div
+                    class="css-view-g5y9jx r-flex-13awgt0"
+                  >
+                    <div
+                      class="css-view-g5y9jx r-alignItems-1awozwy r-backgroundColor-1niwhzg r-flex-13awgt0 r-justifyContent-1777fci r-width-13qz1uu"
+                      data-testid="hcaptcha-container"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        class="r-outlineStyle-1ny4l3l"
+        role="presentation"
+        tabindex="0"
+      />
+    </div>
+  </div>
+</body>
+`;

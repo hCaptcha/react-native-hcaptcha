@@ -24,6 +24,7 @@ jobs:
     - run: npm install
     - run: npm test
     - run: npm run lint
+    - run: npm run build:web
     - if: github.ref == 'refs/heads/master' && github.event_name == 'push'
       run: npm run perf:baseline
     - if: github.ref == 'refs/heads/master' && github.event_name == 'push'

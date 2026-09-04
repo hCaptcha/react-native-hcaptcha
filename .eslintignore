@@ -1,0 +1,10 @@
+node_modules/
+# Generated web example bundle
+dist/
+# Generated E2E host app
+__e2e__/host/
+# Reassure output
+.reassure/
+output/
+# Jest coverage output
+coverage/
