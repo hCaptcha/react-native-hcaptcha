@@ -26,7 +26,7 @@ exports[`ConfirmHcaptcha on web matches the rendered DOM snapshot 1`] = `
               class="css-view-g5y9jx r-flex-13awgt0 r-margin-crgep1"
             >
               <div
-                class="css-view-g5y9jx r-bottom-1p0dtai r-left-1d2f490 r-position-u8s1d r-right-zchlnj r-top-ipm5af"
+                class="css-view-g5y9jx r-cursor-1loqt21 r-touchAction-1otgn73 r-bottom-1p0dtai r-left-1d2f490 r-position-u8s1d r-right-zchlnj r-top-ipm5af"
                 data-testid="confirm-hcaptcha-backdrop"
                 style="background-color: rgba(0, 0, 0, 0.3);"
                 tabindex="0"

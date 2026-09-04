@@ -1,5 +1,5 @@
 import React, { createRef, PureComponent } from 'react';
-import { BackHandler, Modal, SafeAreaView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
+import { BackHandler, Modal, Pressable, SafeAreaView, StyleSheet, View } from 'react-native';
 import Hcaptcha from './Hcaptcha';
 import PropTypes from 'prop-types';
 import { clearJourneyEvents, disableJourneyConsumer, enableJourneyConsumer } from './journey';
@@ -205,7 +205,7 @@ class ConfirmHcaptcha extends PureComponent {
 
     if (passiveSiteKey && !prewarm) {
       return (
-        <View pointerEvents="none" style={styles.passiveContainer}>
+        <View style={styles.passiveContainer} testID="confirm-hcaptcha-passive">
           {this.renderCaptcha()}
         </View>
       );
@@ -214,12 +214,11 @@ class ConfirmHcaptcha extends PureComponent {
     const content = (
       <View style={styles.modal}>
         {hasBackdrop ? (
-          <TouchableWithoutFeedback
+          <Pressable
             onPress={() => this.hide('backdrop')}
+            style={[styles.backdrop, { backgroundColor }]}
             testID="confirm-hcaptcha-backdrop"
-          >
-            <View style={[styles.backdrop, { backgroundColor }]} />
-          </TouchableWithoutFeedback>
+          />
         ) : null}
         <View style={styles.modalContent}>
           {this.renderCaptcha()}
@@ -277,6 +276,7 @@ const styles = StyleSheet.create({
     height: 1,
     left: 0,
     opacity: 0,
+    pointerEvents: 'none',
     position: 'absolute',
     top: 0,
     width: 1,
