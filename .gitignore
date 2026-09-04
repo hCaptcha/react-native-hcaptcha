@@ -12,3 +12,6 @@ __e2e__/host/
 
 # Web example build output
 dist/
+
+# Jest coverage output
+coverage/
