@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { hCaptchaLoader } from '@hcaptcha/loader';
-import { ActivityIndicator, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import {
   buildDebugInfo,
@@ -273,11 +273,11 @@ const Hcaptcha = ({
   }, []);
 
   const renderLoading = () => (
-    <TouchableWithoutFeedback onPress={() => closableLoading && onMessageRef.current({ nativeEvent: { data: 'cancel' } })}>
-      <View style={styles.loadingOverlay}>
-        <ActivityIndicator size="large" color={loadingIndicatorColor} />
-      </View>
-    </TouchableWithoutFeedback>
+    <Pressable
+      onPress={() => closableLoading && onMessageRef.current({ nativeEvent: { data: 'cancel' } })}
+      style={styles.loadingOverlay}>
+      <ActivityIndicator size="large" color={loadingIndicatorColor} />
+    </Pressable>
   );
 
   return (
