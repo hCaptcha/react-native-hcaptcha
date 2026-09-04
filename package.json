@@ -32,6 +32,9 @@
     "modulePathIgnorePatterns": [
       "<rootDir>/__e2e__/host/"
     ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/reassure.config.js"
+    ],
     "testPathIgnorePatterns": [
       "/node_modules/",
       "<rootDir>/__e2e__/"
