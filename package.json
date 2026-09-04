@@ -25,6 +25,9 @@
     "setupFiles": [
       "<rootDir>/__mocks__/global.js"
     ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/reassure.config.js"
+    ],
     "testPathIgnorePatterns": [
       "/node_modules/",
       "<rootDir>/__e2e__/"
