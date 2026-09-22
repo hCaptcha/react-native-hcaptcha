@@ -6,6 +6,7 @@ import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
 
 import md5 from './md5';
 import hcaptchaPackage from './package.json';
+import { parseSmsLink } from './hcaptchaSmsLink';
 import {
   clearJourneyEvents,
   disableJourneyConsumer,
@@ -429,29 +430,68 @@ const Hcaptcha = ({
     webViewRef.current.injectJavaScript('loadApiScript(); true;');
   };
 
+  const openSmsLink = (smsUrl) => {
+    const link = parseSmsLink(smsUrl);
+
+    // Rebuilt from the parsed parts rather than passed through: the recipient can arrive with
+    // formatting a messaging app rejects, and the challenge emits an empty leading query
+    // parameter (`?&body=`). The body itself is re-encoded unchanged, so the one-time code
+    // reaches the composer byte-exact.
+    const target =
+      link && link.recipient
+        ? `sms:${link.recipient}${link.body ? `?body=${encodeURIComponent(link.body)}` : ''}`
+        : smsUrl;
+
+    Linking.openURL(target).catch(() => {
+      // The rejection message embeds the URL, and the body carries a one-time code, so it is
+      // deliberately not forwarded: this event reaches host apps that log it.
+      onMessage({
+        nativeEvent: {
+          data: 'sms-open-failed',
+          description: 'Could not open the messaging app',
+        },
+        success: false,
+      });
+    });
+  };
+
+  // Shared by both navigation callbacks. The challenge opens its `sms:` link with
+  // `target="_blank"`, which never reaches `onShouldStartLoadWithRequest` - on Android
+  // `setSupportMultipleWindows` is always on, so it surfaces as `onOpenWindow` instead.
+  const handleExternalUrl = (candidate) => {
+    if (typeof candidate !== 'string') {
+      return false;
+    }
+
+    if (candidate.slice(0, 24) === 'https://www.hcaptcha.com') {
+      Linking.openURL(candidate);
+      return true;
+    }
+
+    if (candidate.toLowerCase().startsWith('sms:')) {
+      openSmsLink(candidate);
+      return true;
+    }
+
+    return false;
+  };
+
   return (
     <View style={styles.container}>
       <WebView
         ref={webViewRef}
         originWhitelist={['*']}
-        onShouldStartLoadWithRequest={(event) => {
-          if (event.url.slice(0, 24) === 'https://www.hcaptcha.com') {
-            Linking.openURL(event.url);
-            return false;
-          } else if (event.url.toLowerCase().startsWith('sms:')) {
-            Linking.openURL(event.url).catch((err) => {
-              onMessage({
-                nativeEvent: {
-                  data: 'sms-open-failed',
-                  description: err.message,
-                },
-                success: false,
-              });
-            });
-            return false;
+        onShouldStartLoadWithRequest={(event) => !handleExternalUrl(event.url)}
+        onOpenWindow={(event) => {
+          const { targetUrl } = event.nativeEvent;
+          if (handleExternalUrl(targetUrl)) {
+            return;
           }
 
-          return true;
+          // A `target="_blank"` link the challenge does not own. Android already sent these out
+          // to the system before this callback existed, so keep that behaviour rather than
+          // swallowing the navigation.
+          Linking.openURL(targetUrl).catch(() => {});
         }}
         mixedContentMode={'always'}
         onMessage={(e) => {

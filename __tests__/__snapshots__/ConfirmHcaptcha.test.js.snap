@@ -89,6 +89,7 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
             javaScriptEnabled={true}
             mixedContentMode="always"
             onMessage={[Function]}
+            onOpenWindow={[Function]}
             onShouldStartLoadWithRequest={[Function]}
             originWhitelist={
               [
