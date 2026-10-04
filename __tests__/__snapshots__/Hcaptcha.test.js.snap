@@ -23,6 +23,7 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
     javaScriptEnabled={true}
     mixedContentMode="always"
     onMessage={[Function]}
+    onOpenWindow={[Function]}
     onShouldStartLoadWithRequest={[Function]}
     originWhitelist={
       [
