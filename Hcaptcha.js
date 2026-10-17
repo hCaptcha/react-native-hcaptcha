@@ -605,17 +605,22 @@ const Hcaptcha = forwardRef(({
     },
   }));
 
+  // The parser is the only place that decides what an SMS link is: a second scheme check here
+  // would be a narrower matcher that drifts out of sync with it - `smsto:` is accepted by
+  // `parseSmsLink` and would otherwise never reach this hand-off.
   const openSmsLink = (smsUrl) => {
     const link = parseSmsLink(smsUrl);
+    if (!link) {
+      return false;
+    }
 
     // Rebuilt from the parsed parts rather than passed through: the recipient can arrive with
     // formatting a messaging app rejects, and the challenge emits an empty leading query
     // parameter (`?&body=`). The body itself is re-encoded unchanged, so the one-time code
     // reaches the composer byte-exact.
-    const target =
-      link && link.recipient
-        ? `sms:${link.recipient}${link.body ? `?body=${encodeURIComponent(link.body)}` : ''}`
-        : smsUrl;
+    const target = link.recipient
+      ? `sms:${link.recipient}${link.body ? `?body=${encodeURIComponent(link.body)}` : ''}`
+      : smsUrl;
 
     Linking.openURL(target).catch(() => {
       if (documentRef.current !== documentId) {
@@ -631,6 +636,8 @@ const Hcaptcha = forwardRef(({
         success: false,
       });
     });
+
+    return true;
   };
 
   // Shared by both navigation callbacks. The challenge opens its `sms:` link with
@@ -642,16 +649,13 @@ const Hcaptcha = forwardRef(({
     }
 
     if (candidate.slice(0, 24) === 'https://www.hcaptcha.com') {
-      Linking.openURL(candidate);
+      // Returning true keeps this off the `onOpenWindow` fallback below, which is where the
+      // rejection would otherwise have been caught.
+      Linking.openURL(candidate).catch(() => {});
       return true;
     }
 
-    if (candidate.toLowerCase().startsWith('sms:')) {
-      openSmsLink(candidate);
-      return true;
-    }
-
-    return false;
+    return openSmsLink(candidate);
   };
 
   if (destroyed) {

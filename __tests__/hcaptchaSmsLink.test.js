@@ -105,6 +105,25 @@ describe('parseSmsLink', () => {
     expect(parseSmsLink('sms:not-a-number?body=nope').recipient).toBeNull();
   });
 
+  it('ignores literal fragments without removing encoded hashes', () => {
+    // A literal `#` ends the link, so a `?query` sitting after one is fragment text and the
+    // body goes with it. An encoded `%23` is payload and survives decoding.
+    const cases = [
+      [`sms:${NUMBER}#123?body=code`, NUMBER, null],
+      [`sms:${NUMBER}?body=code#123`, NUMBER, CODE],
+      [`sms:${NUMBER};body=code#123?body=other`, NUMBER, CODE],
+      [`sms:${NUMBER}?body=code%23suffix`, NUMBER, 'code#suffix'],
+      [`sms:${NUMBER}?body=code%23suffix#ignored`, NUMBER, 'code#suffix'],
+      [`sms:${NUMBER};body=code%23suffix#ignored`, NUMBER, 'code#suffix'],
+      [`sms:${NUMBER}?body=%2523#ignored`, NUMBER, '%23'],
+      ['sms:#123?body=code', null, null],
+    ];
+
+    cases.forEach(([url, recipient, body]) => {
+      expect(parseSmsLink(url)).toEqual({ recipient, body });
+    });
+  });
+
   it('rejects non-sms urls', () => {
     expect(parseSmsLink(null)).toBeNull();
     expect(parseSmsLink(undefined)).toBeNull();

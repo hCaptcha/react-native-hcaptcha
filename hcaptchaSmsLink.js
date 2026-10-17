@@ -152,7 +152,12 @@ export const parseSmsLink = (url) => {
   while (start < url.length && url[start] === '/') {
     start++;
   }
-  const payload = url.slice(start);
+
+  // A literal `#` starts a fragment (RFC 3986), so it and everything after it - including a
+  // `?query` that follows it - is not part of the link. An encoded `%23` stays payload data and
+  // is decoded only after splitting.
+  const fragment = url.indexOf('#', start);
+  const payload = fragment < 0 ? url.slice(start) : url.slice(start, fragment);
 
   // The query and the `;` subscriber parameters are separate grammars, so `?` has to be split off
   // first. Folding them together loses the body of a link such as
