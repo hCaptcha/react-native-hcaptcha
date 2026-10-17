@@ -29,6 +29,12 @@ const patchPostMessageJsCode = `(${String(function () {
 
 const HCAPTCHA_READY_EVENT = '__hcaptcha_ready__';
 
+// The overlay is torn down as soon as the page posts its first message, so its absence is the
+// only readiness signal a UI-level test can observe: `HCAPTCHA_READY_EVENT` is consumed here
+// and never reaches the host's `onMessage`. Note the overlay also goes on an error message, so
+// a test watching for it still has to inspect `onMessage` to tell success from failure.
+const LOADING_OVERLAY_TEST_ID = 'hcaptcha-loading-overlay';
+
 const serializeForInlineScript = (value) =>
   JSON.stringify(value)
     .replace(/</g, '\\u003c')
@@ -411,7 +417,7 @@ const Hcaptcha = ({
   // This shows ActivityIndicator till webview loads hCaptcha images
   const renderLoading = () => (
     <TouchableWithoutFeedback onPress={() => closableLoading && onMessage({ nativeEvent: { data: 'cancel' } })}>
-      <View style={styles.loadingOverlay}>
+      <View style={styles.loadingOverlay} testID={LOADING_OVERLAY_TEST_ID}>
         <ActivityIndicator size="large" color={loadingIndicatorColor} />
       </View>
     </TouchableWithoutFeedback>
@@ -510,4 +516,4 @@ const styles = StyleSheet.create({
 });
 
 export default Hcaptcha;
-export { buildDebugInfo, buildVerifyData, HCAPTCHA_READY_EVENT };
+export { buildDebugInfo, buildVerifyData, HCAPTCHA_READY_EVENT, LOADING_OVERLAY_TEST_ID };

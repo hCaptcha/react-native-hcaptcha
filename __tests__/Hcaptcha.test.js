@@ -3,7 +3,7 @@ import vm from 'vm';
 import { act, render, waitFor } from '@testing-library/react-native';
 import { ActivityIndicator, Linking, TouchableWithoutFeedback } from 'react-native';
 
-import Hcaptcha, { HCAPTCHA_READY_EVENT } from '../Hcaptcha';
+import Hcaptcha, { HCAPTCHA_READY_EVENT, LOADING_OVERLAY_TEST_ID } from '../Hcaptcha';
 import { __unsafeResetJourneyRuntime, emitJourneyEvent, initJourneyTracking, peekJourneyEvents } from '../journey';
 import {
   getLastInjectJavaScriptMock,
@@ -383,6 +383,29 @@ describe('Hcaptcha', () => {
 
     expect(component.UNSAFE_queryByType(TouchableWithoutFeedback)).toBeNull();
     expect(component.UNSAFE_queryByType(ActivityIndicator)).toBeNull();
+  });
+
+  it('tags the loading overlay so e2e tests can wait for it to disappear', () => {
+    // The overlay's absence is the only readiness signal observable from the view tree:
+    // HCAPTCHA_READY_EVENT is consumed internally and never reaches onMessage.
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        showLoading={true}
+        onMessage={jest.fn()}
+      />
+    );
+
+    expect(component.queryByTestId(LOADING_OVERLAY_TEST_ID)).not.toBeNull();
+
+    act(() => {
+      getWebView(component).props.onMessage({
+        nativeEvent: { data: HCAPTCHA_READY_EVENT },
+      });
+    });
+
+    expect(component.queryByTestId(LOADING_OVERLAY_TEST_ID)).toBeNull();
   });
 
   it('only allows dismissing the loading overlay when closableLoading is true', () => {

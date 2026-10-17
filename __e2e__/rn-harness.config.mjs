@@ -13,10 +13,14 @@ const config = {
 
   disableViewFlattening: true,
   bridgeTimeout: 120000,
-  // Each case waits up to 10s for the WebView and then settles another 10s before
-  // screenshotting, so it needs more than the 5s default. This has to live here rather than
-  // as Jest's `testTimeout`: the harness reads `session.config.testTimeout` first and the
-  // schema always populates it, so a value in jest.harness.config.mjs is never consulted.
+  // A backstop, not the mechanism: each case waits on the widget's own readiness signal and
+  // returns as soon as it arrives, so a healthy run finishes well inside this. The budget it
+  // has to cover is mount (10s) + readiness (20s) + paint settle (5s), and it only trips for
+  // failures below the SDK, since the SDK reports its own 15s loading timeout first.
+  //
+  // This has to live here rather than as Jest's `testTimeout`: the harness reads
+  // `session.config.testTimeout` first and the schema defaults it to 5000, so it is never
+  // undefined and a value in jest.harness.config.mjs is never consulted.
   testTimeout: 60000,
   forwardClientLogs: true,
 
