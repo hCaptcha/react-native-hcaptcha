@@ -10,6 +10,14 @@ const baseUrl = 'https://hcaptcha.com';
 
 const WEBVIEW_LOAD_MS = 10000;
 
+// `failureThresholdType: 'percent'` compares `differences / totalPixels` - a 0-1 ratio - so
+// this is a fraction, not a percentage: 0.01 is 1% of the pixels. The previous value of 5
+// meant 500%, which no image pair can exceed, so neither assertion below could ever fail.
+// For reference, the widest signal these shots carry - the light baseline against the dark
+// one - is 5.6% of the screen on Android and 6.3% on iOS, so 1% leaves room for antialiasing
+// while still catching a widget that renders in the wrong theme.
+const FAILURE_THRESHOLD = 0.01;
+
 const WidgetFixture = ({ theme }) => (
   <View style={styles.container}>
     <View style={styles.widgetFrame}>
@@ -56,7 +64,7 @@ describe('hCaptcha theme rendering', () => {
     await expect(screenshot).toMatchImageSnapshot({
       name: 'hcaptcha-light',
       threshold: 0.15,
-      failureThreshold: 5,
+      failureThreshold: FAILURE_THRESHOLD,
       failureThresholdType: 'percent',
     });
   });
@@ -69,7 +77,7 @@ describe('hCaptcha theme rendering', () => {
     await expect(screenshot).toMatchImageSnapshot({
       name: 'hcaptcha-dark',
       threshold: 0.15,
-      failureThreshold: 5,
+      failureThreshold: FAILURE_THRESHOLD,
       failureThresholdType: 'percent',
     });
   });
