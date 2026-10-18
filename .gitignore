@@ -9,3 +9,8 @@ output/
 
 # Generated E2E host app
 __e2e__/host/
+
+# Local build and tooling artifacts
+dist/
+coverage/
+.serena/
