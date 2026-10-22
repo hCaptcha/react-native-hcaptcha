@@ -31,7 +31,7 @@ async function runTrace(trace, passive, options = {}) {
           result = { ineligible: true };
           return result;
         }
-        state = transition(state, action);
+        state = transition(state, action, options);
         try {
           await driver.step(action);
         } catch (error) {
@@ -156,16 +156,19 @@ test.each(MODES)('metamorphic alias, idempotence, edit cancellation and payload 
     const repeated = await runTrace(duplicated, passive, { family: 'metamorphic' });
     const edits = trace.flatMap((action) => [action, 'edit', 'edit']);
     const edited = await runTrace(edits, passive, { family: 'metamorphic' });
-    const legacy = await runTrace(trace, passive, { family: 'metamorphic', legacyPayload: true });
+    const legacyTrace = trace.flatMap((action) => action === 'edit' ? [action, 'ready'] : [action]);
+    const legacy = await runTrace(legacyTrace, passive, { family: 'metamorphic', legacyPayload: true });
     expect(baseline.failure).toBeUndefined();
     expect(alias.actual).toEqual(baseline.actual);
     expect(repeated.actual).toEqual(baseline.actual);
     expect(edited.actual).toEqual(baseline.actual);
-    expect(legacy.actual).toEqual(baseline.actual);
+    expect(legacy.failure).toBeUndefined();
+    expect(legacy.actual.documents).toBe(baseline.actual.documents + trace.filter((action) => action === 'edit').length);
+    expect({ ...legacy.actual, documents: baseline.actual.documents }).toEqual(baseline.actual);
     ledger.metamorphic.push({ passive, relation: 'show-alias', trace });
     ledger.metamorphic.push({ passive, relation: 'execute-idempotence', trace, transformed: duplicated });
     ledger.metamorphic.push({ passive, relation: 'edit-involution', trace, transformed: edits });
-    ledger.metamorphic.push({ passive, relation: 'legacy-payload-equivalence', trace });
+    ledger.metamorphic.push({ passive, relation: 'legacy-payload-equivalence', trace, transformed: legacyTrace });
   }
 }, 30000);
 

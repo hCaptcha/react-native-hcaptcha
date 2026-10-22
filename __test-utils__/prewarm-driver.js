@@ -21,6 +21,9 @@ export class PrewarmDriver {
     this.ref = React.createRef();
     this.props = { prewarm: true, passiveSiteKey: passive, siteKey: 'contract-site',
       baseUrl: 'https://contract.test', theme: 'light', rqdata: 'legacy-A', sentry: false };
+    if (!options.legacyPayload) {
+      this.props.verifyParams = { rqdata: 'legacy-A' };
+    }
     if (options.cold) {
       this.props.prewarm = false;
     }
@@ -148,7 +151,7 @@ export class PrewarmDriver {
           if (this.options.legacyPayload) {
             this.configure({ rqdata: this.props.rqdata === 'legacy-A' ? 'override-B' : 'legacy-A' });
           } else {
-            this.configure({ verifyParams: this.props.verifyParams ? undefined : { rqdata: 'override-B' } });
+            this.configure({ verifyParams: { rqdata: this.props.verifyParams.rqdata === 'override-B' ? 'legacy-A' : 'override-B' } });
           }
           break;
         case 'replace':

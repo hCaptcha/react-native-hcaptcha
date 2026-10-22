@@ -287,12 +287,15 @@ const Hcaptcha = forwardRef(({
       loaderConfig,
       backgroundColor: backgroundColor ?? '',
       debugInfo,
+      phoneNumber: phoneNumber ?? null,
+      phonePrefix: phonePrefix ?? null,
       orientation: orientation ?? null,
+      rqdata: rqdata ?? null,
       siteKey: siteKey || '',
       size: normalizedSize,
       theme: normalizedTheme,
     }),
-    [loaderConfig, backgroundColor, debugInfo, normalizedSize, normalizedTheme, orientation, siteKey]
+    [loaderConfig, backgroundColor, debugInfo, normalizedSize, normalizedTheme, orientation, phoneNumber, phonePrefix, rqdata, siteKey]
   );
 
   const generateTheWebViewContent = useMemo(
@@ -450,10 +453,13 @@ const Hcaptcha = forwardRef(({
     readyRef.current = false;
     hasExecutedRef.current = false;
     loadFailedRef.current = false;
+    if (!prewarm) {
+      setExecuteRequested(true);
+    }
     isLoadingRef.current = true;
     setIsLoading(true);
     startLoadingTimeout();
-  }, [documentId, startLoadingTimeout]);
+  }, [documentId, prewarm, setExecuteRequested, startLoadingTimeout]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -604,9 +610,10 @@ const Hcaptcha = forwardRef(({
             return;
           }
           // Native events can be pooled with custom fields from an earlier token.
-          const e = Object.assign(Object.create(Object.getPrototypeOf(event)), event, {
+          const e = Object.create(Object.getPrototypeOf(event), Object.getOwnPropertyDescriptors({
+            ...event,
             nativeEvent: { ...event.nativeEvent },
-          });
+          }));
           if (e.nativeEvent.data.startsWith(HCAPTCHA_REQUEST_EVENT)) {
             let message;
             try {

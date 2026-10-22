@@ -95,15 +95,15 @@ describe('Hcaptcha', () => {
     expect(config.size).toBe('normal');
     expect(config.backgroundColor).toBe('rgba(0.1, 0.1, 0.1, 0.4)');
     expect(config.theme).toBe('contrast');
-    expect(config.rqdata).toBeUndefined();
-    expect(config.phonePrefix).toBeUndefined();
-    expect(config.phoneNumber).toBeUndefined();
+    expect(config.rqdata).toBe('{"some":"data"}');
+    expect(config.phonePrefix).toBe('44');
+    expect(config.phoneNumber).toBe('+441234567890');
     expect(config.orientation).toBe('landscape');
     expect(config.verifyData).toBeUndefined();
     expect(config.debugInfo).toMatchObject({
       customDebug: 'enabled',
       'dep_mocked-md5': true,
-      sdk_4_1_0: true,
+      sdk_5_0_0: true,
     });
 
     expect(loaderConfig).toMatchObject({
@@ -501,7 +501,7 @@ describe('Hcaptcha', () => {
     expect(onMessage.mock.calls[0][0].nativeEvent.data).toBe(LONG_TOKEN);
   });
 
-  it.each([false, true])('isolates pooled native events across verification attempts (prewarm=%s)', (prewarm) => {
+  it.each([false, true].flatMap((prewarm) => [false, true].map((readOnly) => ({ prewarm, readOnly }))))('isolates pooled native events (prewarm=$prewarm, readOnly=$readOnly)', ({ prewarm, readOnly }) => {
     const ref = React.createRef();
     const onMessage = jest.fn((event) => {
       if (event.markUsed) {
@@ -510,9 +510,14 @@ describe('Hcaptcha', () => {
       }
     });
     const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={onMessage} prewarm={prewarm} />);
-    const event = Object.assign(Object.create({ persist: jest.fn() }), {
-      nativeEvent: { data: HCAPTCHA_READY_EVENT },
-    });
+    const nativeEvent = { data: HCAPTCHA_READY_EVENT };
+    const prototype = { persist: jest.fn() };
+    const event = Object.create(prototype);
+    if (readOnly) {
+      Object.defineProperty(prototype, 'nativeEvent', { get: () => nativeEvent });
+    } else {
+      event.nativeEvent = nativeEvent;
+    }
     const send = (data) => {
       event.nativeEvent.data = data;
       act(() => getWebView(component).props.onMessage(event));
@@ -634,21 +639,42 @@ describe('Hcaptcha', () => {
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
   });
 
-  it.each([
+  it.each([false, true].flatMap((prewarm) => [
     ['rqdata', 'rqdata'],
     ['phoneNumber', 'mfa_phone'],
     ['phonePrefix', 'mfa_phoneprefix'],
-  ])('updates legacy %s without reloading the warmed SDK', (prop, wireKey) => {
+  ].map(([prop, wireKey]) => ({ prewarm, prop, wireKey }))))('reloads for legacy $prop changes (prewarm=$prewarm)', ({ prewarm, prop, wireKey }) => {
     const ref = React.createRef();
-    const props = { ref, siteKey: 'site-key', onMessage: jest.fn(), prewarm: true };
+    const props = { ref, siteKey: 'site-key', onMessage: jest.fn(), prewarm };
     const component = render(<Hcaptcha {...props} {...{ [prop]: 'old' }} />);
     const webView = getWebView(component);
     act(() => webView.props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
     component.rerender(<Hcaptcha {...props} {...{ [prop]: 'new' }} />);
-    expect(getWebView(component)).toBe(webView);
+    expect(getWebView(component)).not.toBe(webView);
     act(() => ref.current.execute());
+    expect(getLastInjectJavaScriptMock()).not.toHaveBeenCalled();
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining(`"${wireKey}":"new"`));
+  });
+
+  it.each([false, true])('preserves execution after a completed token and legacy prop reload (prewarm=%s)', (prewarm) => {
+    const ref = React.createRef();
+    const props = { ref, siteKey: 'site-key', onMessage: jest.fn(), prewarm };
+    const component = render(<Hcaptcha {...props} rqdata="old" />);
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    if (prewarm) {
+      act(() => ref.current.execute());
+    }
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: LONG_TOKEN } }));
+    props.onMessage.mock.calls.at(-1)[0].markUsed();
+    component.rerender(<Hcaptcha {...props} rqdata="new" />);
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(prewarm ? 0 : 1);
+    if (prewarm) {
+      act(() => ref.current.execute());
+    }
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('"rqdata":"new"'));
   });
 
   it('recreates a timed-out WebView on execute and waits for the new SDK', () => {

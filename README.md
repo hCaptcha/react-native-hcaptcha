@@ -19,6 +19,8 @@ hCaptcha wrapper for React Native (Android and iOS)
 
 Full examples for expo and react-native, as well as debugging guides, are in [MAINTAINER.md](./MAINTAINER.md)
 
+Upgrading from v4.1: see [v5 contract changes and migration steps](./UPGRADING.md), including changes that apply without prewarming.
+
 ## Demo
 
 See live demo in [Snack](https://snack.expo.io/rTUn6wTjW).
@@ -33,7 +35,7 @@ This means that if you are an Enterprise user with a 99.9% passive or purely pas
 
 Also, please note the following special message strings that can be returned via `onMessage` for [error cases](https://docs.hcaptcha.com/configuration#error-codes)
 
-The event returned by `onMessage` with `success === true` will be a passcode.
+Token events include `markUsed()`. The `open` message also has `success === true`; handle it separately from passcodes.
 
 In practice, you should always provide `onMessage`. Without it, your app will not receive tokens, errors, or cancel events.
 
@@ -51,7 +53,7 @@ export default function Example() {
       return;
     }
 
-    if (event.success) {
+    if (event.markUsed) {
       const token = event.nativeEvent.data;
       event.markUsed?.();
       captchaRef.current?.hide();
@@ -110,7 +112,7 @@ token.markUsed();
 
 Submit `tokenRef.current.token` to your backend. Keep the token and its `markUsed` callback together for delayed submission. Tokens expire after 120 seconds by default; request a replacement if the form outlives the token. Loading errors can arrive during prewarming through `onMessage`.
 
-Verification payload updates (`verifyParams` or legacy `rqdata`/phone props) preserve the warm SDK. If the backend rejects credentials after consuming a token, discard it and execute again before retrying the form.
+Use `verifyParams` for changing verification data to preserve the warm SDK. Changing legacy top-level `rqdata`, `phonePrefix`, or `phoneNumber` still reloads the SDK, including in prewarm mode. If the backend rejects credentials after consuming a token, discard it and execute again before retrying the form.
 
 Late results from cancelled executions are ignored. Changing `passiveSiteKey` preserves the warmed WebView and any held token's expiry deadline; it does not start another verification.
 
@@ -138,7 +140,7 @@ Use `verifyParams` for request data passed to `hcaptcha.setData(...)` immediatel
 />
 ```
 
-Legacy top-level `rqdata`, `phonePrefix`, and `phoneNumber` props still work, but `verifyParams` takes precedence and should be preferred for new code.
+Legacy top-level `rqdata`, `phonePrefix`, and `phoneNumber` props still work, but `verifyParams` takes precedence and should be preferred for new code. Keep legacy values stable during prewarming: changing them reloads the document even when `verifyParams` overrides their payload values. A `verifyParams` update changes the next execution's data without reloading or automatically starting another attempt.
 
 ### User Journeys (Enterprise)
 
@@ -241,11 +243,9 @@ import { Hcaptcha } from '@hcaptcha/react-native-hcaptcha';
 
 ### Handling the post-issuance expiration lifecycle
 
-This extension is a lightweight wrapper, and does not currently attempt to manage post-verification state in the same way as the web JS API, e.g. with an on-expire callback.
+The wrapper emits `expired` through `onMessage` 120 seconds after receiving the latest token unless its `event.markUsed()` has been called. A newer token replaces the earlier token's expiry timer. Expiry is delivered to the latest `onMessage` handler.
 
-In particular, if you do **not** plan to immediately consume the passcode returned by submitting it to your backend, you should start a timer to let your application state know that a new passcode is required when it expires.
-
-By default, this value is 120 seconds. So, an `expired` error will be emitted to `onMessage` if you haven't called `event.markUsed()`.
+In prewarm mode, hiding preserves this timer and unmounting cancels it. Without prewarm, the existing expiry callback can still fire after unmount. Keep the token with its own `markUsed` callback and clear held app state when it expires. The local timer does not replace backend verification.
 
 Once you've utilized hCaptcha's token, call `markUsed` on the event object in `onMessage`:
 

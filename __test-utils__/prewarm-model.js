@@ -62,7 +62,7 @@ function advance(state, target) {
   state.clock = target;
 }
 
-export function transition(previous, action) {
+export function transition(previous, action, options = {}) {
   if (!eligible(previous, action)) {
     throw new Error(`Ineligible action: ${action}`);
   }
@@ -108,7 +108,12 @@ export function transition(previous, action) {
       state.request = null;
       break;
     }
-    case 'edit': state.payload = 1 - state.payload; break;
+    case 'edit':
+      state.payload = 1 - state.payload;
+      if (options.legacyPayload) {
+        replaceDocument(state);
+      }
+      break;
     case 'replace':
     case 'crash': replaceDocument(state); break;
     case 'timeout': advance(state, state.deadline); break;

@@ -9,7 +9,7 @@ The initial audit of `92ba84e` reproduced three defect classes. The working-tree
 - Prewarm alone cannot verify; execute queues one request until readiness. Repeated execute while that request is outstanding is idempotent.
 - Hide cancels that request. An outcome belonging to a cancelled request is ignored and cannot satisfy or invalidate a newer request. The oracle now rejects cancelled errors entirely, strengthening the original oracle that permitted the error notification while preserving the newer request.
 - Replacing a document retires its callbacks permanently, including when config returns to an earlier value. Outstanding verification waits for the replacement document.
-- Execution uses the current verification payload. Payload edits preserve the document.
+- Execution uses the current verification payload. `verifyParams` edits preserve the document; legacy top-level payload edits replace it, preserving v4 behavior.
 - The latest unused token expires 120 seconds after receipt, including while hidden. Marking it used suppresses expiry. A prewarm loading deadline cancels queued verification after 15 seconds.
 
 `prewarm-driver.js` mounts actual `ConfirmHcaptcha` and `Hcaptcha`, evaluates every generated inline HTML script, uses the actual published `@hcaptcha/loader`, and executes every WebView injection in a VM. Assertions observe SDK calls/data, bridge-delivered tokens/errors, document identity, and overlay props. They do not read component state/refs or call production payload/serialization helpers as the oracle.
@@ -18,7 +18,7 @@ The native WebView transport, DOM script loading, and remote SDK are controlled 
 
 ## Finite domain
 
-The exhaustive domain starts with prewarm enabled, theme `light`, payload `legacy-A`, and no request/token. It uses both presentation modes. Theme toggles between `light` and `dark`; payload toggles between a legacy value and an overriding `verifyParams` value, `override-B`.
+The exhaustive domain starts with prewarm enabled, theme `light`, payload `legacy-A`, and no request/token. It uses both presentation modes. Theme toggles between `light` and `dark`; `verifyParams.rqdata` toggles between `legacy-A` and `override-B`. The static legacy fallback is `legacy-A`.
 
 Eleven actions: `execute`, `hide`, `ready`, `success`, `error`, `edit`, `replace`, `crash`, `timeout`, `consume`, `expire`.
 
@@ -27,7 +27,7 @@ Eleven actions: `execute`, `hide`, `ready`, `success`, `error`, `edit`, `replace
 - Timeout advances to the loading deadline; expire advances to the held token deadline. Separate tests cover each deadline minus one millisecond, exactly at the deadline, and plus one millisecond.
 - Ready requires a loading document; success/error requires an undelivered SDK outcome; timeout requires a loader deadline; consume/expire requires an unused token.
 
-Two distinct payload values exercise fallback/override, latest-value delivery, and double-edit identity without an unbounded string space. Two theme values permit config A→B→A. Five actions are sufficient for ready→execute→hide→execute→late outcome and ready→execute→replace→replace→late outcome. A four-action search found no failures; the five-action bound exposes both defects. Longer interactions are sampled separately.
+Two distinct payload values exercise latest-value delivery and double-edit identity without an unbounded string space. Metamorphic cases separately compare legacy fallback with `verifyParams` overrides. Two theme values permit config A→B→A. Five actions are sufficient for ready→execute→hide→execute→late outcome and ready→execute→replace→replace→late outcome. A four-action search found no failures; the five-action bound exposes both defects. Longer interactions are sampled separately.
 
 ## Counts
 
@@ -58,7 +58,7 @@ The raw bounded word space is `2 × (11^0 + … + 11^5) = 354,312`. The declared
 
 This counts each excluded word once, at its first failed precondition. Execute, hide, edit, replace, and crash have no grammar preconditions. Exclusion does not imply an API call is impossible: duplicate ready notifications and repeated acknowledgements are outside this grammar.
 
-Metamorphic checks cover show/execute equivalence; execute idempotence; double-edit cancellation; legacy/verifyParams payload equivalence; ready/execute commutation; cold/warm observable equivalence; presentation invariance; renderer-loss/config-replacement equivalence; and changing presentation while holding a token. The final relation now holds in both directions, including the original token-expiry deadline.
+Metamorphic checks cover show/execute equivalence; execute idempotence; double-edit cancellation; legacy/verifyParams payload equivalence; ready/execute commutation; cold/warm observable equivalence; presentation invariance; renderer-loss/config-replacement equivalence; and changing presentation while holding a token. Legacy-edit transformations add readiness after the required reload and assert the additional document count separately; calls, tokens/errors, and visibility must match. The presentation relation holds in both directions, including the original token-expiry deadline.
 
 ## Reduced regressions
 
@@ -78,9 +78,11 @@ All ten regressions use ordinary `test.each`; there are no expected-failure anno
 
 ## Validation and remaining risks
 
-Run `npm test -- --runInBand --watchman=false`. The complete run reports **150 ordinary passing Jest tests, 5 suites, 2 snapshots**. Lint passes. Counts above come from the independent-model ledger.
+Run `npm test -- --runInBand --watchman=false`. The v5 run reports **157 ordinary passing Jest tests, 5 suites, 2 snapshots**. Lint passes. Counts above come from the independent-model ledger. Legacy serialization/reloads are preserved; six parameterized cases cover all three legacy fields in both modes. Two additional cases cover reload after a completed token: non-prewarm automatically verifies again, while prewarm waits for an explicit request. Request data that must preserve the warmed document uses `verifyParams`. Pooled-event regressions cover both writable fields and inherited read-only `nativeEvent` getters in both modes; the latter reproduced the React Native 0.88 CI failure before the fix.
 
-Native follow-up runs exercise live-SDK signup/login and server-side verification, widget reuse, delayed cancellation/re-execution with distinguishable fixture tokens, and presentation changes while holding a token. Each platform passed 21 distinct native checks: 12 functional cases, four delayed live-SDK recovery cases (cancel, renderer loss, prewarm change, presentation change), four transport-failure cases, and one ten-trial latency comparison. Android functional coverage combines the full run with the corrected cancellation rerun. The first cancellation fixture placed its button beneath the visible overlay; the corrected fixture calls the app ref, matching navigation-driven cancellation. No production change was needed for that fixture error.
+The earlier ownership-fix native runs exercised live-SDK signup/login and server-side verification, widget reuse, delayed cancellation/re-execution with distinguishable fixture tokens, and presentation changes while holding a token. Each platform passed 21 distinct checks: 12 functional cases, four delayed live-SDK recovery cases (cancel, renderer loss, prewarm change, presentation change), four transport-failure cases, and one ten-trial latency comparison. Android functional coverage combined the full run with the corrected cancellation rerun. The first cancellation fixture placed its button beneath the visible overlay; the corrected fixture calls the app ref, matching navigation-driven cancellation. No production change was needed for that fixture error. The former legacy-payload no-reload expectation is superseded by the v5 compatibility cases: legacy updates reload, while `verifyParams` updates reuse the document.
+
+After the v5 compatibility and event-copy changes, both platforms passed all **13 functional cases** again: four live-SDK auth cases and nine controlled-SDK WebView cases. The payload cases assert two SDK loads for changing legacy data and one for changing `verifyParams`, with the current payload delivered in both cases. Logs are `output/hcaptcha-v5-{android,ios}-verified.log`. The earlier recovery, network, latency, soak, and long-expiry checks were not rerun for this final compatibility follow-up. Local hosts use React Native 0.80.3 / Harness 1.0.0; the inherited-getter unit regression reproduces the separate React Native 0.88 CI failure. Fresh CI exercises the newer native toolchain.
 
 Five cold and five warm trials measured median token latency of Android 303→73 ms and iOS 453→141 ms. Warm-trial max JS frame gaps were 38 ms and 29 ms; initial prewarm gaps were 109 ms and 44 ms. These are debug-emulator measurements with public auto-pass keys. The historical 30-flow soak and 125-second expiry cases were not rerun in this fix follow-up. Network tests opened real challenges without solving them and completed backend verification with the integration key. Raw latency samples are `output/prewarm-latency-fix-{android,ios}.json`; native logs are `output/hcaptcha-fix-*.log`.
 

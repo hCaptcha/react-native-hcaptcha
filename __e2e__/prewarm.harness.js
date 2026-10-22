@@ -34,7 +34,7 @@ const sdk = `
 `;
 const jsSrc = `data:application/javascript,${encodeURIComponent(sdk)}#`;
 
-const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, delayedTokens = false, hideAfterToken = true, cancelAndRetry = false }) => {
+const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, verifyParams, delayedTokens = false, hideAfterToken = true, cancelAndRetry = false }) => {
   const ref = useRef(null);
   const opens = useRef(0);
   const [status, setStatus] = useState('loading');
@@ -79,6 +79,7 @@ const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, delayedTokens = false, 
         passiveSiteKey={passiveSiteKey}
         theme={theme}
         rqdata={rqdata}
+        verifyParams={verifyParams}
         siteKey="site-key"
         baseUrl="https://hcaptcha.com"
         jsSrc={delayedTokens ? `data:application/javascript,${encodeURIComponent('window.fixtureDelay = true;\n' + sdk)}#` : jsSrc}
@@ -137,12 +138,18 @@ describe('native WebView prewarm', () => {
     expect(await screen.findByTestId('loads-2')).toBeDefined();
   });
 
-  test('injects updated legacy rqdata without reloading the SDK', async () => {
-    const fixture = await render(<PrewarmFixture key="payload" passiveSiteKey rqdata="initial" />);
-    await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
-    await fixture.rerender(<PrewarmFixture key="payload" passiveSiteKey rqdata="current-000000000000" />);
-    await userEvent.press(await screen.findByTestId('execute'));
-    await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-current-000000000000'));
-    expect(await screen.findByTestId('loads-1')).toBeDefined();
-  });
+  for (const legacy of [false, true]) {
+    test(`updates verification data with the expected reload behavior (legacy=${legacy})`, async () => {
+      const initial = legacy ? { rqdata: 'initial' } : { verifyParams: { rqdata: 'initial' } };
+      const updated = legacy ? { rqdata: 'current-000000000000' } : { verifyParams: { rqdata: 'current-000000000000' } };
+      const fixture = await render(<PrewarmFixture key={`payload-${legacy}`} passiveSiteKey {...initial} />);
+      await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
+      await fixture.rerender(<PrewarmFixture key={`payload-${legacy}`} passiveSiteKey {...updated} />);
+      const loads = legacy ? 2 : 1;
+      await waitFor(() => screen.findByTestId(`loads-${loads}`), { timeout: 15000 });
+      await userEvent.press(await screen.findByTestId('execute'));
+      await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-current-000000000000'));
+      expect(await screen.findByTestId(`loads-${loads}`)).toBeDefined();
+    });
+  }
 });
