@@ -71,6 +71,8 @@ The suites cover visible/passive presentation, one SDK load across both auth att
 
 The bridge copies pooled native events before attaching token hooks, preventing a previous token's `markUsed` from leaking onto an `open` or error event. Keep cached tokens as `{ token: event.nativeEvent.data, markUsed: event.markUsed }` and discard them after backend consumption, including rejected credentials.
 
+`prewarm.contract.test.js` runs real React components and generated WebView scripts against an independent request/document oracle. It exhausts eligible traces of up to five actions, runs deterministic stateful traces and metamorphic relations, and writes its scenario ledger to `output/prewarm-contract-results.json`. See [`__tests__/prewarm.contract.md`](./__tests__/prewarm.contract.md) for the finite domain, exclusions, and regression cases. Native fixture cases also cover cancel/re-execute before an old result arrives and presentation changes while holding a token.
+
 For latency and stall profiling on the same booted devices:
 
 ```sh
@@ -80,7 +82,7 @@ HARNESS_IOS_DEVICE='iPhone 17 Pro' HARNESS_IOS_VERSION=26.0 npm run test:e2e:per
 
 The profile alternates five cold and five prewarmed screen-2 executions, runs 30 signup/login cycles in one warm WebView, checks idle JS frames and memory, holds an SDK request through its loading timeout, and deliberately terminates the test renderer to verify recovery. A small observer wraps the live SDK's `render()` to detect readiness; it does not replace token generation or server verification. These longer suites run serially with a ten-minute bridge deadline.
 
-`--testPathPattern prewarmEdges` selects lifecycle tests: actual app background/resume, 125-second token expiry, expiry while an auth response is held, navigation away during submission, cancellation after the live SDK produces a token, renderer termination during pending verification, and switching prewarm/presentation modes with a pending request. The deferred-token observer holds the SDK's real callback for ten seconds to expose cancellation and renderer races. iOS renderer fault injection terminates WebContent processes belonging to the disposable harness simulator, including any retained by Safari during background tests.
+`--testPathPattern prewarmEdges` selects lifecycle tests: actual app background/resume, 125-second token expiry, expiry while an auth response is held, navigation away during submission, cancellation after the live SDK produces a token, renderer termination during pending verification, and switching prewarm/presentation modes with a pending request. The deferred-token observer holds the SDK's real callback or async result for ten seconds to expose cancellation and renderer races. iOS renderer fault injection terminates WebContent processes belonging to the disposable harness simulator, including any retained by Safari during background tests.
 
 Results are written to `output/prewarm-perf-android.json` and `output/prewarm-perf-ios.json`. Frame gaps measure the React Native JS thread; Android additionally records cumulative native rendering stats. Android memory is summed PSS; iOS memory is summed RSS for the app and its simulator WebKit processes, so the totals are not directly comparable. Debug emulators and public test keys do not establish production device frame rates, challenge latency, battery use, or long-term leak freedom.
 

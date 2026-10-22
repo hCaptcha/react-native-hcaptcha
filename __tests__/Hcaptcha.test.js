@@ -485,6 +485,22 @@ describe('Hcaptcha', () => {
     expect(onMessage).not.toHaveBeenCalled();
   });
 
+  it.each(['null', '{', '{"requestId":99,"data":"network-error"}', '{"requestId":1,"data":{}}'])('ignores invalid/stale request envelopes without cancelling verification (%s)', (payload) => {
+    const ref = React.createRef();
+    const onMessage = jest.fn();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={onMessage} prewarm />);
+    const send = (data) => act(() => getWebView(component).props.onMessage({ nativeEvent: { data } }));
+    send(HCAPTCHA_READY_EVENT);
+    act(() => ref.current.execute());
+    send(`__hcaptcha_request__:${payload}`);
+    expect(onMessage).not.toHaveBeenCalled();
+    act(() => ref.current.execute());
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+    send(`__hcaptcha_request__:${JSON.stringify({ requestId: 1, data: LONG_TOKEN })}`);
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage.mock.calls[0][0].nativeEvent.data).toBe(LONG_TOKEN);
+  });
+
   it.each([false, true])('isolates pooled native events across verification attempts (prewarm=%s)', (prewarm) => {
     const ref = React.createRef();
     const onMessage = jest.fn((event) => {
@@ -595,14 +611,14 @@ describe('Hcaptcha', () => {
     expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('"rqdata":"current"'));
   });
 
-  it.each(['siteKey', 'url', 'theme'])('waits for the new document when %s changes', (prop) => {
+  it.each([['siteKey', 'new-value'], ['url', 'new-value'], ['theme', 'new-value'], ['prewarm', false]])('waits for the new document when %s changes', (prop, value) => {
     const ref = React.createRef();
     const props = { ref, siteKey: 'site-key', onMessage: jest.fn(), prewarm: true };
     const component = render(<Hcaptcha {...props} />);
     const oldWebView = getWebView(component);
     const oldProps = oldWebView.props;
     act(() => oldProps.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
-    component.rerender(<Hcaptcha {...props} {...{ [prop]: 'new-value' }} />);
+    component.rerender(<Hcaptcha {...props} {...{ [prop]: value }} />);
     const webView = getWebView(component);
     expect(webView).not.toBe(oldWebView);
     act(() => ref.current.execute());

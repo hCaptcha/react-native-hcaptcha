@@ -150,7 +150,7 @@ describe('ConfirmHcaptcha', () => {
     expect(inject).toHaveBeenLastCalledWith(expect.stringContaining('try { reset(); }'));
     expect(component.UNSAFE_getByType('WebView')).toBe(webView);
     act(() => instance.show());
-    expect(inject).toHaveBeenLastCalledWith(expect.stringContaining('reset(); setData({}); execute();'));
+    expect(inject).toHaveBeenLastCalledWith(expect.stringContaining('reset(); setRequest(2); setData({}); execute();'));
     expect(webView.props.source.html).toBe(html);
   });
 

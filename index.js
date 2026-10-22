@@ -12,6 +12,7 @@ class ConfirmHcaptcha extends PureComponent {
     show: false,
   };
   hasJourneyConsumer = false;
+  verificationPending = false;
   captchaRef = createRef();
   getJourneyEnabled(props = this.props, state = this.state) {
     return Boolean(props.userJourney && !state.journeyStopped);
@@ -23,7 +24,7 @@ class ConfirmHcaptcha extends PureComponent {
     if (this.state.show && (prevProps.prewarm !== this.props.prewarm || prevProps.passiveSiteKey !== this.props.passiveSiteKey)) {
       this.backSubscription?.remove();
       this.backSubscription = null;
-      this.executePrewarmed();
+      this.executePrewarmed(this.verificationPending);
     }
     if (prevProps.userJourney !== this.props.userJourney && prevState.journeyStopped) {
       this.setState({ journeyStopped: false });
@@ -58,15 +59,15 @@ class ConfirmHcaptcha extends PureComponent {
     this.setState({ journeyStopped: true });
   };
   show = () => {
-    if (this.state.show) {
-      if (this.props.prewarm) {
-        this.captchaRef.current?.execute();
-      }
-      return;
+    if (this.props.prewarm || !this.state.show) {
+      this.verificationPending = true;
     }
     this.setState({ show: true }, this.executePrewarmed);
   };
-  executePrewarmed = () => {
+  onRequestChange = (pending) => {
+    this.verificationPending = pending;
+  };
+  executePrewarmed = (execute = true) => {
     if (!this.props.prewarm || !this.state.show) {
       return;
     }
@@ -77,11 +78,14 @@ class ConfirmHcaptcha extends PureComponent {
         return true;
       });
     }
-    this.captchaRef.current?.execute();
+    if (execute) {
+      this.captchaRef.current?.execute();
+    }
   };
   execute = () => this.show();
   hide = (source) => {
     const { onMessage } = this.props;
+    this.verificationPending = false;
     this.backSubscription?.remove();
     this.backSubscription = null;
     if (this.props.prewarm) {
@@ -154,6 +158,7 @@ class ConfirmHcaptcha extends PureComponent {
           verifyParams={verifyParams}
           prewarm={prewarm}
           _journeyManagedExternally={true}
+          _onRequestChange={this.onRequestChange}
         />
       </WrapperComponent>
     );
@@ -171,7 +176,7 @@ class ConfirmHcaptcha extends PureComponent {
       return null;
     }
 
-    if (passiveSiteKey) {
+    if (passiveSiteKey && !prewarm) {
       return (
         <View pointerEvents="none" style={styles.passiveContainer}>
           {this.renderCaptcha()}
@@ -199,11 +204,11 @@ class ConfirmHcaptcha extends PureComponent {
       return (
         <View
           testID="confirm-hcaptcha-prewarm"
-          pointerEvents={show ? 'auto' : 'none'}
-          accessibilityElementsHidden={!show}
-          importantForAccessibility={show ? 'auto' : 'no-hide-descendants'}
-          accessibilityViewIsModal={show}
-          style={[styles.prewarmContainer, !show && styles.hidden]}
+          pointerEvents={show && !passiveSiteKey ? 'auto' : 'none'}
+          accessibilityElementsHidden={!show || passiveSiteKey}
+          importantForAccessibility={show && !passiveSiteKey ? 'auto' : 'no-hide-descendants'}
+          accessibilityViewIsModal={show && !passiveSiteKey}
+          style={[styles.prewarmContainer, passiveSiteKey && styles.passiveContainer, (!show || passiveSiteKey) && styles.hidden]}
         >
           {content}
         </View>

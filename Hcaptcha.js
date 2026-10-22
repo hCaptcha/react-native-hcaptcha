@@ -28,6 +28,7 @@ const patchPostMessageJsCode = `(${String(function () {
 })})();`;
 
 const HCAPTCHA_READY_EVENT = '__hcaptcha_ready__';
+const HCAPTCHA_REQUEST_EVENT = '__hcaptcha_request__:';
 
 const serializeForInlineScript = (value) =>
   JSON.stringify(value)
@@ -133,8 +134,8 @@ const buildVerifyData = ({
   return data;
 };
 
-const buildVerifyInjectionScript = (payload, resetFirst = false) =>
-  `try { ${resetFirst ? 'reset(); ' : ''}setData(${serializeForInlineScript(payload)}); execute(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;`;
+const buildVerifyInjectionScript = (payload, resetFirst = false, requestId) =>
+  `try { ${resetFirst ? 'reset(); ' : ''}${requestId === undefined ? '' : `setRequest(${requestId}); `}setData(${serializeForInlineScript(payload)}); execute(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;`;
 
 const getHcaptchaHost = (host, siteKey) => {
   if (host) {
@@ -229,6 +230,7 @@ const Hcaptcha = forwardRef(({
   verifyParams,
   prewarm = false,
   _journeyManagedExternally,
+  _onRequestChange,
 }, ref) => {
   const tokenTimeout = 120000;
   const loadingTimeout = 15000;
@@ -240,6 +242,7 @@ const Hcaptcha = forwardRef(({
   const readyRef = useRef(false);
   const loadStartedRef = useRef(false);
   const executeRequestedRef = useRef(!prewarm);
+  const requestIdRef = useRef(0);
   const prewarmRef = useRef(prewarm);
   const hasExecutedRef = useRef(false);
   const loadFailedRef = useRef(false);
@@ -252,6 +255,10 @@ const Hcaptcha = forwardRef(({
   const mountedRef = useRef(true);
   onMessageRef.current = onMessage;
   prewarmRef.current = prewarm;
+  const setExecuteRequested = useCallback((requested) => {
+    executeRequestedRef.current = requested;
+    _onRequestChange?.(requested);
+  }, [_onRequestChange]);
   const normalizedTheme = useMemo(() => normalizeTheme(theme), [theme]);
   const normalizedSize = useMemo(() => normalizeSize(size), [size]);
   const loaderConfig = useMemo(
@@ -315,11 +322,33 @@ const Hcaptcha = forwardRef(({
             });
           };
           var hcaptchaWidgetId = null;
+          var hcaptchaRequestId = null;
+          var setRequest = function(requestId) {
+            hcaptchaRequestId = requestId;
+          };
+          var postRequestMessage = function(data, requestId) {
+            window.ReactNativeWebView.postMessage(requestId === null ? data :
+              "${HCAPTCHA_REQUEST_EVENT}" + JSON.stringify({ requestId: requestId, data: data }));
+          };
+          var postCallback = function(data) {
+            if (hcaptchaRequestId === null) {
+              window.ReactNativeWebView.postMessage(data);
+            }
+          };
           var setData = function(data) {
             hcaptcha.setData(hcaptchaWidgetId, data || {});
           };
           var execute = function() {
-            hcaptcha.execute(hcaptchaWidgetId);
+            if (hcaptchaRequestId === null) {
+              hcaptcha.execute(hcaptchaWidgetId);
+            } else {
+              var requestId = hcaptchaRequestId;
+              hcaptcha.execute(hcaptchaWidgetId, { async: true }).then(function(result) {
+                postRequestMessage(result.response, requestId);
+              }, function(error) {
+                postRequestMessage(error, requestId);
+              });
+            }
           };
           var reset = function() {
             hcaptcha.reset(hcaptchaWidgetId);
@@ -337,21 +366,21 @@ const Hcaptcha = forwardRef(({
             }
           };
           var onDataCallback = function(response) {
-            window.ReactNativeWebView.postMessage(response);
+            postCallback(response);
           };
           var onCancel = function() {
-            window.ReactNativeWebView.postMessage("challenge-closed");
+            postCallback("challenge-closed");
           };
           var onOpen = function() {
             document.body.style.backgroundColor = hcaptchaConfig.backgroundColor;
-            window.ReactNativeWebView.postMessage("open");
+            postRequestMessage("open", hcaptchaRequestId);
             console.log("challenge opened");
           };
-          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onDataExpiredCallback = function(error) { postCallback(error); };
+          var onChalExpiredCallback = function(error) { postCallback(error); };
           var onDataErrorCallback = function(error) {
             console.warn("challenge error callback fired");
-            window.ReactNativeWebView.postMessage(error);
+            postCallback(error);
           };
           const getRenderConfig = function(siteKey, theme, size, orientation) {
             var config = {
@@ -405,17 +434,18 @@ const Hcaptcha = forwardRef(({
         isLoadingRef.current = false;
         loadFailedRef.current = 'timeout';
         if (prewarmRef.current) {
-          executeRequestedRef.current = false;
+          setExecuteRequested(false);
         }
         setIsLoading(false);
         onMessageRef.current({ nativeEvent: { data: 'error', description: 'loading timeout' } });
       }
     }, loadingTimeout);
-  }, []);
+  }, [setExecuteRequested]);
 
-  const documentKey = useMemo(() => JSON.stringify([serializedWebViewConfig, url, webViewGeneration]), [serializedWebViewConfig, url, webViewGeneration]);
+  const documentKey = useMemo(() => JSON.stringify([serializedWebViewConfig, url, webViewGeneration, prewarm]), [serializedWebViewConfig, url, webViewGeneration, prewarm]);
+  const documentId = useMemo(() => ({ key: documentKey }), [documentKey]);
   useLayoutEffect(() => {
-    documentRef.current = documentKey;
+    documentRef.current = documentId;
     loadStartedRef.current = false;
     readyRef.current = false;
     hasExecutedRef.current = false;
@@ -423,7 +453,7 @@ const Hcaptcha = forwardRef(({
     isLoadingRef.current = true;
     setIsLoading(true);
     startLoadingTimeout();
-  }, [documentKey, startLoadingTimeout]);
+  }, [documentId, startLoadingTimeout]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -452,7 +482,7 @@ const Hcaptcha = forwardRef(({
       rqdata,
       userJourney: journeyEnabled ? peekJourneyEvents() : undefined,
       verifyParams,
-    }), resetFirst));
+    }), resetFirst, prewarm ? ++requestIdRef.current : undefined));
   };
 
   // This shows ActivityIndicator till webview loads hCaptcha images
@@ -467,7 +497,7 @@ const Hcaptcha = forwardRef(({
   // Event hooks can be retained across renders while a token is held.
   const reset = useCallback(() => resetRef.current(), []);
   resetRef.current = () => {
-    executeRequestedRef.current = true;
+    setExecuteRequested(true);
     if (readyRef.current) {
       injectVerifyData(true);
     } else if (loadFailedRef.current) {
@@ -476,7 +506,7 @@ const Hcaptcha = forwardRef(({
   };
 
   const reloadWebView = () => {
-    if (!mountedRef.current || documentRef.current !== documentKey) {
+    if (!mountedRef.current || documentRef.current !== documentId) {
       return;
     }
     readyRef.current = false;
@@ -510,7 +540,7 @@ const Hcaptcha = forwardRef(({
       if (executeRequestedRef.current && !loadFailedRef.current) {
         return;
       }
-      executeRequestedRef.current = true;
+      setExecuteRequested(true);
       if (readyRef.current) {
         injectVerifyData(hasExecutedRef.current);
       } else if (loadFailedRef.current) {
@@ -518,7 +548,7 @@ const Hcaptcha = forwardRef(({
       }
     },
     reset: () => {
-      executeRequestedRef.current = false;
+      setExecuteRequested(false);
       if (readyRef.current) {
         webViewRef.current?.injectJavaScript("try { reset(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;");
       }
@@ -554,7 +584,7 @@ const Hcaptcha = forwardRef(({
         onContentProcessDidTerminate={reloadWebView}
         onRenderProcessGone={reloadWebView}
         onLoadStart={() => {
-          if (documentRef.current !== documentKey) {
+          if (documentRef.current !== documentId) {
             return;
           }
           // Android can deliver the initial load event after SDK readiness.
@@ -570,13 +600,25 @@ const Hcaptcha = forwardRef(({
           startLoadingTimeout();
         }}
         onMessage={(event) => {
-          if (documentRef.current !== documentKey) {
+          if (documentRef.current !== documentId) {
             return;
           }
           // Native events can be pooled with custom fields from an earlier token.
           const e = Object.assign(Object.create(Object.getPrototypeOf(event)), event, {
             nativeEvent: { ...event.nativeEvent },
           });
+          if (e.nativeEvent.data.startsWith(HCAPTCHA_REQUEST_EVENT)) {
+            let message;
+            try {
+              message = JSON.parse(e.nativeEvent.data.slice(HCAPTCHA_REQUEST_EVENT.length));
+            } catch (_) {
+              return;
+            }
+            if (!message || !executeRequestedRef.current || message.requestId !== requestIdRef.current || typeof message.data !== 'string') {
+              return;
+            }
+            e.nativeEvent.data = message.data;
+          }
           e.markUsed = undefined;
           clearTimeout(loadingTimerRef.current);
           isLoadingRef.current = false;
@@ -605,7 +647,7 @@ const Hcaptcha = forwardRef(({
             if (prewarm && !executeRequestedRef.current) {
               return;
             }
-            executeRequestedRef.current = false;
+            setExecuteRequested(false);
             clearTimeout(tokenTimerRef.current);
             const expiredTokenTimerId = setTimeout(() => onMessageRef.current({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
             tokenTimerRef.current = expiredTokenTimerId;
@@ -615,7 +657,7 @@ const Hcaptcha = forwardRef(({
             }
           } else /* error */ {
             if (readyRef.current) {
-              executeRequestedRef.current = false;
+              setExecuteRequested(false);
             }
             e.success = false;
           }

@@ -18,18 +18,25 @@ const sdk = `
     },
     setData: function(id, data) { window.fixtureData = data; },
     reset: function() {},
-    execute: function() {
+    execute: function(id, options) {
       attempt++;
       config['open-callback']();
-      config.callback('fixture-token-widget-' + widget + '-attempt-' + attempt + '-' + (window.fixtureData.rqdata || '000000000000'));
+      var token = 'fixture-token-widget-' + widget + '-attempt-' + attempt + '-' + (window.fixtureData.rqdata || '000000000000');
+      if (options && options.async) {
+        return new Promise(function(resolve) {
+          setTimeout(function() { resolve({ response: token }); }, window.fixtureDelay ? attempt * 2000 : 0);
+        });
+      }
+      config.callback(token);
     }
   };
   window.hCaptchaOnLoad();
 `;
 const jsSrc = `data:application/javascript,${encodeURIComponent(sdk)}#`;
 
-const PrewarmFixture = ({ passiveSiteKey, theme, rqdata }) => {
+const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, delayedTokens = false, hideAfterToken = true, cancelAndRetry = false }) => {
   const ref = useRef(null);
+  const opens = useRef(0);
   const [status, setStatus] = useState('loading');
   const [loads, setLoads] = useState(0);
   const onMessage = (event) => {
@@ -39,8 +46,20 @@ const PrewarmFixture = ({ passiveSiteKey, theme, rqdata }) => {
     } else if (event.markUsed) {
       setStatus(event.nativeEvent.data);
       event.markUsed();
-      ref.current.hide();
-    } else if (event.nativeEvent.data !== 'open') {
+      if (hideAfterToken) {
+        ref.current.hide();
+      }
+    } else if (event.nativeEvent.data === 'open') {
+      if (cancelAndRetry && ++opens.current === 1) {
+        setTimeout(() => {
+          ref.current.hide();
+          setTimeout(() => {
+            setStatus('verifying');
+            ref.current.execute();
+          }, 0);
+        }, 100);
+      }
+    } else {
       console.warn('Native SDK fixture:', event.nativeEvent.data);
       setStatus(event.nativeEvent.data);
     }
@@ -62,7 +81,7 @@ const PrewarmFixture = ({ passiveSiteKey, theme, rqdata }) => {
         rqdata={rqdata}
         siteKey="site-key"
         baseUrl="https://hcaptcha.com"
-        jsSrc={jsSrc}
+        jsSrc={delayedTokens ? `data:application/javascript,${encodeURIComponent('window.fixtureDelay = true;\n' + sdk)}#` : jsSrc}
         sentry={false}
         onMessage={onMessage}
       />
@@ -82,6 +101,27 @@ describe('native WebView prewarm', () => {
         await waitFor(() => screen.findByTestId(`fixture-token-widget-1-attempt-${attempt}-000000000000`), { timeout: 5000 });
       }
       expect(await screen.findByTestId('execute')).toBeDefined();
+    });
+
+    test(`rejects a cancelled outcome after re-execute (passiveSiteKey=${passiveSiteKey})`, async () => {
+      await render(<PrewarmFixture key={`cancel-${passiveSiteKey}`} passiveSiteKey={passiveSiteKey} delayedTokens cancelAndRetry />);
+      await waitFor(() => screen.findByTestId('ready'), { timeout: 15000 });
+      await userEvent.press(await screen.findByTestId('execute'));
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      expect(await screen.findByTestId('verifying')).toBeDefined();
+      await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-2-000000000000'), { timeout: 5000 });
+      expect(await screen.findByTestId('loads-1')).toBeDefined();
+    });
+
+    test(`preserves a held token across presentation change (passiveSiteKey=${passiveSiteKey})`, async () => {
+      const fixture = await render(<PrewarmFixture key={`presentation-${passiveSiteKey}`} passiveSiteKey={passiveSiteKey} hideAfterToken={false} />);
+      await waitFor(() => screen.findByTestId('ready'), { timeout: 15000 });
+      await userEvent.press(await screen.findByTestId('execute'));
+      await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-000000000000'));
+      await fixture.rerender(<PrewarmFixture key={`presentation-${passiveSiteKey}`} passiveSiteKey={!passiveSiteKey} hideAfterToken={false} />);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(await screen.findByTestId('fixture-token-widget-1-attempt-1-000000000000')).toBeDefined();
+      expect(await screen.findByTestId('loads-1')).toBeDefined();
     });
   }
 

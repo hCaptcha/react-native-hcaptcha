@@ -88,8 +88,8 @@ describe('prewarm lifecycle edges (live SDK)', () => {
       await userEvent.press(await screen.findByTestId('submit'));
       await waitFor(() => screen.findByTestId('page-account'), { timeout: 20000 });
       const state = await serverState();
-      expect(state.sdkLoads).toBe(interruption === 'cancel' ? 1 : 2);
-      expect(state.tokensIssued).toBe(2);
+      expect(state.sdkLoads).toBe(['cancel', 'presentation change'].includes(interruption) ? 1 : 2);
+      expect(state.tokensIssued).toBe(interruption === 'presentation change' ? 1 : 2);
       expect(state.submissions).toHaveLength(1);
       expect(state.submissions[0].verified).toBe(true);
       expect(measurements.errors).toEqual([]);

@@ -112,6 +112,8 @@ Submit `tokenRef.current.token` to your backend. Keep the token and its `markUse
 
 Verification payload updates (`verifyParams` or legacy `rqdata`/phone props) preserve the warm SDK. If the backend rejects credentials after consuming a token, discard it and execute again before retrying the form.
 
+Late results from cancelled executions are ignored. Changing `passiveSiteKey` preserves the warmed WebView and any held token's expiry deadline; it does not start another verification.
+
 Prewarm mode uses a persistent app-level overlay so showing the challenge preserves the native WebView. It covers its parent view and cannot appear above another native `Modal`. Android back-button and backdrop cancellation remain supported. With `passiveSiteKey`, it stays hidden during verification too.
 
 The WebView and SDK retain memory until the component unmounts. SDK loading has a 15-second timeout independent of form re-renders. A later `execute()` can retry a timed-out load; terminated WebView processes are recreated automatically.

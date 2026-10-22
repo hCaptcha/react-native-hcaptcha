@@ -74,12 +74,28 @@ http
           res.end(`
             var callback = window.hCaptchaOnLoad;
             window.hCaptchaOnLoad = function() {
+              var asyncExecution = false;
+              if (${url.pathname === '/deferred/1/api.js'}) {
+                var execute = window.hcaptcha.execute;
+                window.hcaptcha.execute = function(widget, options) {
+                  asyncExecution = Boolean(options && options.async);
+                  var result = execute.apply(this, arguments);
+                  if (!asyncExecution) { return result; }
+                  return result.then(function(response) {
+                    fetch('http://127.0.0.1:${port}/sdk-token', { method: 'POST' });
+                    return new Promise(function(resolve) {
+                      setTimeout(function() { resolve(response); }, 10000);
+                    });
+                  });
+                };
+              }
               var render = window.hcaptcha.render;
               window.hcaptcha.render = function() {
                 if (${url.pathname === '/deferred/1/api.js'}) {
                   var options = arguments[1];
                   var tokenCallback = options.callback;
                   options.callback = function(token) {
+                    if (asyncExecution) { tokenCallback(token); return; }
                     fetch('http://127.0.0.1:${port}/sdk-token', { method: 'POST' });
                     setTimeout(function() { tokenCallback(token); }, 10000);
                   };
