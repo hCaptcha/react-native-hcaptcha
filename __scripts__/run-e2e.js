@@ -23,7 +23,7 @@ for (const file of ['Hcaptcha.js', 'index.js', 'md5.js', 'package.json', 'journe
 for (const file of fs.readdirSync(path.join(root, '__e2e__'))) {
   if (
     (file.endsWith('.js') && !['auth-server.js', 'native-metrics.js', 'network-proxy.js'].includes(file)) ||
-    ['jest.perf.config.mjs', 'jest.network.config.mjs', 'rn-harness.config.mjs'].includes(file)
+    ['jest.harness.config.mjs', 'jest.perf.config.mjs', 'jest.network.config.mjs', 'rn-harness.config.mjs'].includes(file)
   ) {
     const destination = file.endsWith('.mjs') ? host : path.join(host, '__e2e__');
     fs.copyFileSync(path.join(root, '__e2e__', file), path.join(destination, file));
