@@ -44,7 +44,7 @@ http
         res.end('{}');
         return;
       }
-      if (req.method === 'POST' && url.pathname === '/network-screenshot') {
+      if (req.method === 'POST' && ['/network-screenshot', '/example-screenshot'].includes(url.pathname)) {
         const chunks = [];
         for await (const chunk of req) {
           chunks.push(chunk);
@@ -57,7 +57,9 @@ http
           const capture = await exec('adb', ['exec-out', 'screencap', '-p'], { encoding: 'buffer', maxBuffer: 10 * 1024 * 1024 });
           png = capture.stdout;
         }
-        fs.writeFileSync(path.join(output, `prewarm-network-${process.env.HCAPTCHA_E2E_PLATFORM}.png`), png);
+        const name = url.pathname === '/example-screenshot' ? 'example' : 'prewarm-network';
+        const phase = name === 'example' && url.searchParams.get('phase') === 'token' ? '-token' : '';
+        fs.writeFileSync(path.join(output, `${name}${phase}-${process.env.HCAPTCHA_E2E_PLATFORM}.png`), png);
         res.end('{}');
         return;
       }
@@ -160,6 +162,11 @@ http
       if (req.method === 'POST' && url.pathname === '/release-auth') {
         holdAuth = false;
         releaseAuth?.();
+        res.end('{}');
+        return;
+      }
+      if (req.method === 'POST' && url.pathname === '/android-back' && process.env.HCAPTCHA_E2E_PLATFORM === 'android') {
+        await exec('adb', ['shell', 'input', 'keyevent', 'KEYCODE_BACK']);
         res.end('{}');
         return;
       }
