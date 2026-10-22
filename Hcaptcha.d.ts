@@ -39,6 +39,11 @@ export type HcaptchaProps = {
    */
   showLoading?: boolean;
   /**
+   * Load the SDK on mount without fetching a token. Call execute() to verify.
+   * Default: false.
+   */
+  prewarm?: boolean;
+  /**
    * Allow user to cancel hcaptcha during loading by touch loader overlay
    */
   closableLoading?: boolean;
@@ -121,4 +126,9 @@ interface CustomWebViewMessageEvent extends WebViewMessageEvent {
   markUsed?: () => void;
 }
 
-export default class Hcaptcha extends React.Component<HcaptchaProps> {}
+export default class Hcaptcha extends React.Component<HcaptchaProps> {
+  /** Queues verification until the SDK is ready. */
+  execute: () => void;
+  /** Cancels pending verification and resets the widget without executing. */
+  reset: () => void;
+}

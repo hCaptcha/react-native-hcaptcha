@@ -1,0 +1,108 @@
+import { describe, test, render, expect, waitFor } from 'react-native-harness';
+import { screen, userEvent } from '@react-native-harness/ui';
+import React, { useRef, useState } from 'react';
+import { Button, StyleSheet, Text, View } from 'react-native';
+
+import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
+
+// Replace only the remote SDK; exercise the published loader and native WebView bridge.
+const sdk = `
+  var widget, config, attempt = 0;
+  window.hcaptcha = {
+    render: function(id, options) {
+      config = options;
+      widget = (window.fixtureWidgetCount || 0) + 1;
+      window.fixtureWidgetCount = widget;
+      window.ReactNativeWebView.postMessage('fixture-ready');
+      return widget;
+    },
+    setData: function(id, data) { window.fixtureData = data; },
+    reset: function() {},
+    execute: function() {
+      attempt++;
+      config['open-callback']();
+      config.callback('fixture-token-widget-' + widget + '-attempt-' + attempt + '-' + (window.fixtureData.rqdata || '000000000000'));
+    }
+  };
+  window.hCaptchaOnLoad();
+`;
+const jsSrc = `data:application/javascript,${encodeURIComponent(sdk)}#`;
+
+const PrewarmFixture = ({ passiveSiteKey, theme, rqdata }) => {
+  const ref = useRef(null);
+  const [status, setStatus] = useState('loading');
+  const [loads, setLoads] = useState(0);
+  const onMessage = (event) => {
+    if (event.nativeEvent.data === 'fixture-ready') {
+      setStatus('ready');
+      setLoads((count) => count + 1);
+    } else if (event.markUsed) {
+      setStatus(event.nativeEvent.data);
+      event.markUsed();
+      ref.current.hide();
+    } else if (event.nativeEvent.data !== 'open') {
+      console.warn('Native SDK fixture:', event.nativeEvent.data);
+      setStatus(event.nativeEvent.data);
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <Text testID={status}>{status}</Text>
+      <Text testID={`loads-${loads}`}>SDK loads: {loads}</Text>
+      <Button testID="execute" title="Screen 2" onPress={() => {
+        setStatus('verifying');
+        ref.current.execute();
+      }} />
+      <ConfirmHcaptcha
+        ref={ref}
+        prewarm
+        passiveSiteKey={passiveSiteKey}
+        theme={theme}
+        rqdata={rqdata}
+        siteKey="site-key"
+        baseUrl="https://hcaptcha.com"
+        jsSrc={jsSrc}
+        sentry={false}
+        onMessage={onMessage}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({ container: { flex: 1, paddingTop: 80, paddingHorizontal: 24 } });
+
+describe('native WebView prewarm', () => {
+  for (const passiveSiteKey of [false, true]) {
+    test(`loads while hidden and reuses the widget (passiveSiteKey=${passiveSiteKey})`, async () => {
+      await render(<PrewarmFixture key={String(passiveSiteKey)} passiveSiteKey={passiveSiteKey} />);
+      await waitFor(() => screen.findByTestId('ready'), { timeout: 15000 });
+      for (const attempt of [1, 2]) {
+        await userEvent.press(await screen.findByTestId('execute'));
+        await waitFor(() => screen.findByTestId(`fixture-token-widget-1-attempt-${attempt}-000000000000`), { timeout: 5000 });
+      }
+      expect(await screen.findByTestId('execute')).toBeDefined();
+    });
+  }
+
+  test('recreates the native document after a theme change', async () => {
+    const fixture = await render(<PrewarmFixture key="theme" passiveSiteKey />);
+    await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
+    await userEvent.press(await screen.findByTestId('execute'));
+    await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-000000000000'));
+    await fixture.rerender(<PrewarmFixture key="theme" passiveSiteKey theme="dark" />);
+    await waitFor(() => screen.findByTestId('loads-2'), { timeout: 15000 });
+    await userEvent.press(await screen.findByTestId('execute'));
+    await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-000000000000'));
+    expect(await screen.findByTestId('loads-2')).toBeDefined();
+  });
+
+  test('injects updated legacy rqdata without reloading the SDK', async () => {
+    const fixture = await render(<PrewarmFixture key="payload" passiveSiteKey rqdata="initial" />);
+    await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
+    await fixture.rerender(<PrewarmFixture key="payload" passiveSiteKey rqdata="current-000000000000" />);
+    await userEvent.press(await screen.findByTestId('execute'));
+    await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-current-000000000000'));
+    expect(await screen.findByTestId('loads-1')).toBeDefined();
+  });
+});

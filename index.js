@@ -1,5 +1,5 @@
-import React, { PureComponent } from 'react';
-import { Modal, SafeAreaView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
+import React, { createRef, PureComponent } from 'react';
+import { BackHandler, Modal, SafeAreaView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import Hcaptcha from './Hcaptcha';
 import PropTypes from 'prop-types';
 import { clearJourneyEvents, disableJourneyConsumer, enableJourneyConsumer } from './journey';
@@ -12,6 +12,7 @@ class ConfirmHcaptcha extends PureComponent {
     show: false,
   };
   hasJourneyConsumer = false;
+  captchaRef = createRef();
   getJourneyEnabled(props = this.props, state = this.state) {
     return Boolean(props.userJourney && !state.journeyStopped);
   }
@@ -19,6 +20,11 @@ class ConfirmHcaptcha extends PureComponent {
     this.syncJourneyConsumer(false, this.getJourneyEnabled());
   }
   componentDidUpdate(prevProps, prevState) {
+    if (this.state.show && (prevProps.prewarm !== this.props.prewarm || prevProps.passiveSiteKey !== this.props.passiveSiteKey)) {
+      this.backSubscription?.remove();
+      this.backSubscription = null;
+      this.executePrewarmed();
+    }
     if (prevProps.userJourney !== this.props.userJourney && prevState.journeyStopped) {
       this.setState({ journeyStopped: false });
       return;
@@ -31,6 +37,7 @@ class ConfirmHcaptcha extends PureComponent {
   }
   componentWillUnmount() {
     this.syncJourneyConsumer(this.getJourneyEnabled(), false);
+    this.backSubscription?.remove();
   }
   syncJourneyConsumer(previousValue, nextValue) {
     if (!previousValue && nextValue && !this.hasJourneyConsumer) {
@@ -51,10 +58,35 @@ class ConfirmHcaptcha extends PureComponent {
     this.setState({ journeyStopped: true });
   };
   show = () => {
-    this.setState({ show: true });
+    if (this.state.show) {
+      if (this.props.prewarm) {
+        this.captchaRef.current?.execute();
+      }
+      return;
+    }
+    this.setState({ show: true }, this.executePrewarmed);
   };
+  executePrewarmed = () => {
+    if (!this.props.prewarm || !this.state.show) {
+      return;
+    }
+    if (!this.props.passiveSiteKey) {
+      this.backSubscription?.remove();
+      this.backSubscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        this.hide('back_button');
+        return true;
+      });
+    }
+    this.captchaRef.current?.execute();
+  };
+  execute = () => this.show();
   hide = (source) => {
     const { onMessage } = this.props;
+    this.backSubscription?.remove();
+    this.backSubscription = null;
+    if (this.props.prewarm) {
+      this.captchaRef.current?.reset();
+    }
     this.setState({ show: false });
     if (source) { // if source === undefined => called by the user
       onMessage({ nativeEvent: { data: 'cancel' } });
@@ -86,6 +118,7 @@ class ConfirmHcaptcha extends PureComponent {
       phonePrefix,
       phoneNumber,
       verifyParams,
+      prewarm,
     } = this.props;
 
     const WrapperComponent = useSafeAreaView === false ? View : SafeAreaView;
@@ -94,6 +127,7 @@ class ConfirmHcaptcha extends PureComponent {
     return (
       <WrapperComponent style={styles.wrapper}>
         <Hcaptcha
+          ref={this.captchaRef}
           url={baseUrl}
           size={size}
           siteKey={siteKey}
@@ -118,6 +152,7 @@ class ConfirmHcaptcha extends PureComponent {
           phoneNumber={phoneNumber}
           userJourney={journeyEnabled}
           verifyParams={verifyParams}
+          prewarm={prewarm}
           _journeyManagedExternally={true}
         />
       </WrapperComponent>
@@ -129,9 +164,10 @@ class ConfirmHcaptcha extends PureComponent {
       passiveSiteKey,
       backgroundColor,
       hasBackdrop,
+      prewarm,
     } = this.props;
 
-    if (!show) {
+    if (!show && !prewarm) {
       return null;
     }
 
@@ -143,6 +179,37 @@ class ConfirmHcaptcha extends PureComponent {
       );
     }
 
+    const content = (
+      <View style={styles.modal}>
+        {hasBackdrop ? (
+          <TouchableWithoutFeedback
+            onPress={() => this.hide('backdrop')}
+            testID="confirm-hcaptcha-backdrop"
+          >
+            <View style={[styles.backdrop, { backgroundColor }]} />
+          </TouchableWithoutFeedback>
+        ) : null}
+        <View style={styles.modalContent}>
+          {this.renderCaptcha()}
+        </View>
+      </View>
+    );
+
+    if (prewarm) {
+      return (
+        <View
+          testID="confirm-hcaptcha-prewarm"
+          pointerEvents={show ? 'auto' : 'none'}
+          accessibilityElementsHidden={!show}
+          importantForAccessibility={show ? 'auto' : 'no-hide-descendants'}
+          accessibilityViewIsModal={show}
+          style={[styles.prewarmContainer, !show && styles.hidden]}
+        >
+          {content}
+        </View>
+      );
+    }
+
     return (
       <Modal
         animationType="fade"
@@ -150,19 +217,7 @@ class ConfirmHcaptcha extends PureComponent {
         transparent
         visible={show}
       >
-        <View style={styles.modal}>
-          {hasBackdrop ? (
-            <TouchableWithoutFeedback
-              onPress={() => this.hide('backdrop')}
-              testID="confirm-hcaptcha-backdrop"
-            >
-              <View style={[styles.backdrop, { backgroundColor }]} />
-            </TouchableWithoutFeedback>
-          ) : null}
-          <View style={styles.modalContent}>
-            {this.renderCaptcha()}
-          </View>
-        </View>
+        {content}
       </Modal>
     );
   }
@@ -194,6 +249,14 @@ const styles = StyleSheet.create({
     top: 0,
     width: 1,
   },
+  prewarmContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+    elevation: 1000,
+  },
+  hidden: {
+    opacity: 0,
+  },
   wrapper: {
     flex: 1,
     justifyContent: 'center',
@@ -205,6 +268,7 @@ ConfirmHcaptcha.propTypes = {
   size: PropTypes.string,
   siteKey: PropTypes.string.isRequired,
   passiveSiteKey: PropTypes.bool,
+  prewarm: PropTypes.bool,
   baseUrl: PropTypes.string,
   onMessage: PropTypes.func.isRequired,
   languageCode: PropTypes.string,
@@ -237,6 +301,7 @@ ConfirmHcaptcha.propTypes = {
 ConfirmHcaptcha.defaultProps = {
   size: 'invisible',
   passiveSiteKey: false,
+  prewarm: false,
   showLoading: false,
   closableLoading: false,
   orientation: 'portrait',

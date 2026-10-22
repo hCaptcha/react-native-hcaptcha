@@ -44,6 +44,10 @@ export default class ConfirmHcaptcha extends React.Component<ConfirmHcaptchaProp
    */
   show: () => void;
   /**
+   * Starts verification; equivalent to show(). Queues until SDK readiness.
+   */
+  execute: () => void;
+  /**
    * Hides the modal containing the challenge. Do not pass any argument to trigger
    * the onMessage `cancel` event
    */

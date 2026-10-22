@@ -74,6 +74,50 @@ export default function Example() {
 }
 ```
 
+### Prewarming a multi-step flow
+
+Set `prewarm` to load the WebView and SDK on mount without fetching a token. It defaults to `false`, preserving the existing mount-on-`show()` behavior.
+
+Mount `ConfirmHcaptcha` once at the app root, after your navigation/content, inside a full-screen `View`. Keep it mounted across screens. Call `captchaRef.current.execute()` when screen 2 loads; `show()` is equivalent. Calls made before SDK readiness are queued. `hide()` cancels pending verification and keeps the WebView warm for reuse.
+
+```js
+<View style={{ flex: 1 }}>
+  <NavigationContainer>{/* screens */}</NavigationContainer>
+  <ConfirmHcaptcha
+    ref={captchaRef}
+    prewarm
+    siteKey="your-site-key"
+    onMessage={(event) => {
+      if (event.markUsed) {
+        // Store the token and markUsed callback for form submission.
+        tokenRef.current = { token: event.nativeEvent.data, markUsed: event.markUsed };
+        captchaRef.current.hide();
+      } else if (event.nativeEvent.data === 'expired') {
+        tokenRef.current = null;
+      }
+    }}
+  />
+</View>
+
+// Screen 2 load:
+captchaRef.current.execute();
+
+// On form submit, retain a snapshot across the async request:
+const token = tokenRef.current;
+await submitForm({ captchaToken: token.token });
+token.markUsed();
+```
+
+Submit `tokenRef.current.token` to your backend. Keep the token and its `markUsed` callback together for delayed submission. Tokens expire after 120 seconds by default; request a replacement if the form outlives the token. Loading errors can arrive during prewarming through `onMessage`.
+
+Verification payload updates (`verifyParams` or legacy `rqdata`/phone props) preserve the warm SDK. If the backend rejects credentials after consuming a token, discard it and execute again before retrying the form.
+
+Prewarm mode uses a persistent app-level overlay so showing the challenge preserves the native WebView. It covers its parent view and cannot appear above another native `Modal`. Android back-button and backdrop cancellation remain supported. With `passiveSiteKey`, it stays hidden during verification too.
+
+The WebView and SDK retain memory until the component unmounts. SDK loading has a 15-second timeout independent of form re-renders. A later `execute()` can retry a timed-out load; terminated WebView processes are recreated automatically.
+
+The inline `Hcaptcha` export also supports `prewarm`, `ref.current.execute()`, and `ref.current.reset()` (cancel/reset without executing). The caller controls its visibility.
+
 ### Verification payloads with `verifyParams`
 
 Use `verifyParams` for request data passed to `hcaptcha.setData(...)` immediately before each verification attempt.
@@ -241,7 +285,7 @@ If your app encounters an `error` event, you can reset the hCaptcha SDK flow by 
 
 The SDK automatically retries loading `api.js` after transient failures. If all attempts fail, `script-error` is sent via `onMessage`.
 
-The 15-second `loading timeout` message does not stop initialization and should not be treated as a terminal loading failure.
+With `prewarm`, the 15-second `loading timeout` message cancels the pending verification. Initialization can still finish in the background; call `execute()` again to retry. Without `prewarm`, initialization and the pending verification continue after the timeout, preserving existing behavior.
 
 ## Dependencies
 
@@ -349,6 +393,7 @@ For new code, prefer:
 | onMessage | Function (see [here](https://github.com/react-native-webview/react-native-webview/blob/master/src/WebViewTypes.ts#L299)) | Required. Runs after receiving a response, error, or when user cancels. |
 | languageCode | string | Default language for hCaptcha; overrides phone defaults. A complete list of supported languages and their codes can be found [here](https://docs.hcaptcha.com/languages/) |
 | showLoading | boolean | Whether to show a loading indicator while the hCaptcha web content loads |
+| prewarm | boolean | Load the WebView and SDK on mount; defer verification until `execute()` or `show()`. Default: `false`. Keep mounted across screens; see prewarming usage above. |
 | closableLoading | boolean | Allow user to cancel hcaptcha during loading by touch loader overlay |
 | loadingIndicatorColor | string | Color of the ActivityIndicator |
 | backgroundColor | string | The background color code that will be applied to the main HTML element |

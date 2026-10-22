@@ -63,6 +63,7 @@ if (fs.existsSync(harnessUiPkgPath)) {
 }
 
 // 3. Build native code for the target platform only
+require('./configure-e2e-network')(HOST_DIR);
 const buildIos = (!targetPlatform || targetPlatform === 'ios') && osPlatform() === 'darwin';
 const buildAndroid = !targetPlatform || targetPlatform === 'android';
 
@@ -102,6 +103,8 @@ console.log('Copying harness configs and test files into host app...');
 const filesToCopy = [
   ['rn-harness.config.mjs', 'rn-harness.config.mjs'],
   ['jest.harness.config.mjs', 'jest.harness.config.mjs'],
+  ['jest.perf.config.mjs', 'jest.perf.config.mjs'],
+  ['jest.network.config.mjs', 'jest.network.config.mjs'],
 ];
 for (const [src, dest] of filesToCopy) {
   fs.copyFileSync(path.join(E2E_DIR, src), path.join(HOST_DIR, dest));
@@ -110,6 +113,7 @@ for (const [src, dest] of filesToCopy) {
 const hostE2eDir = path.join(HOST_DIR, '__e2e__');
 fs.mkdirSync(hostE2eDir, { recursive: true });
 const testFiles = fs.readdirSync(E2E_DIR).filter(f => f.endsWith('.harness.js') || f.endsWith('.harness.ts') || f.endsWith('.harness.tsx'));
+testFiles.push('PrewarmAuthApp.js');
 for (const file of testFiles) {
   fs.copyFileSync(path.join(E2E_DIR, file), path.join(hostE2eDir, file));
 }

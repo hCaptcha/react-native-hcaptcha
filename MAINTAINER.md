@@ -17,8 +17,8 @@ PATCH: bugfix only.
 - verify:
   - `npm test`
   - `npm run lint`
-  - `CI=1 npm run test:e2e` to confirm CI skips local-only device E2E cleanly
-  - `npm run test:e2e:android-local` if you want the full Android emulator verification locally
+  - `npm run test:e2e:android` on a booted Android emulator
+  - `npm run test:e2e:ios` on a booted iOS simulator
 - commit `package.json` and `package-lock.json`
 - commit any maintainer or release-documentation updates in the same PR
 - open the PR for review
@@ -54,12 +54,46 @@ For `react-native` test app
 - `yarn example`
 - `yarn android` or `npm run android`
 
-For the local Android emulator regression E2E added in this repo:
+For native E2E, generate and build the host once with `npm run test:e2e:setup` (requires Node 22.11+, Android SDK, and Xcode/CocoaPods for iOS). Use `-- --platform android` or `-- --platform ios` to build one platform. Setup recreates `__e2e__/host`.
 
-- `cd react-native-hcaptcha`
-- ensure Android SDK, emulator, and an AVD are installed
-- run `npm run test:e2e:android-local`
-- inspect artifacts in [`output/android-e2e`](./output/android-e2e) if the run fails
+Boot the selected device, then run the prewarm suites:
+
+```sh
+HARNESS_AVD_NAME=Medium_Phone npm run test:e2e:android -- --testPathPattern 'authFlow|prewarm'
+HARNESS_IOS_DEVICE='iPhone 17 Pro' HARNESS_IOS_VERSION=26.0 npm run test:e2e:ios -- --testPathPattern 'authFlow|prewarm'
+```
+
+Use the names and runtime versions installed locally. The runner refreshes the host's JS, installs the existing native binary, starts a disposable backend on `127.0.0.1:8766`, forwards that port on Android, and stops the backend on exit. The generated host and harness use Metro port `18081`, avoiding the common Docker/Metro port. Run platforms sequentially because they share backend state. The live suites require internet access.
+
+`__e2e__/PrewarmAuthApp.js` is a three-screen signup/login app: email entry, credentials, and account confirmation. It keeps one captcha mounted at the root, executes on the credentials screen, stores a token snapshot while the user edits, submits it to the backend, then logs out and repeats login using the same WebView. The backend redirects `/1/api.js` to the live SDK and verifies tokens through hCaptcha's `siteverify` API using its public test secret. The local base URL avoids mixed-content restrictions in WKWebView.
+
+The suites cover visible/passive presentation, one SDK load across both auth attempts, delayed submission, successful server verification, cancellation before SDK readiness, and retry after rejected credentials. Public test keys auto-pass; visual challenge solving is outside these tests. `prewarm.harness.js` separately uses an SDK fixture to assert native widget reuse, payload updates without a reload, and document replacement after a theme change.
+
+The bridge copies pooled native events before attaching token hooks, preventing a previous token's `markUsed` from leaking onto an `open` or error event. Keep cached tokens as `{ token: event.nativeEvent.data, markUsed: event.markUsed }` and discard them after backend consumption, including rejected credentials.
+
+For latency and stall profiling on the same booted devices:
+
+```sh
+HARNESS_AVD_NAME=Medium_Phone npm run test:e2e:perf:android
+HARNESS_IOS_DEVICE='iPhone 17 Pro' HARNESS_IOS_VERSION=26.0 npm run test:e2e:perf:ios
+```
+
+The profile alternates five cold and five prewarmed screen-2 executions, runs 30 signup/login cycles in one warm WebView, checks idle JS frames and memory, holds an SDK request through its loading timeout, and deliberately terminates the test renderer to verify recovery. A small observer wraps the live SDK's `render()` to detect readiness; it does not replace token generation or server verification. These longer suites run serially with a ten-minute bridge deadline.
+
+`--testPathPattern prewarmEdges` selects lifecycle tests: actual app background/resume, 125-second token expiry, expiry while an auth response is held, navigation away during submission, cancellation after the live SDK produces a token, renderer termination during pending verification, and switching prewarm/presentation modes with a pending request. The deferred-token observer holds the SDK's real callback for ten seconds to expose cancellation and renderer races. iOS renderer fault injection terminates WebContent processes belonging to the disposable harness simulator, including any retained by Safari during background tests.
+
+Results are written to `output/prewarm-perf-android.json` and `output/prewarm-perf-ios.json`. Frame gaps measure the React Native JS thread; Android additionally records cumulative native rendering stats. Android memory is summed PSS; iOS memory is summed RSS for the app and its simulator WebKit processes, so the totals are not directly comparable. Debug emulators and public test keys do not establish production device frame rates, challenge latency, battery use, or long-term leak freedom.
+
+For transport failures, rebuild the generated host with the network hooks, then run:
+
+```sh
+HARNESS_AVD_NAME=Medium_Phone npm run test:e2e:network:android
+HARNESS_IOS_DEVICE='iPhone 17 Pro' HARNESS_IOS_VERSION=26.0 npm run test:e2e:network:ios
+```
+
+These four cases cover offline prewarm, execute queued while offline, and interrupted challenge execution plus background/resume in both presentation modes. An app-scoped WebView proxy closes existing TLS connections and rejects new connections; it does not decrypt TLS, replace the SDK, change host networking, or simulate OS reachability events. The harness/control backend stays connected. Network tests are excluded from performance profiles so proxy overhead cannot affect their measurements.
+
+The execution cases use the public key from `https://accounts.hcaptcha.com/demo`, assert `network-error`, restore transport, and reopen a challenge in the same warmed SDK. No visual challenge is solved. They finish backend verification using the public auto-pass test key. Recovered visible challenge screenshots are saved as `output/prewarm-network-{android,ios}.png`; Android uses compositor capture because software View snapshots can omit accelerated canvas content. The iOS proxy hook requires iOS 17+ and is enabled only for the network runner. Android's app-private flag is removed after the run and before normal runs.
 
 For iOS instead the last step do:
 

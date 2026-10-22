@@ -95,9 +95,9 @@ describe('Hcaptcha', () => {
     expect(config.size).toBe('normal');
     expect(config.backgroundColor).toBe('rgba(0.1, 0.1, 0.1, 0.4)');
     expect(config.theme).toBe('contrast');
-    expect(config.rqdata).toBe('{"some":"data"}');
-    expect(config.phonePrefix).toBe('44');
-    expect(config.phoneNumber).toBe('+441234567890');
+    expect(config.rqdata).toBeUndefined();
+    expect(config.phonePrefix).toBeUndefined();
+    expect(config.phoneNumber).toBeUndefined();
     expect(config.orientation).toBe('landscape');
     expect(config.verifyData).toBeUndefined();
     expect(config.debugInfo).toMatchObject({
@@ -446,6 +446,213 @@ describe('Hcaptcha', () => {
     });
   });
 
+  it('bounds loading time despite onMessage callback changes during form edits', () => {
+    jest.useFakeTimers();
+    const onMessage = jest.fn();
+    const component = render(<Hcaptcha siteKey="site-key" onMessage={(event) => onMessage(event)} prewarm />);
+    for (let second = 0; second < 16; second++) {
+      act(() => jest.advanceTimersByTime(1000));
+      component.rerender(<Hcaptcha siteKey="site-key" onMessage={(event) => onMessage(event)} prewarm />);
+    }
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage).toHaveBeenCalledWith(expect.objectContaining({
+      nativeEvent: { data: 'error', description: 'loading timeout' },
+    }));
+  });
+
+  it.each([false, true])('preserves late SDK behavior after a loading timeout (prewarm=%s)', (prewarm) => {
+    jest.useFakeTimers();
+    const ref = React.createRef();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={jest.fn()} prewarm={prewarm} />);
+    if (prewarm) {
+      act(() => ref.current.execute());
+    }
+    act(() => jest.advanceTimersByTime(15000));
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(prewarm ? 0 : 1);
+    act(() => ref.current.execute());
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores a token delivered after cancellation', () => {
+    const ref = React.createRef();
+    const onMessage = jest.fn();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={onMessage} prewarm />);
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    act(() => ref.current.execute());
+    act(() => ref.current.reset());
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: LONG_TOKEN } }));
+    expect(onMessage).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])('isolates pooled native events across verification attempts (prewarm=%s)', (prewarm) => {
+    const ref = React.createRef();
+    const onMessage = jest.fn((event) => {
+      if (event.markUsed) {
+        event.markUsed();
+        ref.current.reset();
+      }
+    });
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={onMessage} prewarm={prewarm} />);
+    const event = Object.assign(Object.create({ persist: jest.fn() }), {
+      nativeEvent: { data: HCAPTCHA_READY_EVENT },
+    });
+    const send = (data) => {
+      event.nativeEvent.data = data;
+      act(() => getWebView(component).props.onMessage(event));
+    };
+    send(HCAPTCHA_READY_EVENT);
+    act(() => ref.current.execute());
+    send(LONG_TOKEN);
+    expect(event.markUsed).toBeUndefined();
+    expect(onMessage.mock.calls[0][0].persist).toBe(event.persist);
+    act(() => ref.current.execute());
+    event.markUsed = jest.fn(); // A previous handler can leave custom fields on the pool.
+    send('open');
+    expect(onMessage.mock.calls[1][0].markUsed).toBeUndefined();
+    expect(onMessage.mock.calls[0][0].nativeEvent.data).toBe(LONG_TOKEN);
+    send(LONG_TOKEN);
+    expect(onMessage).toHaveBeenCalledTimes(3);
+    expect(onMessage.mock.calls[2][0].markUsed).toEqual(expect.any(Function));
+  });
+
+  it.each([false, true])('expires only the replacement token using the current callback (markOldUsed=%s)', (markOldUsed) => {
+    jest.useFakeTimers();
+    const first = jest.fn();
+    const latest = jest.fn();
+    const component = render(<Hcaptcha siteKey="site-key" onMessage={first} />);
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: LONG_TOKEN } }));
+    const markFirstUsed = first.mock.calls[0][0].markUsed;
+    act(() => jest.advanceTimersByTime(60000));
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: LONG_TOKEN } }));
+    if (markOldUsed) {
+      markFirstUsed();
+    }
+    component.rerender(<Hcaptcha siteKey="site-key" onMessage={latest} />);
+    act(() => jest.advanceTimersByTime(60000));
+    expect(first).toHaveBeenCalledTimes(2);
+    expect(latest).not.toHaveBeenCalled();
+    act(() => jest.advanceTimersByTime(60000));
+    expect(latest).toHaveBeenCalledTimes(1);
+    expect(latest).toHaveBeenCalledWith(expect.objectContaining({ nativeEvent: { data: 'expired' } }));
+  });
+
+  it('cleans up held token expiry when the prewarmed component unmounts', () => {
+    jest.useFakeTimers();
+    const ref = React.createRef();
+    const onMessage = jest.fn();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={onMessage} prewarm />);
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    act(() => ref.current.execute());
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: LONG_TOKEN } }));
+    const oldProps = getWebView(component).props;
+    component.unmount();
+    act(() => {
+      oldProps.onLoadStart();
+      oldProps.onMessage({ nativeEvent: { data: LONG_TOKEN } });
+    });
+    act(() => jest.advanceTimersByTime(120000));
+    expect(onMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['onContentProcessDidTerminate', 'onRenderProcessGone'])('reloads after %s and queues verification until ready', (event) => {
+    const ref = React.createRef();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={jest.fn()} prewarm />);
+    const oldProps = getWebView(component).props;
+    act(() => oldProps.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    act(() => oldProps[event]());
+    act(() => oldProps.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    act(() => ref.current.execute());
+    expect(getLastInjectJavaScriptMock()).not.toHaveBeenCalled();
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+  });
+
+  it('queues event.reset while a terminated renderer is recovering', () => {
+    const ref = React.createRef();
+    const onMessage = jest.fn();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={onMessage} prewarm />);
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    act(() => ref.current.execute());
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: LONG_TOKEN } }));
+    const reset = onMessage.mock.calls[0][0].reset;
+    act(() => getWebView(component).props.onContentProcessDidTerminate());
+    act(reset);
+    expect(getLastInjectJavaScriptMock()).not.toHaveBeenCalled();
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries a held event with current verification props', () => {
+    const onMessage = jest.fn();
+    const props = { siteKey: 'site-key', onMessage };
+    const component = render(<Hcaptcha {...props} verifyParams={{ rqdata: 'old' }} />);
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: 'error' } }));
+    const reset = onMessage.mock.calls[0][0].reset;
+    component.rerender(<Hcaptcha {...props} verifyParams={{ rqdata: 'current' }} />);
+    act(reset);
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('"rqdata":"current"'));
+  });
+
+  it.each(['siteKey', 'url', 'theme'])('waits for the new document when %s changes', (prop) => {
+    const ref = React.createRef();
+    const props = { ref, siteKey: 'site-key', onMessage: jest.fn(), prewarm: true };
+    const component = render(<Hcaptcha {...props} />);
+    const oldWebView = getWebView(component);
+    const oldProps = oldWebView.props;
+    act(() => oldProps.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    component.rerender(<Hcaptcha {...props} {...{ [prop]: 'new-value' }} />);
+    const webView = getWebView(component);
+    expect(webView).not.toBe(oldWebView);
+    act(() => ref.current.execute());
+    act(() => {
+      oldProps.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } });
+      oldProps.onMessage({ nativeEvent: { data: LONG_TOKEN } });
+      oldProps.onContentProcessDidTerminate();
+    });
+    expect(getWebView(component)).toBe(webView);
+    expect(props.onMessage).not.toHaveBeenCalled();
+    expect(getLastInjectJavaScriptMock()).not.toHaveBeenCalled();
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['rqdata', 'rqdata'],
+    ['phoneNumber', 'mfa_phone'],
+    ['phonePrefix', 'mfa_phoneprefix'],
+  ])('updates legacy %s without reloading the warmed SDK', (prop, wireKey) => {
+    const ref = React.createRef();
+    const props = { ref, siteKey: 'site-key', onMessage: jest.fn(), prewarm: true };
+    const component = render(<Hcaptcha {...props} {...{ [prop]: 'old' }} />);
+    const webView = getWebView(component);
+    act(() => webView.props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    component.rerender(<Hcaptcha {...props} {...{ [prop]: 'new' }} />);
+    expect(getWebView(component)).toBe(webView);
+    act(() => ref.current.execute());
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining(`"${wireKey}":"new"`));
+  });
+
+  it('recreates a timed-out WebView on execute and waits for the new SDK', () => {
+    jest.useFakeTimers();
+    const ref = React.createRef();
+    const onMessage = jest.fn();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={onMessage} prewarm />);
+    const oldWebView = getWebView(component);
+    act(() => jest.advanceTimersByTime(15000));
+    expect(onMessage).toHaveBeenCalledTimes(1);
+    act(() => ref.current.execute());
+    const webView = getWebView(component);
+    expect(webView).not.toBe(oldWebView);
+    expect(getLastInjectJavaScriptMock()).not.toHaveBeenCalled();
+    act(() => webView.props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+    act(() => jest.advanceTimersByTime(15000));
+    expect(onMessage).toHaveBeenCalledTimes(1);
+  });
+
   it('does not emit a loading timeout after the widget becomes ready in passive flows', () => {
     jest.useFakeTimers();
     const onMessage = jest.fn();
@@ -518,7 +725,8 @@ describe('Hcaptcha', () => {
 
     const [{ reset, markUsed }] = onMessage.mock.calls[0];
 
-    reset();
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    act(reset);
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('reset(); setData('));
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('execute();'));
 
@@ -558,6 +766,80 @@ describe('Hcaptcha', () => {
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"id":"before-ready"'));
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"id":"after-mount"'));
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.not.stringContaining('reset();'));
+  });
+
+  it.each([false, true])('executes prewarmed verification with current payload and journeys (readyFirst=%s)', (readyFirst) => {
+    initJourneyTracking();
+    const ref = React.createRef();
+    const props = { ref, siteKey: 'site-key', onMessage: jest.fn(), prewarm: true, userJourney: true };
+    const component = render(<Hcaptcha {...props} verifyParams={{ rqdata: 'initial' }} />);
+    const html = getWebViewHtml(component);
+    const ready = () => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } });
+    if (readyFirst) {
+      act(ready);
+    }
+    component.rerender(<Hcaptcha {...props} verifyParams={{ rqdata: 'latest' }} />);
+    emitJourneyEvent('click', 'View', { id: 'screen-two', ac: 'tap' });
+    expect(getWebViewHtml(component)).toBe(html);
+    act(() => ref.current.execute());
+    if (!readyFirst) {
+      expect(getLastInjectJavaScriptMock()).not.toHaveBeenCalled();
+      act(ready);
+    }
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"rqdata":"latest"'));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith(expect.stringContaining('"id":"screen-two"'));
+    act(ready);
+    act(() => ref.current.execute());
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries an idle prewarm load failure when execute is called', () => {
+    const ref = React.createRef();
+    const onMessage = jest.fn();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={onMessage} prewarm />);
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: 'script-error' } }));
+    act(() => ref.current.execute());
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith('loadApiScript(); true;');
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('setData({}); execute();'));
+  });
+
+  it('waits for readiness again after a prewarmed WebView reload', () => {
+    const ref = React.createRef();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={jest.fn()} prewarm />);
+    act(() => getWebView(component).props.onLoadStart());
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    act(() => getWebView(component).props.onLoadStart());
+    act(() => ref.current.execute());
+    expect(getLastInjectJavaScriptMock()).not.toHaveBeenCalled();
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])('preserves readiness across the initial native load event (late=%s)', (late) => {
+    const ref = React.createRef();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={jest.fn()} prewarm />);
+    const props = getWebView(component).props;
+    if (!late) {
+      act(props.onLoadStart);
+    }
+    act(() => props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    if (late) {
+      act(props.onLoadStart);
+    }
+    act(() => ref.current.execute());
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves a loader failure when the initial native load event arrives late', () => {
+    const ref = React.createRef();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={jest.fn()} prewarm />);
+    const props = getWebView(component).props;
+    act(() => props.onMessage({ nativeEvent: { data: 'script-error' } }));
+    act(props.onLoadStart);
+    act(() => ref.current.execute());
+    expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith('loadApiScript(); true;');
   });
 
   it('emits an expired message when a forwarded token is not marked used', async () => {
@@ -613,16 +895,22 @@ describe('Hcaptcha', () => {
     });
   });
 
-  it('restarts the API loader when resetting a terminal script load error', () => {
+  it.each([false, true])('restarts the API loader and pending verification after a script load error (prewarm=%s)', (prewarm) => {
+    const ref = React.createRef();
     const onMessage = jest.fn();
     const component = render(
       <Hcaptcha
+        ref={ref}
+        prewarm={prewarm}
         siteKey="00000000-0000-0000-0000-000000000000"
         url="https://hcaptcha.com"
         onMessage={onMessage}
       />
     );
 
+    if (prewarm) {
+      act(() => ref.current.execute());
+    }
     act(() => {
       getWebView(component).props.onMessage({ nativeEvent: { data: 'script-error' } });
     });
@@ -640,6 +928,8 @@ describe('Hcaptcha', () => {
     });
 
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledWith('loadApiScript(); true;');
+    act(() => getWebView(component).props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
+    expect(getLastInjectJavaScriptMock()).toHaveBeenLastCalledWith(expect.stringContaining('setData({}); execute();'));
   });
 
   it('uses verifyParams over legacy props and injects buffered journey data', () => {
