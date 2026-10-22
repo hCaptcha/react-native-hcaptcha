@@ -1,7 +1,7 @@
 /* eslint-env jest */
 import React from 'react';
 import vm from 'vm';
-import { act, cleanupAsync, render } from '@testing-library/react-native';
+import { act, cleanup, render } from '@testing-library/react-native';
 import { Modal } from 'react-native';
 import { getLastInjectJavaScriptMock, resetWebViewMockState } from 'react-native-webview';
 import ConfirmHcaptcha from '../index';
@@ -177,7 +177,7 @@ export class PrewarmDriver {
   }
 
   async dispose() {
-    await cleanupAsync();
+    await act(async () => { cleanup(); });
     jest.clearAllTimers();
     jest.clearAllMocks();
   }

@@ -275,7 +275,7 @@ test.each(MODES)('unmount cancels timers and rejects retained native callbacks (
       await driver.step(action);
     }
     const receive = driver.current.receive;
-    await driver.component.unmountAsync();
+    await act(async () => { driver.component.unmount(); });
     act(() => {
       jest.advanceTimersByTime(120001);
       receive({ nativeEvent: { data: driver.attempts[0].token } });
