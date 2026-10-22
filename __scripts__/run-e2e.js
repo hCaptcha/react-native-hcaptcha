@@ -11,6 +11,7 @@ if (networkTest) {
 }
 if (process.argv.includes('jest.perf.config.mjs') || networkTest) {
   process.env.HARNESS_BRIDGE_TIMEOUT ||= '600000';
+  process.env.HARNESS_TEST_TIMEOUT ||= '600000';
 }
 if (!['android', 'ios'].includes(platform)) {
   throw new Error('Expected android or ios');
