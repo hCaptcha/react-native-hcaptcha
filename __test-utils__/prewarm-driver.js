@@ -5,6 +5,7 @@ import { act, cleanup, render } from '@testing-library/react-native';
 import { Modal } from 'react-native';
 import { getLastInjectJavaScriptMock, resetWebViewMockState } from 'react-native-webview';
 import ConfirmHcaptcha from '../index';
+import Hcaptcha from '../Hcaptcha';
 
 // Use the published loader, replacing only the native transport and remote SDK boundary.
 jest.unmock('@hcaptcha/loader/inline');
@@ -33,7 +34,8 @@ export class PrewarmDriver {
   }
 
   element() {
-    return <ConfirmHcaptcha {...this.props} ref={this.ref} onMessage={(event) => {
+    const Component = this.options.inline ? Hcaptcha : ConfirmHcaptcha;
+    return <Component {...this.props} url={this.props.baseUrl} ref={this.ref} onMessage={(event) => {
       if (event.markUsed) {
         const id = this.attempts.findIndex((attempt) => attempt.token === event.nativeEvent.data);
         this.events.push({ kind: 'token', id });
@@ -121,7 +123,8 @@ export class PrewarmDriver {
     await act(async () => {
       switch (action) {
         case 'execute': this.ref.current[this.options.showAlias ? 'show' : 'execute'](); break;
-        case 'hide': this.ref.current.hide(); break;
+        case 'hide': this.ref.current[this.options.inline ? 'reset' : 'hide'](); break;
+        case 'destroy': this.ref.current.destroy(); break;
         case 'ready':
           this.current.context.hcaptcha = this.current.sdk;
           this.current.scripts.at(-1).onload();
@@ -171,12 +174,12 @@ export class PrewarmDriver {
 
   snapshot() {
     let visible = null;
-    if (!this.passive) {
+    if (!this.passive && !this.options.inline) {
       visible = this.props.prewarm
-        ? this.component.getByTestId('confirm-hcaptcha-prewarm', { includeHiddenElements: true }).props.pointerEvents === 'auto'
+        ? this.component.queryByTestId('confirm-hcaptcha-prewarm', { includeHiddenElements: true })?.props.pointerEvents === 'auto'
         : Boolean(this.component.UNSAFE_queryByType(Modal));
     }
-    return { documents: this.documents.length, visible, calls: this.calls, events: this.events };
+    return { mounted: Boolean(this.component.UNSAFE_queryByType('WebView')), documents: this.documents.length, visible, calls: this.calls, events: this.events };
   }
 
   async dispose() {

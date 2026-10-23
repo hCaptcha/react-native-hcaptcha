@@ -7,6 +7,7 @@ The initial audit of `92ba84e` reproduced three defect classes. The working-tree
 `prewarm-model.js` imports no production code. It models request ownership, document generations, token ownership, and deadlines from the public contract:
 
 - Prewarm alone cannot verify; execute queues one request until readiness. Repeated execute while that request is outstanding is idempotent.
+- Destroy silently cancels requests and loading/token timers, retires all callbacks/event reset hooks, and removes the native WebView. Repeated destruction and config edits while destroyed cannot recreate it. Execute recreates it with the latest config. Destruction does not revoke an issued token; apps retaining one must track expiry themselves.
 - Hide cancels that request. An outcome belonging to a cancelled request is ignored and cannot satisfy or invalidate a newer request. The oracle now rejects cancelled errors entirely, strengthening the original oracle that permitted the error notification while preserving the newer request.
 - Replacing a document retires its callbacks permanently, including when config returns to an earlier value. Outstanding verification waits for the replacement document.
 - Execution uses the current verification payload. `verifyParams` edits preserve the document; legacy top-level payload edits replace it, preserving v4 behavior.
@@ -18,47 +19,48 @@ The native WebView transport, DOM script loading, and remote SDK are controlled 
 
 ## Finite domain
 
-The exhaustive domain starts with prewarm enabled, theme `light`, payload `legacy-A`, and no request/token. It uses both presentation modes. Theme toggles between `light` and `dark`; `verifyParams.rqdata` toggles between `legacy-A` and `override-B`. The static legacy fallback is `legacy-A`.
+The exhaustive domain starts with prewarm enabled, theme `light`, payload `legacy-A`, and no request/token. It uses wrapper overlay, wrapper passive, and inline prewarm components. Inline `reset()` is the oracle’s `hide` action and has no visibility obligation. Theme toggles between `light` and `dark`; `verifyParams.rqdata` toggles between `legacy-A` and `override-B`. The static legacy fallback is `legacy-A`.
 
-Eleven actions: `execute`, `hide`, `ready`, `success`, `error`, `edit`, `replace`, `crash`, `timeout`, `consume`, `expire`.
+Twelve actions: `execute`, `hide`, `ready`, `success`, `error`, `edit`, `replace`, `crash`, `timeout`, `consume`, `expire`, `destroy`.
 
 - Success/error delivers the oldest undelivered SDK outcome, including outcomes from cancelled requests and retired documents. This intentionally creates adverse scheduling.
 - Ready completes the current loading document. Replace toggles theme; crash invokes a native renderer-loss callback. The two modes exercise both renderer-loss callback entry points.
 - Timeout advances to the loading deadline; expire advances to the held token deadline. Separate tests cover each deadline minus one millisecond, exactly at the deadline, and plus one millisecond.
-- Ready requires a loading document; success/error requires an undelivered SDK outcome; timeout requires a loader deadline; consume/expire requires an unused token.
+- Ready requires an active loading document; crash requires a mounted document; success/error requires an undelivered SDK outcome; timeout requires a loader deadline; consume/expire requires an unused token. Edits/replacements while destroyed update config without mounting. Old SDK outcomes remain deliverable after destroy to challenge ownership.
 
 Two distinct payload values exercise latest-value delivery and double-edit identity without an unbounded string space. Metamorphic cases separately compare legacy fallback with `verifyParams` overrides. Two theme values permit config A→B→A. Five actions are sufficient for ready→execute→hide→execute→late outcome and ready→execute→replace→replace→late outcome. A four-action search found no failures; the five-action bound exposes both defects. Longer interactions are sampled separately.
 
 ## Counts
 
-Scenario identity is `(initial presentation, cold/warm option, show/execute option, payload encoding, executed action trace)`. Prefixes are distinct scenarios. Repeated runs and cross-family overlaps are deduplicated; reduction-only probes are excluded from the primary total.
+Scenario identity is `(wrapper/inline, initial presentation, cold/warm option, show/execute option, payload encoding, executed action trace)`. Prefixes are distinct scenarios. Repeated runs and cross-family overlaps are deduplicated; reduction-only probes are excluded from the primary total.
 
-**31,268 unique primary executed scenarios; zero contract violations.** Raw scenario identities, projections, reduced failures, and family membership are written to `output/prewarm-contract-results.json`.
+**72,669 unique primary executed scenarios; zero contract violations.** Raw scenario identities, projections, reduced failures, and family membership are written to `output/prewarm-contract-results.json`.
 
 | Family | Eligible/selected | Exercised | Result |
 | --- | ---: | ---: | --- |
-| Exhaustive, length 0–5 | 31,056 | 31,056 | All 31,056 matched |
+| Exhaustive, length 0–5, three component variants | 71,259 | 71,259 | All 71,259 matched |
 | Stateful, 64 deterministic seeds × 2 modes, up to 32 actions | 128 | 128 completed | All 128 matched |
-| Metamorphic relation instances | 63 pairs | 63 pairs | All 63 held |
-| Deadline/unmount/queued-message/batching scenarios | 26 | 26 | All matched |
+| Metamorphic relation instances | 98 pairs | 98 pairs | All 98 held |
+| Deadline/unmount/queued-message/batching/isolation scenarios | 1,180 | 1,180 | All matched |
 | Former failure regressions | 10 | 10 | All 10 matched |
 
 Rows overlap and use different units; they must not be summed. Stateful selection is seeds 1–64 using the checked-in LCG and only oracle-eligible commands. It is not exhaustive coverage of length-32 traces. The complete 32-action stateful traces now pass; future failures are recorded at their first divergence and deletion-reduced.
 
-The raw bounded word space is `2 × (11^0 + … + 11^5) = 354,312`. The declared grammar admits 31,056 and excludes **323,256**. Eligible counts by depth, across both modes: `2, 14, 92, 602, 3,966, 26,380`.
+The raw bounded word space is `3 × (12^0 + … + 12^5) = 814,359`. The declared grammar admits **71,259**, all exercised, and excludes **743,100**. Eligible counts by depth, across all three variants: `3, 24, 174, 1,230, 8,658, 61,170`.
 
 | First ineligible action | Excluded words, including all suffixes |
 | --- | ---: |
-| ready | 7,924 |
-| success | 74,480 |
-| error | 74,480 |
-| timeout | 14,324 |
-| consume | 76,024 |
-| expire | 76,024 |
+| ready | 30,552 |
+| success | 162,081 |
+| error | 162,081 |
+| crash | 16,446 |
+| timeout | 42,144 |
+| consume | 164,898 |
+| expire | 164,898 |
 
-This counts each excluded word once, at its first failed precondition. Execute, hide, edit, replace, and crash have no grammar preconditions. Exclusion does not imply an API call is impossible: duplicate ready notifications and repeated acknowledgements are outside this grammar.
+This counts each excluded word once, at its first failed precondition. Execute, hide, edit, replace, and destroy have no grammar preconditions. Exclusion does not imply an API call is impossible: duplicate ready notifications and repeated acknowledgements are outside this grammar.
 
-Metamorphic checks cover show/execute equivalence; execute idempotence; double-edit cancellation; legacy/verifyParams payload equivalence; ready/execute commutation; cold/warm observable equivalence; presentation invariance; renderer-loss/config-replacement equivalence; and changing presentation while holding a token. Legacy-edit transformations add readiness after the required reload and assert the additional document count separately; calls, tokens/errors, and visibility must match. The presentation relation holds in both directions, including the original token-expiry deadline.
+Metamorphic checks add 21 destroy-idempotence relations and 14 destroy/show-alias relations across seven lifecycle prefixes. They also cover show/execute equivalence; execute idempotence; double-edit cancellation; legacy/verifyParams payload equivalence; ready/execute commutation; cold/warm observable equivalence; presentation invariance; renderer-loss/config-replacement equivalence; and changing presentation while holding a token. Legacy-edit transformations add readiness after the required reload and assert the additional document count separately; calls, tokens/errors, and visibility must match. The presentation relation holds in both directions, including the original token-expiry deadline.
 
 ## Reduced regressions
 
@@ -86,6 +88,15 @@ After the v5 compatibility and event-copy changes, both platforms passed all **1
 
 Five cold and five warm trials measured median token latency of Android 303→73 ms and iOS 453→141 ms. Warm-trial max JS frame gaps were 38 ms and 29 ms; initial prewarm gaps were 109 ms and 44 ms. These are debug-emulator measurements with public auto-pass keys. The historical 30-flow soak and 125-second expiry cases were not rerun in this fix follow-up. Network tests opened real challenges without solving them and completed backend verification with the integration key. Raw latency samples are `output/prewarm-latency-fix-{android,ios}.json`; native logs are `output/hcaptcha-fix-*.log`.
 
-The bounded domain excludes traces longer than five actions, apart from the selected stateful traces and metamorphic/regression cases. It also excludes malformed SDK messages, duplicate SDK outcomes/readiness, arbitrary payload/theme/phone/journey combinations, dynamic prewarm toggles, multiple simultaneous captcha instances, React batching/concurrent schedules, timer jitter, and native process/network/OS scheduling. Presentation toggles, unmount, malformed envelopes, and the selected batched hide/re-execute schedule have targeted coverage outside the 11-action exhaustive alphabet. The sampled traces do not establish exhaustive coverage of those extensions.
+The bounded domain excludes traces longer than five actions, apart from the selected stateful traces and metamorphic/regression cases. It also excludes malformed SDK messages, duplicate SDK outcomes/readiness, arbitrary payload/theme/phone/journey combinations, dynamic prewarm toggles, arbitrary simultaneous-instance configurations, arbitrary React batching/concurrent schedules, timer jitter, and arbitrary native process/network/OS scheduling. Presentation toggles, unmount, malformed envelopes, and selected batching schedules have targeted coverage outside the 12-action exhaustive alphabet. Destroy coverage additionally enumerates all 90 command words of length 1–4 over execute/hide/destroy containing destroy, from four lifecycle prefixes and across all three component variants: 1,080 batched scenarios. There are 21 teardown/recreation scenarios, 18 destroy-at-deadline scenarios, three two-instance isolation scenarios, 24 native callbacks delivered inside the destroy/re-execute batch before React commits, and 12 queued native outcome scenarios (hide/destroy × success/error × three variants). The sampled traces do not establish exhaustive coverage of those extensions.
 
 The reproduced request/document/presentation defects are fixed within this domain. The search does not prove correctness outside the selected schedules or establish backend acceptance of enterprise request-specific payloads. Native fixture tests exercise actual WebView transport; live-SDK flows exercise SDK integration. Neither makes the sampled state space exhaustive or establishes physical-device performance/leak freedom.
+
+
+## Destroy follow-up
+
+`destroy.test.js` adds ten component regressions outside the model ledger: wrapper/inline × default/prewarm journey/back-handler and retained-script-error-hook checks, delayed SMS-link rejection checks, and one/three default-mode hide cycles followed by destruction. The last two cover token timers that intentionally outlive ordinary default-mode unmounts; explicit destroy cancels all timers owned by the wrapper, including those retired views. Ordinary hide/unmount behavior remains unchanged. Retained token `markUsed()` callbacks cannot cancel a newly created token’s timer.
+
+Native runs exercise actual WebViews and the published loader on Android API 33 and iOS 26, using the existing React Native 0.84.1 / Harness 1.0.0 host. Per platform: 12 destroy fixture cases (three component variants × blocked SDK loading / ready / pending / held-token states), two live-SDK signup/login cases that destroy immediately after receiving each token and verify it on the backend afterward, plus 13 existing functional cases. Each non-loading destroy fixture case recreates the WebView twice; repeated destroy is silent and stale results cannot reach the new attempt. SDK-load counts independently confirm recreation. Logs: `output/hcaptcha-destroy-final-{android,ios}.log`.
+
+These tests establish native teardown/recreation and functional recovery, not immediate process RSS reduction or physical-device leak freedom. WebKit/Android may retain process caches after view destruction. Public auto-pass integration keys cover backend verification; interactive puzzles and enterprise payload acceptance are not established by these fixtures. Exhaustiveness applies only to the declared finite grammar and batched-command domain.

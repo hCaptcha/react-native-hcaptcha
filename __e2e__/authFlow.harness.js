@@ -5,6 +5,29 @@ import PrewarmAuthApp, { authServer } from './PrewarmAuthApp';
 
 describe('live SDK multi-screen auth flow', () => {
   for (const passiveSiteKey of [false, true]) {
+    test(`signs up and logs in after destroying the warmed WebView (passiveSiteKey=${passiveSiteKey})`, async () => {
+      await fetch(`${authServer}/reset`, { method: 'POST' });
+      await render(<PrewarmAuthApp destroyOnLeave destroyAfterToken passiveSiteKey={passiveSiteKey} />);
+      await userEvent.type(await screen.findByTestId('email'), 'destroy@example.test');
+      for (const [attempt, mode] of ['signup', 'login'].entries()) {
+        await userEvent.press(await screen.findByTestId(mode));
+        await waitFor(() => screen.findByTestId(`tokens-${attempt + 1}`), { timeout: 30000 });
+        await waitFor(() => expect(screen.queryByTestId('confirm-hcaptcha-prewarm')).toBeNull());
+        await userEvent.type(await screen.findByTestId('password'), 'Destroy-password-123');
+        await waitFor(() => screen.findByTestId('password-valid'));
+        await userEvent.press(await screen.findByTestId('submit'));
+        await waitFor(() => screen.findByTestId('page-account'), { timeout: 20000 });
+        const state = await (await fetch(`${authServer}/state`)).json();
+        expect(state.sdkLoads).toBe(attempt + 1);
+        expect(state.submissions).toHaveLength(attempt + 1);
+        expect(state.submissions.every((submission) => submission.verified)).toBe(true);
+        await userEvent.press(await screen.findByTestId('logout'));
+        await waitFor(() => expect(screen.queryByTestId('confirm-hcaptcha-prewarm')).toBeNull());
+      }
+    });
+  }
+
+  for (const passiveSiteKey of [false, true]) {
     test(`prewarms, signs up, and logs in without reloading (passiveSiteKey=${passiveSiteKey})`, async () => {
       await fetch(`${authServer}/reset`, { method: 'POST' });
       await render(<PrewarmAuthApp passiveSiteKey={passiveSiteKey} />);

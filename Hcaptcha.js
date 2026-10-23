@@ -231,11 +231,16 @@ const Hcaptcha = forwardRef(({
   prewarm = false,
   _journeyManagedExternally,
   _onRequestChange,
+  _onTokenTimerChange,
 }, ref) => {
   const tokenTimeout = 120000;
   const loadingTimeout = 15000;
   const [isLoading, setIsLoading] = useState(true);
   const [webViewGeneration, setWebViewGeneration] = useState(0);
+  const [destroyed, setDestroyed] = useState(false);
+  const destroyedRef = useRef(false);
+  const lifetimeRef = useRef({});
+  const lifetime = lifetimeRef.current;
   const isLoadingRef = useRef(true);
   const journeyEnabled = Boolean(userJourney);
   const hasJourneyConsumerRef = useRef(false);
@@ -250,6 +255,10 @@ const Hcaptcha = forwardRef(({
   const documentRef = useRef(null);
   const loadingTimerRef = useRef(null);
   const tokenTimerRef = useRef(null);
+  const clearTokenTimer = useCallback(() => {
+    clearTimeout(tokenTimerRef.current);
+    _onTokenTimerChange?.(tokenTimerRef.current, false);
+  }, [_onTokenTimerChange]);
   const onMessageRef = useRef(onMessage);
   const resetRef = useRef(null);
   const mountedRef = useRef(true);
@@ -415,7 +424,7 @@ const Hcaptcha = forwardRef(({
   );
 
   useEffect(() => {
-    if (_journeyManagedExternally || !journeyEnabled || hasJourneyConsumerRef.current) {
+    if (destroyed || _journeyManagedExternally || !journeyEnabled || hasJourneyConsumerRef.current) {
       return undefined;
     }
 
@@ -428,7 +437,7 @@ const Hcaptcha = forwardRef(({
         hasJourneyConsumerRef.current = false;
       }
     };
-  }, [_journeyManagedExternally, journeyEnabled]);
+  }, [destroyed, _journeyManagedExternally, journeyEnabled]);
 
   const startLoadingTimeout = useCallback(() => {
     clearTimeout(loadingTimerRef.current);
@@ -448,6 +457,9 @@ const Hcaptcha = forwardRef(({
   const documentKey = useMemo(() => JSON.stringify([serializedWebViewConfig, url, webViewGeneration, prewarm]), [serializedWebViewConfig, url, webViewGeneration, prewarm]);
   const documentId = useMemo(() => ({ key: documentKey }), [documentKey]);
   useLayoutEffect(() => {
+    if (destroyed) {
+      return;
+    }
     documentRef.current = documentId;
     loadStartedRef.current = false;
     readyRef.current = false;
@@ -459,7 +471,7 @@ const Hcaptcha = forwardRef(({
     isLoadingRef.current = true;
     setIsLoading(true);
     startLoadingTimeout();
-  }, [documentId, prewarm, setExecuteRequested, startLoadingTimeout]);
+  }, [destroyed, documentId, prewarm, setExecuteRequested, startLoadingTimeout]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -472,9 +484,9 @@ const Hcaptcha = forwardRef(({
 
   useEffect(() => () => {
     if (prewarm) {
-      clearTimeout(tokenTimerRef.current);
+      clearTokenTimer();
     }
-  }, [prewarm]);
+  }, [prewarm, clearTokenTimer]);
 
   const injectVerifyData = (resetFirst = false) => {
     if (!webViewRef.current) {
@@ -500,8 +512,12 @@ const Hcaptcha = forwardRef(({
     </TouchableWithoutFeedback>
   );
 
-  // Event hooks can be retained across renders while a token is held.
-  const reset = useCallback(() => resetRef.current(), []);
+  // Retained reset hooks follow renders, but cannot cross explicit destruction.
+  const reset = useCallback(() => {
+    if (mountedRef.current && lifetimeRef.current === lifetime) {
+      resetRef.current();
+    }
+  }, [lifetime]);
   resetRef.current = () => {
     setExecuteRequested(true);
     if (readyRef.current) {
@@ -525,7 +541,7 @@ const Hcaptcha = forwardRef(({
   };
 
   const retryApiLoad = () => {
-    if (!webViewRef.current) {
+    if (!webViewRef.current || documentRef.current !== documentId) {
       return;
     }
 
@@ -543,6 +559,8 @@ const Hcaptcha = forwardRef(({
 
   useImperativeHandle(ref, () => ({
     execute: () => {
+      destroyedRef.current = false;
+      setDestroyed(false);
       if (executeRequestedRef.current && !loadFailedRef.current) {
         return;
       }
@@ -554,12 +572,32 @@ const Hcaptcha = forwardRef(({
       }
     },
     reset: () => {
+      if (destroyedRef.current) {
+        return;
+      }
       setExecuteRequested(false);
       if (readyRef.current) {
         webViewRef.current?.injectJavaScript("try { reset(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;");
       }
     },
+    destroy: () => {
+      setExecuteRequested(false);
+      destroyedRef.current = true;
+      lifetimeRef.current = {};
+      documentRef.current = null;
+      readyRef.current = false;
+      loadFailedRef.current = false;
+      isLoadingRef.current = false;
+      clearTimeout(loadingTimerRef.current);
+      clearTokenTimer();
+      setDestroyed(true);
+      setWebViewGeneration((generation) => generation + 1);
+    },
   }));
+
+  if (destroyed) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
@@ -568,11 +606,17 @@ const Hcaptcha = forwardRef(({
         ref={webViewRef}
         originWhitelist={['*']}
         onShouldStartLoadWithRequest={(event) => {
+          if (documentRef.current !== documentId) {
+            return false;
+          }
           if (event.url.slice(0, 24) === 'https://www.hcaptcha.com') {
             Linking.openURL(event.url);
             return false;
           } else if (event.url.toLowerCase().startsWith('sms:')) {
             Linking.openURL(event.url).catch((err) => {
+              if (documentRef.current !== documentId) {
+                return;
+              }
               onMessage({
                 nativeEvent: {
                   data: 'sms-open-failed',
@@ -655,10 +699,17 @@ const Hcaptcha = forwardRef(({
               return;
             }
             setExecuteRequested(false);
-            clearTimeout(tokenTimerRef.current);
-            const expiredTokenTimerId = setTimeout(() => onMessageRef.current({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
+            clearTokenTimer();
+            const expiredTokenTimerId = setTimeout(() => {
+              _onTokenTimerChange?.(expiredTokenTimerId, false);
+              onMessageRef.current({ nativeEvent: { data: 'expired' }, success: false, reset });
+            }, tokenTimeout);
             tokenTimerRef.current = expiredTokenTimerId;
-            e.markUsed = () => clearTimeout(expiredTokenTimerId);
+            _onTokenTimerChange?.(expiredTokenTimerId, true);
+            e.markUsed = () => {
+              clearTimeout(expiredTokenTimerId);
+              _onTokenTimerChange?.(expiredTokenTimerId, false);
+            };
             if (journeyEnabled) {
               clearJourneyEvents();
             }

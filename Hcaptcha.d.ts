@@ -123,6 +123,8 @@ export type HcaptchaProps = {
 interface CustomWebViewMessageEvent extends WebViewMessageEvent {
   success: boolean;
   reset: () => void;
+  /** Releases the WebView and cancels verification/timers. execute() recreates it. Retained event.reset() hooks become inert. */
+  destroy: () => void;
   markUsed?: () => void;
 }
 

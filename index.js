@@ -10,12 +10,16 @@ class ConfirmHcaptcha extends PureComponent {
   state = {
     journeyStopped: false,
     show: false,
+    destroyed: false,
+    generation: 0,
   };
   hasJourneyConsumer = false;
   verificationPending = false;
   captchaRef = createRef();
+  // Default-mode token timers can outlive hide() and must remain cancellable.
+  tokenTimers = new Set();
   getJourneyEnabled(props = this.props, state = this.state) {
-    return Boolean(props.userJourney && !state.journeyStopped);
+    return Boolean(props.userJourney && !state.journeyStopped && !state.destroyed);
   }
   componentDidMount() {
     this.syncJourneyConsumer(false, this.getJourneyEnabled());
@@ -62,10 +66,17 @@ class ConfirmHcaptcha extends PureComponent {
     if (this.props.prewarm || !this.state.show) {
       this.verificationPending = true;
     }
-    this.setState({ show: true }, this.executePrewarmed);
+    this.setState({ show: true, destroyed: false }, this.executePrewarmed);
   };
   onRequestChange = (pending) => {
     this.verificationPending = pending;
+  };
+  onTokenTimerChange = (timer, active) => {
+    if (active) {
+      this.tokenTimers.add(timer);
+    } else {
+      this.tokenTimers.delete(timer);
+    }
   };
   executePrewarmed = (execute = true) => {
     if (!this.props.prewarm || !this.state.show) {
@@ -83,6 +94,17 @@ class ConfirmHcaptcha extends PureComponent {
     }
   };
   execute = () => this.show();
+  destroy = () => {
+    this.verificationPending = false;
+    this.backSubscription?.remove();
+    this.backSubscription = null;
+    this.captchaRef.current?.destroy();
+    for (const timer of this.tokenTimers) {
+      clearTimeout(timer);
+    }
+    this.tokenTimers.clear();
+    this.setState(({ generation }) => ({ show: false, destroyed: true, generation: generation + 1 }));
+  };
   hide = (source) => {
     const { onMessage } = this.props;
     this.verificationPending = false;
@@ -131,6 +153,7 @@ class ConfirmHcaptcha extends PureComponent {
     return (
       <WrapperComponent style={styles.wrapper}>
         <Hcaptcha
+          key={this.state.generation}
           ref={this.captchaRef}
           url={baseUrl}
           size={size}
@@ -159,6 +182,7 @@ class ConfirmHcaptcha extends PureComponent {
           prewarm={prewarm}
           _journeyManagedExternally={true}
           _onRequestChange={this.onRequestChange}
+          _onTokenTimerChange={this.onTokenTimerChange}
         />
       </WrapperComponent>
     );
@@ -172,7 +196,7 @@ class ConfirmHcaptcha extends PureComponent {
       prewarm,
     } = this.props;
 
-    if (!show && !prewarm) {
+    if (this.state.destroyed || (!show && !prewarm)) {
       return null;
     }
 

@@ -1,7 +1,7 @@
 // Domain oracle: request ownership and observable obligations, independent of React/SDK code.
 export const ACTIONS = [
   'execute', 'hide', 'ready', 'success', 'error', 'edit',
-  'replace', 'crash', 'timeout', 'consume', 'expire',
+  'replace', 'crash', 'timeout', 'consume', 'expire', 'destroy',
 ];
 
 export const initialModel = () => ({
@@ -12,7 +12,8 @@ export const initialModel = () => ({
 
 export function eligible(state, action) {
   switch (action) {
-    case 'ready': return state.phase !== 'ready';
+    case 'ready': return state.phase !== 'ready' && state.phase !== 'destroyed';
+    case 'crash': return state.phase !== 'destroyed';
     case 'success':
     case 'error': return state.attempts.some((attempt) => !attempt.done);
     case 'timeout': return state.deadline !== null;
@@ -23,6 +24,9 @@ export function eligible(state, action) {
 }
 
 function replaceDocument(state) {
+  if (state.phase === 'destroyed') {
+    return;
+  }
   state.document++;
   state.phase = 'loading';
   state.deadline = state.clock + 15000;
@@ -73,7 +77,10 @@ export function transition(previous, action, options = {}) {
       if (!state.request) {
         state.request = { id: ++state.nextRequest, sent: false };
       }
-      if (state.phase === 'timed-out') {
+      if (state.phase === 'destroyed') {
+        state.phase = 'loading';
+        replaceDocument(state);
+      } else if (state.phase === 'timed-out') {
         replaceDocument(state);
       }
       dispatch(state);
@@ -81,6 +88,13 @@ export function transition(previous, action, options = {}) {
     case 'hide':
       state.visible = false;
       state.request = null;
+      break;
+    case 'destroy':
+      state.phase = 'destroyed';
+      state.deadline = null;
+      state.visible = false;
+      state.request = null;
+      state.token = null;
       break;
     case 'ready':
       state.phase = 'ready';
@@ -124,6 +138,7 @@ export function transition(previous, action, options = {}) {
 }
 
 export const projection = (state, passive) => ({
+  mounted: state.phase !== 'destroyed',
   documents: state.document,
   visible: passive ? null : state.visible,
   calls: state.calls,

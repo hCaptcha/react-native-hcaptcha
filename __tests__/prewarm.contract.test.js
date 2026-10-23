@@ -7,12 +7,13 @@ import { PrewarmDriver } from '../__test-utils__/prewarm-driver';
 
 const BOUND = 5;
 const MODES = [false, true];
+const COMPONENTS = [{ passive: false }, { passive: true }, { passive: false, inline: true }];
 const ledger = { bound: BOUND, alphabet: ACTIONS, bounded: [], stateful: [], metamorphic: [], boundaries: [], regressions: [], failures: [] };
 const exercised = new Map();
 
 function recordScenario(trace, passive, options, passed) {
   const scenario = { passive, cold: Boolean(options.cold), showAlias: Boolean(options.showAlias),
-    legacyPayload: Boolean(options.legacyPayload), trace };
+    inline: Boolean(options.inline), legacyPayload: Boolean(options.legacyPayload), trace };
   const key = JSON.stringify(scenario);
   const entry = exercised.get(key) || { ...scenario, passed, families: [] };
   entry.families = [...new Set([...entry.families, options.family || 'bounded'])];
@@ -39,7 +40,7 @@ async function runTrace(trace, passive, options = {}) {
           return result;
         }
       }
-      const expected = projection(state, passive);
+      const expected = projection(state, passive || options.inline);
       const actual = driver.snapshot();
       if (!isDeepStrictEqual(actual, expected)) {
         const fields = Object.keys(expected).filter((key) => !isDeepStrictEqual(actual[key], expected[key]));
@@ -98,7 +99,7 @@ afterAll(() => {
   fs.writeFileSync(path.join(output, 'prewarm-contract-results.json'), JSON.stringify(ledger, null, 2));
 });
 
-test.each(MODES)('bounded exhaustive domain (passiveSiteKey=%s)', async (passive) => {
+test.each(COMPONENTS)('bounded exhaustive domain (passiveSiteKey=$passive, inline=$inline)', async ({ passive, inline = false }) => {
   const scenarios = [...boundedTraces(BOUND)];
   const failures = [];
   const byDepth = Array(BOUND + 1).fill(0);
@@ -111,13 +112,13 @@ test.each(MODES)('bounded exhaustive domain (passiveSiteKey=%s)', async (passive
         excluded[action] += suffixes;
       }
     }
-    const result = await runTrace(trace, passive);
+    const result = await runTrace(trace, passive, { inline });
     if (result.failure) {
       failures.push(result.failure);
     }
   }
   const candidates = Array.from({ length: BOUND + 1 }, (_, depth) => ACTIONS.length ** depth).reduce((sum, count) => sum + count, 0);
-  ledger.bounded.push({ passive, candidates, eligible: scenarios.length, exercised: scenarios.length,
+  ledger.bounded.push({ passive, inline, candidates, eligible: scenarios.length, exercised: scenarios.length,
     excludedByPreconditions: candidates - scenarios.length, byDepth, excludedByFirstIllegalAction: excluded, failed: failures.length });
   expect(Object.values(excluded).reduce((sum, count) => sum + count, 0)).toBe(candidates - scenarios.length);
   ledger.failures.push(...failures);
@@ -242,6 +243,222 @@ test.each(LOAD_BOUNDARIES)('loading deadline at $ms ms (passiveSiteKey=$passive)
   }
 });
 
+const DESTROY_PREFIXES = [[], ['execute'], ['ready'], ['ready', 'execute'],
+  ['ready', 'execute', 'success'], ['execute', 'timeout'], ['ready', 'execute', 'error']];
+
+test.each(COMPONENTS.flatMap((component) => DESTROY_PREFIXES.map((prefix) => ({ ...component, prefix }))))(
+  'destroy retires resources and hooks before recreation (passive=$passive, inline=$inline, prefix=$prefix)',
+  async ({ passive, inline, prefix }) => {
+    const driver = new PrewarmDriver(passive, { inline });
+    try {
+      for (const action of prefix) {
+        await driver.step(action);
+      }
+      const retired = driver.current;
+      const retiredProps = retired.webView.props;
+      const event = driver.lastEvent;
+      await driver.step('destroy');
+      await driver.step('destroy');
+      await driver.step('hide');
+      const destroyed = JSON.parse(JSON.stringify(driver.snapshot()));
+      expect(destroyed.mounted).toBe(false);
+      driver.configure({ siteKey: 'replacement-site', theme: 'dark', rqdata: 'new-fallback', verifyParams: { rqdata: 'current' } });
+      act(() => {
+        retiredProps.onLoadStart();
+        retiredProps.onRenderProcessGone();
+        retiredProps.onContentProcessDidTerminate();
+        for (const data of ['__hcaptcha_ready__', 'script-error', 'late-token-' + 'x'.repeat(40)]) {
+          retired.receive({ nativeEvent: { data } });
+        }
+        event?.reset?.();
+        jest.advanceTimersByTime(120001);
+      });
+      expect(driver.snapshot()).toEqual(destroyed);
+      await driver.step('execute');
+      await driver.step('ready');
+      const currentCalls = driver.calls.length;
+      act(() => { event?.reset?.(); event?.markUsed?.(); });
+      expect(driver.calls).toHaveLength(currentCalls);
+      expect(driver.calls.at(-1)).toEqual({ rqdata: 'current' });
+      const beforeCompletions = [...driver.events];
+      for (const attempt of driver.attempts.filter((entry) => !entry.done)) {
+        await driver.step('success');
+        if (attempt.document === retired) {
+          expect(driver.events).toEqual(beforeCompletions);
+        }
+      }
+      expect(driver.events.at(-1)).toEqual({ kind: 'token', id: driver.attempts.length - 1 });
+      expect(driver.documents).toHaveLength(destroyed.documents + 1);
+      act(() => { event?.reset?.(); event?.markUsed?.(); });
+      expect(driver.calls).toHaveLength(currentCalls);
+      act(() => jest.advanceTimersByTime(120000));
+      expect(driver.events.at(-1)).toEqual({ kind: 'expired' });
+      ledger.boundaries.push({ kind: 'destroy-lifecycle', passive, inline, prefix });
+      recordScenario([...prefix, 'destroy', 'destroy', 'hide', 'edit-config', 'deliver-retired-callbacks',
+        'advance:120001', 'execute', 'ready', 'invoke-retired-hooks', 'drain-outcomes', 'expire'],
+      passive, { inline, family: 'boundary' }, true);
+    } finally {
+      await driver.dispose();
+    }
+  }
+);
+
+test.each(COMPONENTS)('destroy idempotence and show alias (passive=$passive, inline=$inline)', async ({ passive, inline }) => {
+  for (const prefix of DESTROY_PREFIXES) {
+    const trace = [...prefix, 'destroy', 'edit', 'execute', 'ready'];
+    const baseline = await runTrace(trace, passive, { inline, family: 'metamorphic' });
+    const repeated = await runTrace([...prefix, 'destroy', 'destroy', 'edit', 'execute', 'ready'],
+      passive, { inline, family: 'metamorphic' });
+    expect(baseline.failure).toBeUndefined();
+    expect(repeated.actual).toEqual(baseline.actual);
+    ledger.metamorphic.push({ passive, inline, relation: 'destroy-idempotence', trace });
+    if (!inline) {
+      const alias = await runTrace(trace, passive, { showAlias: true, family: 'metamorphic' });
+      expect(alias.actual).toEqual(baseline.actual);
+      ledger.metamorphic.push({ passive, relation: 'destroy-show-alias', trace });
+    }
+  }
+});
+
+test.each(COMPONENTS)('destroy rejects callbacks before React commits (passive=$passive, inline=$inline)', async ({ passive, inline }) => {
+  for (const data of ['__hcaptcha_ready__', 'script-error', 'challenge-closed', 'late-token-' + 'x'.repeat(40)]) {
+    for (const afterExecute of [false, true]) {
+      const driver = new PrewarmDriver(passive, { inline });
+      try {
+        await driver.step('ready');
+        await driver.step('execute');
+        const retired = driver.current;
+        await act(async () => {
+          driver.ref.current.destroy();
+          if (afterExecute) {
+            driver.ref.current.execute();
+          }
+          retired.receive({ nativeEvent: { data } });
+          if (!afterExecute) {
+            driver.ref.current.execute();
+          }
+        });
+        driver.refresh();
+        expect(driver.events).toEqual([]);
+        expect(driver.calls).toHaveLength(1);
+        expect(driver.documents).toHaveLength(2);
+        await driver.step('ready');
+        expect(driver.calls).toHaveLength(2);
+        ledger.boundaries.push({ kind: 'destroy-before-commit', passive, inline, data, afterExecute });
+        recordScenario(['ready', 'execute', `batch:destroy+${afterExecute ? 'execute+callback:' : 'callback:+execute:'}${data}`, 'ready'],
+          passive, { inline, family: 'boundary' }, true);
+      } finally {
+        await driver.dispose();
+      }
+    }
+  }
+});
+
+test.each(COMPONENTS)('destroy isolates other captcha instances (passive=$passive, inline=$inline)', async ({ passive, inline }) => {
+  const first = new PrewarmDriver(passive, { inline });
+  const second = new PrewarmDriver(passive, { inline });
+  try {
+    for (const driver of [first, second]) {
+      await driver.step('ready');
+      await driver.step('execute');
+    }
+    await first.step('destroy');
+    await first.step('success');
+    await second.step('success');
+    expect(first.events).toEqual([]);
+    expect(second.events).toEqual([{ kind: 'token', id: 0 }]);
+    await first.step('execute');
+    await first.step('ready');
+    await first.step('success');
+    await first.step('destroy');
+    act(() => jest.advanceTimersByTime(120000));
+    expect(first.events).toEqual([{ kind: 'token', id: 1 }]);
+    expect(second.events).toEqual([{ kind: 'token', id: 0 }, { kind: 'expired' }]);
+    expect(second.documents).toHaveLength(1);
+    ledger.boundaries.push({ kind: 'destroy-instance-isolation', passive, inline });
+    recordScenario(['two-instances:ready+execute', 'destroy-first', 'complete-both', 'recreate-first',
+      'complete-first', 'destroy-first', 'expire-second'], passive, { inline, family: 'boundary' }, true);
+  } finally {
+    await first.dispose();
+    await second.dispose();
+  }
+});
+
+test.each(COMPONENTS.flatMap((component) => ['loading', 'token'].flatMap((timer) =>
+  [-1, 0, 1].map((offset) => ({ ...component, timer, offset })))))(
+  'destroy at the $timer deadline offset $offset (passive=$passive, inline=$inline)',
+  async ({ passive, inline, timer, offset }) => {
+    const driver = new PrewarmDriver(passive, { inline });
+    try {
+      await driver.step('execute');
+      if (timer === 'token') {
+        await driver.step('ready');
+        await driver.step('success');
+      }
+      act(() => jest.advanceTimersByTime((timer === 'token' ? 120000 : 15000) + offset));
+      const before = JSON.parse(JSON.stringify(driver.events));
+      expect(before.filter((event) => event.kind === (timer === 'token' ? 'expired' : 'timeout'))).toHaveLength(Number(offset >= 0));
+      await driver.step('destroy');
+      act(() => jest.advanceTimersByTime(120001));
+      expect(driver.events).toEqual(before);
+      expect(driver.snapshot().mounted).toBe(false);
+      ledger.boundaries.push({ kind: 'destroy-deadline', passive, inline, timer, offset });
+      recordScenario(['execute', `prepare:${timer}`, `advance:deadline${offset}`, 'destroy', 'advance:120001'],
+        passive, { inline, family: 'boundary' }, true);
+    } finally {
+      await driver.dispose();
+    }
+  }
+);
+
+test.each(COMPONENTS)('batched lifecycle commands containing destroy (passive=$passive, inline=$inline)', async ({ passive, inline }) => {
+  const commands = ['destroy', 'execute', 'hide'];
+  let sequences = [[]];
+  for (let depth = 1; depth <= 4; depth++) {
+    sequences = sequences.flatMap((sequence) => commands.map((command) => [...sequence, command]));
+    for (const sequence of sequences.filter((entries) => entries.includes('destroy'))) {
+      for (const prefix of [[], ['ready'], ['ready', 'execute'], ['ready', 'execute', 'success']]) {
+        const driver = new PrewarmDriver(passive, { inline });
+        try {
+          for (const action of prefix) {
+            await driver.step(action);
+          }
+          const events = [...driver.events];
+          let mounted = true;
+          let visible = prefix.includes('execute');
+          await act(async () => {
+            for (const command of sequence) {
+              if (command === 'destroy') { mounted = false; visible = false; }
+              if (command === 'execute') { mounted = true; visible = true; }
+              if (command === 'hide') { visible = false; }
+              driver.ref.current[command === 'hide' && inline ? 'reset' : command]();
+            }
+          });
+          driver.refresh();
+          expect(driver.snapshot().mounted).toBe(mounted);
+          expect(driver.snapshot().visible).toBe(passive || inline ? null : visible);
+          expect(driver.events).toEqual(events);
+          if (mounted) {
+            expect(driver.documents).toHaveLength(2);
+            const calls = driver.calls.length;
+            await driver.step('ready');
+            const pending = sequence.lastIndexOf('execute') > sequence.lastIndexOf('hide');
+            expect(driver.calls).toHaveLength(calls + Number(pending));
+          }
+          await driver.step('destroy');
+          act(() => jest.advanceTimersByTime(120001));
+          expect(driver.events).toEqual(events);
+          ledger.boundaries.push({ kind: 'batched-destroy', passive, inline, prefix, sequence });
+          recordScenario([...prefix, `batch:${sequence.join('+')}`, 'ready-if-mounted', 'destroy', 'advance:120001'],
+            passive, { inline, family: 'boundary' }, true);
+        } finally {
+          await driver.dispose();
+        }
+      }
+    }
+  }
+}, 60000);
+
 const TOKEN_BOUNDARIES = MODES.flatMap((passive) => [false, true].flatMap((used) =>
   [119999, 120000, 120001].map((ms) => ({ passive, used, ms }))));
 test.each(TOKEN_BOUNDARIES)('token deadline at $ms ms (used=$used, passiveSiteKey=$passive)', async ({ passive, used, ms }) => {
@@ -329,9 +546,10 @@ test.each(MODES)('presentation changes preserve a held token without verificatio
   }
 });
 
-const QUEUED_OUTCOMES = MODES.flatMap((passive) => ['success', 'error'].map((outcome) => ({ passive, outcome })));
-test.each(QUEUED_OUTCOMES)('rejects a queued native $outcome after cancel/re-execute (passiveSiteKey=$passive)', async ({ passive, outcome }) => {
-  const driver = new PrewarmDriver(passive);
+const QUEUED_OUTCOMES = COMPONENTS.flatMap((component) => ['success', 'error'].flatMap((outcome) =>
+  ['hide', 'destroy'].map((interruption) => ({ ...component, outcome, interruption }))));
+test.each(QUEUED_OUTCOMES)('rejects a queued native $outcome after $interruption/re-execute (passive=$passive, inline=$inline)', async ({ passive, inline, outcome, interruption }) => {
+  const driver = new PrewarmDriver(passive, { inline });
   try {
     await driver.step('ready');
     await driver.step('execute');
@@ -341,17 +559,20 @@ test.each(QUEUED_OUTCOMES)('rejects a queued native $outcome after cancel/re-exe
     expect(document.outbox).toHaveLength(1);
     const message = document.outbox[0];
     document.outbox = null;
-    await driver.step('hide');
+    await driver.step(interruption);
     await driver.step('execute');
+    if (interruption === 'destroy') {
+      await driver.step('ready');
+    }
     act(() => document.receive({ nativeEvent: { data: message } }));
     expect(driver.events).toEqual([]);
     await driver.step('success');
     expect(driver.events).toEqual([{ kind: 'token', id: 1 }]);
-    expect(driver.documents).toHaveLength(1);
+    expect(driver.documents).toHaveLength(interruption === 'destroy' ? 2 : 1);
     expect(driver.calls).toHaveLength(2);
-    ledger.boundaries.push({ kind: 'queued-native-outcome', passive, outcome });
-    recordScenario(['ready', 'execute', `queue:${outcome}`, 'hide', 'execute', `deliver:${outcome}`, 'success'],
-      passive, { family: 'boundary' }, true);
+    ledger.boundaries.push({ kind: 'queued-native-outcome', passive, inline, outcome, interruption });
+    recordScenario(['ready', 'execute', `queue:${outcome}`, interruption, 'execute', 'ready-if-recreated', `deliver:${outcome}`, 'success'],
+      passive, { inline, family: 'boundary' }, true);
   } finally {
     await driver.dispose();
   }

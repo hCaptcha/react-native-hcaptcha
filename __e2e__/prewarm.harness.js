@@ -3,7 +3,8 @@ import { screen, userEvent } from '@react-native-harness/ui';
 import React, { useRef, useState } from 'react';
 import { Button, StyleSheet, Text, View } from 'react-native';
 
-import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
+import ConfirmHcaptcha, { Hcaptcha } from '@hcaptcha/react-native-hcaptcha';
+import { authServer } from './PrewarmAuthApp';
 
 // Replace only the remote SDK; exercise the published loader and native WebView bridge.
 const sdk = `
@@ -34,12 +35,15 @@ const sdk = `
 `;
 const jsSrc = `data:application/javascript,${encodeURIComponent(sdk)}#`;
 
-const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, verifyParams, delayedTokens = false, hideAfterToken = true, cancelAndRetry = false }) => {
-  const ref = useRef(null);
+const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, verifyParams, delayedTokens = false, hideAfterToken = true, cancelAndRetry = false, captchaRef, inline = false, onEvent, sdkSource }) => {
+  const localRef = useRef(null);
+  const ref = captchaRef || localRef;
+  const Component = inline ? Hcaptcha : ConfirmHcaptcha;
   const opens = useRef(0);
   const [status, setStatus] = useState('loading');
   const [loads, setLoads] = useState(0);
   const onMessage = (event) => {
+    onEvent?.(event);
     if (event.nativeEvent.data === 'fixture-ready') {
       setStatus('ready');
       setLoads((count) => count + 1);
@@ -47,7 +51,7 @@ const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, verifyParams, delayedTo
       setStatus(event.nativeEvent.data);
       event.markUsed();
       if (hideAfterToken) {
-        ref.current.hide();
+        ref.current[inline ? 'reset' : 'hide']();
       }
     } else if (event.nativeEvent.data === 'open') {
       if (cancelAndRetry && ++opens.current === 1) {
@@ -73,7 +77,7 @@ const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, verifyParams, delayedTo
         setStatus('verifying');
         ref.current.execute();
       }} />
-      <ConfirmHcaptcha
+      <Component
         ref={ref}
         prewarm
         passiveSiteKey={passiveSiteKey}
@@ -81,8 +85,9 @@ const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, verifyParams, delayedTo
         rqdata={rqdata}
         verifyParams={verifyParams}
         siteKey="site-key"
-        baseUrl="https://hcaptcha.com"
-        jsSrc={delayedTokens ? `data:application/javascript,${encodeURIComponent('window.fixtureDelay = true;\n' + sdk)}#` : jsSrc}
+        baseUrl={sdkSource ? authServer : 'https://hcaptcha.com'}
+        url={sdkSource ? authServer : 'https://hcaptcha.com'}
+        jsSrc={sdkSource || (delayedTokens ? `data:application/javascript,${encodeURIComponent('window.fixtureDelay = true;\n' + sdk)}#` : jsSrc)}
         sentry={false}
         onMessage={onMessage}
       />
@@ -93,6 +98,63 @@ const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, verifyParams, delayedTo
 const styles = StyleSheet.create({ container: { flex: 1, paddingTop: 80, paddingHorizontal: 24 } });
 
 describe('native WebView prewarm', () => {
+  for (const variant of ['overlay', 'passive', 'inline']) {
+    test(`destroys while the SDK HTTP request is blocked (${variant})`, async () => {
+      await fetch(`${authServer}/reset`, { method: 'POST' });
+      const ref = React.createRef();
+      const events = [];
+      const props = { captchaRef: ref, inline: variant === 'inline', passiveSiteKey: variant === 'passive',
+        onEvent: (event) => events.push(event) };
+      const fixture = await render(<PrewarmFixture key={`loading-${variant}`} {...props}
+        sdkSource={`${authServer}/slow/1/api.js`} />);
+      await waitFor(async () => {
+        const state = await (await fetch(`${authServer}/state`)).json();
+        expect(state.sdkLoads).toBe(1);
+      }, { timeout: 15000 });
+      ref.current.execute();
+      ref.current.destroy();
+      await waitFor(() => expect(screen.queryByTestId('confirm-hcaptcha-prewarm')).toBeNull());
+      await fetch(`${authServer}/release-sdk`, { method: 'POST' });
+      await fixture.rerender(<PrewarmFixture key={`loading-${variant}`} {...props} />);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      expect(events).toHaveLength(0);
+      ref.current.execute();
+      await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
+      await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(1));
+    });
+
+    for (const phase of ['ready', 'pending', 'held']) {
+      test(`destroys and recreates the WebView (${variant}, ${phase})`, async () => {
+        const ref = React.createRef();
+        const events = [];
+        await render(<PrewarmFixture key={`destroy-${variant}-${phase}`} captchaRef={ref}
+          inline={variant === 'inline'} passiveSiteKey={variant === 'passive'}
+          delayedTokens={phase === 'pending'} hideAfterToken={false} onEvent={(event) => events.push(event)} />);
+        await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
+        if (phase !== 'ready') {
+          ref.current.execute();
+          await waitFor(() => expect(events.some((event) => event.nativeEvent.data === 'open')).toBe(true));
+        }
+        if (phase === 'held') {
+          await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(1));
+        }
+        ref.current.destroy();
+        ref.current.destroy();
+        await waitFor(() => expect(screen.queryByTestId('confirm-hcaptcha-prewarm')).toBeNull());
+        const count = events.length;
+        await new Promise((resolve) => setTimeout(resolve, phase === 'pending' ? 2500 : 100));
+        expect(events).toHaveLength(count);
+        for (const loads of [2, 3]) {
+          const tokens = events.filter((event) => event.markUsed).length;
+          ref.current[variant === 'inline' ? 'execute' : 'show']();
+          await waitFor(() => screen.findByTestId(`loads-${loads}`), { timeout: 15000 });
+          await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(tokens + 1), { timeout: 10000 });
+          ref.current.destroy();
+        }
+      });
+    }
+  }
+
   for (const passiveSiteKey of [false, true]) {
     test(`loads while hidden and reuses the widget (passiveSiteKey=${passiveSiteKey})`, async () => {
       await render(<PrewarmFixture key={String(passiveSiteKey)} passiveSiteKey={passiveSiteKey} />);

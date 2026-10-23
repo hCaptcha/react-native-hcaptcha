@@ -48,6 +48,11 @@ export default class ConfirmHcaptcha extends React.Component<ConfirmHcaptchaProp
    */
   execute: () => void;
   /**
+   * Silently cancels verification and timers and unmounts the WebView.
+   * The next show()/execute() creates a fresh WebView. Retained event.reset() hooks become inert.
+   */
+  destroy: () => void;
+  /**
    * Hides the challenge; prewarm also cancels pending verification without unmounting.
    * Passing a truthy source emits onMessage `cancel`; omitting it is silent.
    */

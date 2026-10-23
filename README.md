@@ -118,9 +118,13 @@ Late results from cancelled executions are ignored. Changing `passiveSiteKey` pr
 
 Prewarm mode uses a persistent app-level overlay so showing the challenge preserves the native WebView. It covers its parent view and cannot appear above another native `Modal`. Android back-button and backdrop cancellation remain supported. With `passiveSiteKey`, it stays hidden during verification too.
 
-The WebView and SDK retain memory until the component unmounts. SDK loading has a 15-second timeout independent of form re-renders. A later `execute()` can retry a timed-out load; terminated WebView processes are recreated automatically.
+Call `captchaRef.current.destroy()` when the warmed WebView is no longer needed. It silently cancels pending verification, loading/token-expiry timers, and unmounts the WebView while keeping the component ref usable. Repeated calls are safe. Prop changes and `hide()` do not recreate it; the next `execute()` or `show()` creates a fresh WebView and queues verification until readiness. Native memory reclamation is managed by the OS/WebView runtime and may not immediately reduce process RSS.
 
-The inline `Hcaptcha` export also supports `prewarm`, `ref.current.execute()`, and `ref.current.reset()` (cancel/reset without executing). The caller controls its visibility.
+`destroy()` does not revoke an issued token. If retaining one for submission, track its expiry in the app because its local expiry notification stops. Retained `event.reset()` hooks become inert after destruction; use the component ref to start another verification. `event.markUsed()` remains safe and cannot clear a later token's timer.
+
+SDK loading has a 15-second timeout independent of form re-renders. A later `execute()` can retry a timed-out load; terminated WebView processes are recreated automatically.
+
+The inline `Hcaptcha` export also supports `prewarm`, `ref.current.execute()`, `ref.current.reset()` (cancel/reset without executing), and `ref.current.destroy()`. After destruction, `reset()` is inert and `execute()` recreates the WebView. The caller controls its visibility.
 
 ### Verification payloads with `verifyParams`
 
@@ -245,7 +249,7 @@ import { Hcaptcha } from '@hcaptcha/react-native-hcaptcha';
 
 The wrapper emits `expired` through `onMessage` 120 seconds after receiving the latest token unless its `event.markUsed()` has been called. A newer token replaces the earlier token's expiry timer. Expiry is delivered to the latest `onMessage` handler.
 
-In prewarm mode, hiding preserves this timer and unmounting cancels it. Without prewarm, the existing expiry callback can still fire after unmount. Keep the token with its own `markUsed` callback and clear held app state when it expires. The local timer does not replace backend verification.
+In prewarm mode, hiding preserves this timer and unmounting cancels it. Explicit `destroy()` cancels it in both modes. Without prewarm, the existing expiry callback can still fire after ordinary unmount. Keep the token with its own `markUsed` callback and clear held app state when it expires. The local timer does not replace backend verification.
 
 Once you've utilized hCaptcha's token, call `markUsed` on the event object in `onMessage`:
 

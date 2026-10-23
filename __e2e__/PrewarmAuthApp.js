@@ -4,7 +4,7 @@ import ConfirmHcaptcha from '@hcaptcha/react-native-hcaptcha';
 
 export const authServer = 'http://127.0.0.1:8766';
 
-export default function PrewarmAuthApp({ passiveSiteKey = false, slowSdk = false, deferredToken = false, prewarm = true, hideOnError = true, networkTest = false, siteKey = '10000000-ffff-ffff-ffff-000000000001', host, measurements }) {
+export default function PrewarmAuthApp({ passiveSiteKey = false, slowSdk = false, deferredToken = false, prewarm = true, hideOnError = true, networkTest = false, destroyOnLeave = false, destroyAfterToken = false, siteKey = '10000000-ffff-ffff-ffff-000000000001', host, measurements }) {
   const captchaRef = useRef(null);
   const tokenRef = useRef(null);
   const flowRef = useRef(0);
@@ -64,7 +64,7 @@ export default function PrewarmAuthApp({ passiveSiteKey = false, slowSdk = false
       };
       setTokenCount((count) => count + 1);
       setStatus('Token ready');
-      captchaRef.current.hide();
+      captchaRef.current[destroyAfterToken ? 'destroy' : 'hide']();
     } else if (event.nativeEvent.data === 'open') {
       if (measurements) {
         measurements.opens = (measurements.opens || 0) + 1;
@@ -82,7 +82,7 @@ export default function PrewarmAuthApp({ passiveSiteKey = false, slowSdk = false
 
   const leave = () => {
     flowRef.current++;
-    captchaRef.current.hide();
+    captchaRef.current[destroyOnLeave ? 'destroy' : 'hide']();
     tokenRef.current?.markUsed();
     tokenRef.current = null;
     setPassword('');
