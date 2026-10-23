@@ -15,6 +15,20 @@ async function saveScreenshot(phase) {
   expect(saved.ok).toBe(true);
 }
 
+async function launchExample(log) {
+  await waitFor(() => expect(screen.queryByTestId('confirm-hcaptcha-backdrop')).toBeNull(), { timeout: 10000 });
+  const messages = log.mock.calls.length;
+  // A dismissing native Modal can swallow a tap after its React children unmount.
+  // Retry only until a new modal or app callback confirms that the tap arrived.
+  await waitFor(async () => {
+    if (screen.queryByTestId('confirm-hcaptcha-backdrop') || log.mock.calls.length > messages) {
+      return;
+    }
+    await userEvent.press(await screen.findByTestId('example-launch'));
+    expect(Boolean(screen.queryByTestId('confirm-hcaptcha-backdrop')) || log.mock.calls.length > messages).toBe(true);
+  }, { timeout: 10000, interval: 500 });
+}
+
 describe('original repository example', () => {
   let log;
   beforeEach(() => { log = spyOn(console, 'log'); });
@@ -23,7 +37,7 @@ describe('original repository example', () => {
   test('opens, dismisses, and reopens the live demo challenge', async () => {
     await render(<App />);
     for (const attempt of [1, 2]) {
-      await userEvent.press(await screen.findByTestId('example-launch'));
+      await launchExample(log);
       await waitFor(() => expect(log.mock.calls.filter(([message]) => message === 'Visual challenge opened')).toHaveLength(attempt), { timeout: 30000 });
       await new Promise((resolve) => setTimeout(resolve, 2000));
       await saveScreenshot('challenge');
@@ -44,7 +58,7 @@ describe('original repository example', () => {
     await fetch(`${authServer}/reset`, { method: 'POST' });
     await render(<AutopassExample />);
     for (const attempt of [1, 2]) {
-      await userEvent.press(await screen.findByTestId('example-launch'));
+      await launchExample(log);
       await waitFor(() => expect(log.mock.calls.filter(([message]) => message === 'Verified code from hCaptcha')).toHaveLength(attempt), { timeout: 30000 });
       const token = log.mock.calls.filter(([message]) => message === 'Verified code from hCaptcha').at(-1)[1];
       expect(token).toBe('10000000-aaaa-bbbb-cccc-000000000001');

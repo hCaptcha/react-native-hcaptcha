@@ -11,18 +11,19 @@ const network = require('./network-proxy')();
 const exec = promisify(execFile);
 let proxyReady = process.env.HCAPTCHA_E2E_PLATFORM === 'ios';
 
-const port = 8766;
+let port = Number(process.env.HCAPTCHA_E2E_PORT || 8766);
 const accounts = new Map();
 let sdkLoads = 0;
 let submissions = [];
 let releaseSdk;
+let sdkGate = new Promise((resolve) => { releaseSdk = resolve; });
 let sdkReady = 0;
 let tokensIssued = 0;
 let holdAuth = false;
 let releaseAuth;
 const profile = [];
 
-http
+const server = http
   .createServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -66,9 +67,7 @@ http
       if (url.pathname.endsWith('/1/api.js')) {
         sdkLoads++;
         if (url.pathname === '/slow/1/api.js') {
-          await new Promise((resolve) => {
-            releaseSdk = resolve;
-          });
+          await sdkGate;
         }
         if (['/measured/1/api.js', '/deferred/1/api.js', '/slow/1/api.js'].includes(url.pathname)) {
           res.setHeader('Content-Type', 'application/javascript');
@@ -131,8 +130,8 @@ http
         network.state.attempts = [];
         network.state.blocked = [];
         network.state.dropped = 0;
-        releaseSdk?.();
-        releaseSdk = undefined;
+        releaseSdk();
+        sdkGate = new Promise((resolve) => { releaseSdk = resolve; });
         sdkLoads = 0;
         sdkReady = 0;
         tokensIssued = 0;
@@ -199,7 +198,7 @@ http
         return;
       }
       if (req.method === 'POST' && url.pathname === '/release-sdk') {
-        releaseSdk?.();
+        releaseSdk();
         res.end('{}');
         return;
       }
@@ -261,6 +260,7 @@ http
   })
   .on('connect', network.connect)
   .listen(port, '127.0.0.1', () => {
+    port = server.address().port;
     console.log(`Auth E2E backend listening on ${port}`);
-    process.send?.('ready');
+    process.send?.({ port });
   });
