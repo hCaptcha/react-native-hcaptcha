@@ -11,9 +11,12 @@ const post = (route) => fetch(`${baseUrl}/${route}`, { method: 'POST' }).then((r
 beforeAll(async () => {
   server = fork(path.join(__dirname, '../__e2e__/auth-server.js'), [], {
     env: { ...process.env, HCAPTCHA_E2E_PORT: '0' },
-    stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
+    stdio: ['ignore', 'ignore', 'inherit', 'ipc'],
   });
-  const [address] = await once(server, 'message');
+  const [address] = await Promise.race([
+    once(server, 'message'),
+    once(server, 'exit').then(([code]) => { throw new Error(`Auth server exited before readiness: ${code}`); }),
+  ]);
   baseUrl = `http://127.0.0.1:${address.port}`;
 });
 

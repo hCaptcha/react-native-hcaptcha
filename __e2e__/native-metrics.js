@@ -1,6 +1,5 @@
 const { execFile } = require('child_process');
 const { promisify } = require('util');
-const WebSocket = require('./host/node_modules/ws');
 
 const exec = promisify(execFile);
 
@@ -55,6 +54,7 @@ async function crashRenderer(platform) {
   const app = memory.processes.find((process) => process.name === 'com.react_native_hcaptcha_example');
   await exec('adb', ['forward', 'tcp:9223', `localabstract:webview_devtools_remote_${app.pid}`]);
   const targets = await (await fetch('http://127.0.0.1:9223/json')).json();
+  const WebSocket = require('./host/node_modules/ws');
   await new Promise((resolve, reject) => {
     const socket = new WebSocket(`ws://127.0.0.1:9223/devtools/page/${targets[0].id}`);
     const timeout = setTimeout(() => {
