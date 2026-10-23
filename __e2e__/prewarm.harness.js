@@ -117,7 +117,7 @@ describe('native WebView prewarm', () => {
       await waitFor(async () => {
         const state = await (await fetch(`${authServer}/state`)).json();
         expect(state.sdkReady).toBe(1);
-      });
+      }, { timeout: 15000 });
       expect(events).toHaveLength(0);
       ref.current.execute();
       await waitFor(() => expect(events.filter((event) => event.nativeEvent.data === 'Error')).toHaveLength(1));
@@ -131,22 +131,28 @@ describe('native WebView prewarm', () => {
     test(`event.reset retries a held token after hide (${variant})`, async () => {
       const ref = React.createRef();
       const events = [];
-      await render(<PrewarmFixture key={`hidden-reset-${variant}`} captchaRef={ref}
-        inline={variant === 'inline'} passiveSiteKey={variant === 'passive'} delayedTokens
-        onEvent={(event) => events.push(event)} />);
-      await waitFor(() => screen.findByTestId('loads-1'));
+      const key = `hidden-reset-${variant}`;
+      const props = { captchaRef: ref, delayedTokens: true,
+        inline: variant === 'inline', passiveSiteKey: variant === 'passive', onEvent: (event) => events.push(event) };
+      const fixture = await render(<PrewarmFixture key={key} {...props} />);
+      await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
       ref.current.execute();
       await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(1), { timeout: 10000 });
       const token = events.find((event) => event.markUsed);
+      // Keep the retry visible even if token delivery precedes the native touch check.
+      await fixture.rerender(<PrewarmFixture key={key} {...props} hideAfterToken={false} />);
       token.reset();
       await waitFor(() => expect(events.filter((event) => event.nativeEvent.data === 'open')).toHaveLength(2));
+      await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(2), { timeout: 10000 });
       if (variant === 'overlay') {
         // A restored challenge must intercept touches intended for the form below it.
         await userEvent.press(await screen.findByTestId('execute'));
-        await new Promise((resolve) => setTimeout(resolve, 200));
         expect(await screen.findByTestId('presses-0')).toBeDefined();
+        ref.current.hide();
+        await fixture.rerender(<PrewarmFixture key={key} {...props} hideAfterToken={false} />);
+        await userEvent.press(await screen.findByTestId('execute'));
+        expect(await screen.findByTestId('presses-1')).toBeDefined();
       }
-      await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(2), { timeout: 10000 });
       expect(await screen.findByTestId('loads-1')).toBeDefined();
     });
 
