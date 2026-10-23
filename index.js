@@ -70,6 +70,9 @@ class ConfirmHcaptcha extends PureComponent {
   };
   onRequestChange = (pending) => {
     this.verificationPending = pending;
+    if (pending && this.props.prewarm && !this.state.show && !this.state.destroyed) {
+      this.setState({ show: true }, () => this.executePrewarmed(false));
+    }
   };
   onTokenTimerChange = (timer, active) => {
     if (active) {

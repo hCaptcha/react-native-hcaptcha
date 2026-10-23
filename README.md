@@ -110,7 +110,7 @@ await submitForm({ captchaToken: token.token });
 token.markUsed();
 ```
 
-Submit `tokenRef.current.token` to your backend. Keep the token and its `markUsed` callback together for delayed submission. Tokens expire after 120 seconds by default; request a replacement if the form outlives the token. Loading errors can arrive during prewarming through `onMessage`.
+Submit `tokenRef.current.token` to your backend. Keep the token and its `markUsed` callback together for delayed submission. Tokens expire after 120 seconds by default; request a replacement if the form outlives the token. Idle prewarm loading failures stay silent. `execute()` retries a failed preload; failures during an active request reach `onMessage` with `success: false` and a retry hook.
 
 Use `verifyParams` for changing verification data to preserve the warm SDK. Changing legacy top-level `rqdata`, `phonePrefix`, or `phoneNumber` still reloads the SDK, including in prewarm mode. If the backend rejects credentials after consuming a token, discard it and execute again before retrying the form.
 
@@ -287,11 +287,11 @@ Once you've utilized hCaptcha's token, call `markUsed` on the event object in `o
 
 If your app encounters an `error` event, you can reset the hCaptcha SDK flow by calling `event.reset()` to perform another attempt at verification.
 
-`event.reset()` rebuilds the verification payload from the current props and the current buffered journey immediately before retrying.
+`event.reset()` rebuilds the verification payload from the current props and the current buffered journey immediately before retrying. It requests a fresh verification, including after initialization failure or expiry. In prewarm mode it restores the wrapper overlay if hidden; passive mode stays hidden. A reset hook retained across `destroy()` is inert.
 
-The SDK automatically retries loading `api.js` after transient failures. If all attempts fail, `script-error` is sent via `onMessage`.
+The SDK automatically retries loading `api.js` after transient failures. Active initialization failures, including `script-error` and render exceptions, reach `onMessage` as errors and can be retried. Initialization failures and prewarm async rejections are explicitly typed, so their long messages or `Error` objects cannot be treated as tokens. Informational messages before readiness do not cancel the loading deadline.
 
-With `prewarm`, the 15-second `loading timeout` message cancels the pending verification. Initialization can still finish in the background; call `execute()` again to retry. Without `prewarm`, initialization and the pending verification continue after the timeout, preserving existing behavior.
+With `prewarm`, a 15-second loading timeout during an active request cancels that request and reports `loading timeout`; call `execute()` or `event.reset()` to retry. Idle preload failures and timeouts do not notify the app. Their failure state is retained so the next `execute()` retries; a timed-out document is recreated. Initialization can still finish in the background without fetching a token. Without `prewarm`, initialization and the pending verification continue after the timeout, preserving existing behavior.
 
 ## Dependencies
 

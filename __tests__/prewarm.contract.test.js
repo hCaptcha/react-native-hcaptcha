@@ -2,18 +2,22 @@ import fs from 'fs';
 import path from 'path';
 import { isDeepStrictEqual } from 'util';
 import { act } from '@testing-library/react-native';
-import { ACTIONS, boundedTraces, eligible, initialModel, projection, transition } from '../__test-utils__/prewarm-model';
+import { ACTIONS, CORE_ACTIONS, boundedTraces, eligible, initialModel, projection, transition } from '../__test-utils__/prewarm-model';
 import { PrewarmDriver } from '../__test-utils__/prewarm-driver';
 
 const BOUND = 5;
 const MODES = [false, true];
 const COMPONENTS = [{ passive: false }, { passive: true }, { passive: false, inline: true }];
-const ledger = { bound: BOUND, alphabet: ACTIONS, bounded: [], stateful: [], outcomeOrders: [], metamorphic: [], boundaries: [], regressions: [], failures: [] };
+const DOMAINS = [
+  { domain: 'bounded', bound: BOUND, actions: CORE_ACTIONS },
+  { domain: 'lifecycle', bound: 4, actions: ['execute', 'hide', 'ready', 'success', 'eventReset', 'initError', 'renderError', 'scriptError', 'timeout', 'reload', 'info', 'duplicateReady', 'destroy'] },
+];
+const ledger = { bound: BOUND, alphabet: CORE_ACTIONS, extendedAlphabet: ACTIONS, bounded: [], lifecycle: [], stateful: [], outcomeOrders: [], metamorphic: [], boundaries: [], regressions: [], failures: [] };
 const exercised = new Map();
 const TOKEN_STATES = ['none', 'held', 'consumed', 'expired'];
 const REQUIRED_STATES = [
   ...['loading', 'ready'].flatMap((phase) => ['idle', 'pending'].flatMap((request) => TOKEN_STATES.map((token) => `${phase}:${request}:${token}`))),
-  ...TOKEN_STATES.map((token) => `timed-out:idle:${token}`),
+  ...['timed-out', 'failed'].flatMap((phase) => TOKEN_STATES.map((token) => `${phase}:idle:${token}`)),
   'destroyed:idle:none',
 ];
 const REQUIRED_PAIRS = [
@@ -32,6 +36,12 @@ const REQUIRED_PAIRS = [
   ['loading:pending:none', 'ready', 'ready:pending:none', 'error:current', 'ready:idle:none'],
   ['ready:pending:none', 'success:current', 'ready:idle:held', 'error:stale', 'ready:idle:held'],
   ['ready:pending:none', 'success:current', 'ready:idle:held', 'success:stale', 'ready:idle:held'],
+  ['loading:pending:none', 'initError', 'failed:idle:none', 'eventReset', 'loading:pending:none'],
+  ['loading:pending:none', 'renderError', 'failed:idle:none', 'eventReset', 'ready:pending:none'],
+  ['ready:idle:expired', 'eventReset', 'ready:pending:expired', 'success:current', 'ready:idle:held'],
+  ['ready:pending:none', 'reload', 'loading:pending:none', 'ready', 'ready:pending:none'],
+  ['loading:pending:none', 'info', 'loading:pending:none', 'timeout', 'timed-out:idle:none'],
+  ['loading:idle:none', 'initError', 'failed:idle:none', 'execute', 'loading:pending:none'],
 ].map(([from, first, middle, second, to]) => `${from} --${first}--> ${middle} --${second}--> ${to}`);
 
 const stateLabel = (state) => `${state.phase}:${state.request ? 'pending' : 'idle'}:${state.token?.status || 'none'}`;
@@ -126,6 +136,12 @@ function statefulTrace(seed, length) {
     ['ready', 'execute', 'replace', 'ready', { type: 'error', attempt: 1 }, 'execute', { type: 'success', attempt: 2 }, 'expire'],
     ['ready', 'execute', 'hide', 'execute', { type: 'error', attempt: 1 }, { type: 'success', attempt: 0 }, 'execute', 'success', 'consume'],
     ['ready', 'execute', 'success', 'destroy', 'execute', 'ready', 'success', 'consume'],
+    ['ready', 'execute', 'success', 'reload', 'initError', 'execute', 'ready', 'success', 'consume'],
+    ['execute', 'initError', 'eventReset', 'ready', 'success', 'hide', 'expire', 'eventReset', 'success'],
+    ['execute', 'renderError', 'eventReset', 'success', 'consume'],
+    ['ready', 'execute', 'reload', 'ready', { type: 'success', attempt: 1 }, 'expire'],
+    ['execute', 'info', 'timeout', 'eventReset', 'ready', 'success'],
+    ['initError', 'execute', 'ready', 'success', 'consume'],
   ];
   let state = initialModel();
   const trace = [...prefixes[(seed - 1) % prefixes.length]];
@@ -177,26 +193,27 @@ afterAll(() => {
   fs.writeFileSync(path.join(output, 'prewarm-contract-results.json'), JSON.stringify(ledger, null, 2));
 });
 
-test.each(COMPONENTS)('bounded exhaustive domain (passiveSiteKey=$passive, inline=$inline)', async ({ passive, inline = false }) => {
-  const scenarios = [...boundedTraces(BOUND)];
+test.each(COMPONENTS.flatMap((component) => DOMAINS.map((domain) => ({ ...component, ...domain }))))(
+  '$domain exhaustive domain (passiveSiteKey=$passive, inline=$inline)', async ({ passive, inline = false, domain, bound, actions }) => {
+  const scenarios = [...boundedTraces(bound, actions)];
   const failures = [];
-  const byDepth = Array(BOUND + 1).fill(0);
-  const excluded = Object.fromEntries(ACTIONS.map((action) => [action, 0]));
+  const byDepth = Array(bound + 1).fill(0);
+  const excluded = Object.fromEntries(actions.map((action) => [action, 0]));
   for (const { trace, state } of scenarios) {
     byDepth[trace.length]++;
-    if (trace.length < BOUND) {
-      const suffixes = (ACTIONS.length ** (BOUND - trace.length) - 1) / (ACTIONS.length - 1);
-      for (const action of ACTIONS.filter((candidate) => !eligible(state, candidate))) {
+    if (trace.length < bound) {
+      const suffixes = (actions.length ** (bound - trace.length) - 1) / (actions.length - 1);
+      for (const action of actions.filter((candidate) => !eligible(state, candidate))) {
         excluded[action] += suffixes;
       }
     }
-    const result = await runTrace(trace, passive, { inline });
+    const result = await runTrace(trace, passive, { inline, family: domain });
     if (result.failure) {
       failures.push(result.failure);
     }
   }
-  const candidates = Array.from({ length: BOUND + 1 }, (_, depth) => ACTIONS.length ** depth).reduce((sum, count) => sum + count, 0);
-  ledger.bounded.push({ passive, inline, candidates, eligible: scenarios.length, exercised: scenarios.length,
+  const candidates = Array.from({ length: bound + 1 }, (_, depth) => actions.length ** depth).reduce((sum, count) => sum + count, 0);
+  ledger[domain].push({ passive, inline, bound, alphabet: actions, candidates, eligible: scenarios.length, exercised: scenarios.length,
     excludedByPreconditions: candidates - scenarios.length, byDepth, excludedByFirstIllegalAction: excluded, failed: failures.length });
   expect(Object.values(excluded).reduce((sum, count) => sum + count, 0)).toBe(candidates - scenarios.length);
   ledger.failures.push(...failures);
@@ -237,6 +254,56 @@ function permutations(values) {
   return values.flatMap((value) => permutations(values.filter((entry) => entry !== value))
     .map((suffix) => [value, ...suffix]));
 }
+
+const REVIEW_TRACES = [
+  ['initError'],
+  ['execute', { type: 'initError', data: 'Loader failure: ' + 'x'.repeat(40) }],
+  ['execute', 'initError', 'execute', 'ready'],
+  ['ready', 'execute', 'success', 'hide', 'eventReset'],
+  ['info', 'timeout', 'execute'],
+  ...['initError', 'scriptError'].map((failure) => ['execute', failure, 'ready', 'execute', 'success']),
+  ...['initError', 'renderError', 'scriptError'].flatMap((failure) => [
+    [failure, 'execute', ...(failure === 'renderError' ? [] : ['ready']), 'success', 'hide', 'expire', 'eventReset', 'success'],
+    ['execute', failure, 'execute', ...(failure === 'renderError' ? [] : ['ready']), 'success'],
+    ['execute', failure, 'eventReset', ...(failure === 'renderError' ? [] : ['ready']), 'success'],
+  ]),
+  ['execute', { type: 'initError', data: 'Initialization failed before readiness: ' + 'x'.repeat(40) }, 'eventReset', 'ready', 'success'],
+  ['info', 'initError', 'eventReset', 'ready', 'success'],
+  ['execute', 'info', 'timeout', 'eventReset', 'ready', 'success'],
+  ['ready', 'execute', 'success', 'hide', 'expire', 'eventReset', 'success', 'consume', { type: 'advance', ms: 120000 }],
+  ['ready', 'execute', 'eventReset', { type: 'error', attempt: 0 }, 'success'],
+  ['ready', 'execute', 'success', 'destroy', 'eventReset', 'execute', 'ready', 'success'],
+  ['ready', 'execute', 'reload', 'ready', 'success', 'success'],
+  ['ready', 'execute', 'success', 'duplicateReady', 'hide', 'expire', 'eventReset', 'success'],
+  ['execute', { type: 'info', data: 'Informational message before readiness: ' + 'x'.repeat(40) }, 'timeout', 'execute', 'ready', 'success'],
+  ...['network-error', 'Async failure with a long error message: ' + 'x'.repeat(40), 'script-error', '__hcaptcha_ready__', 'open'].map((data) =>
+    ['ready', 'execute', { type: 'error', data }, 'eventReset', 'success']),
+  ['ready', 'execute', { type: 'error', data: 'Rejected Error instance', errorObject: true }, 'eventReset', 'success'],
+];
+
+test.each(COMPONENTS)('review regressions and missing lifecycle transitions (passive=$passive, inline=$inline)', async ({ passive, inline = false }) => {
+  for (const trace of REVIEW_TRACES) {
+    const result = await runTrace(trace, passive, { inline, family: 'review-regression' });
+    expect(result.ineligible).toBeUndefined();
+    expect(result.failure).toBeUndefined();
+  }
+});
+
+test.each(COMPONENTS)('initialization retry reads current payload across document replacement (passive=$passive, inline=$inline)', async ({ passive, inline = false }) => {
+  for (const failure of ['initError', 'renderError', 'scriptError']) {
+    const trace = ['execute', failure, 'hide', 'edit', 'replace', 'eventReset', 'ready', 'success'];
+    const current = await runTrace(trace, passive, { inline, family: 'metamorphic' });
+    const legacy = await runTrace(trace, passive, { inline, legacyPayload: true, family: 'metamorphic' });
+    expect(current.failure).toBeUndefined();
+    expect(legacy.failure).toBeUndefined();
+    expect(current.ineligible).toBeUndefined();
+    expect(legacy.ineligible).toBeUndefined();
+    expect(current.actual.calls).toEqual([{ rqdata: 'override-B' }]);
+    expect(legacy.actual.documents).toBe(current.actual.documents + 1);
+    expect({ ...legacy.actual, documents: current.actual.documents }).toEqual(current.actual);
+    ledger.metamorphic.push({ passive, inline, relation: 'failure-retry-latest-payload', trace });
+  }
+});
 
 test.each(COMPONENTS)('all completion orders for two/three attempts (passive=$passive, inline=$inline)', async ({ passive, inline = false }) => {
   let exercisedOrders = 0;
@@ -470,8 +537,9 @@ test.each(COMPONENTS)('destroy idempotence and show alias (passive=$passive, inl
   }
 });
 
-test.each(COMPONENTS)('destroy rejects callbacks before React commits (passive=$passive, inline=$inline)', async ({ passive, inline }) => {
-  for (const data of ['__hcaptcha_ready__', 'script-error', 'challenge-closed', 'late-token-' + 'x'.repeat(40)]) {
+test.each(COMPONENTS.flatMap((component) => ['destroy', 'reload'].map((retirement) => ({ ...component, retirement }))))(
+  '$retirement rejects callbacks before React commits (passive=$passive, inline=$inline)', async ({ passive, inline, retirement }) => {
+  for (const data of ['__hcaptcha_ready__', 'script-error', 'challenge-closed', 'late-token-' + 'x'.repeat(40), '__hcaptcha_load_error__:"error"']) {
     for (const afterExecute of [false, true]) {
       const driver = new PrewarmDriver(passive, { inline });
       try {
@@ -479,7 +547,11 @@ test.each(COMPONENTS)('destroy rejects callbacks before React commits (passive=$
         await driver.step('execute');
         const retired = driver.current;
         await act(async () => {
-          driver.ref.current.destroy();
+          if (retirement === 'destroy') {
+            driver.ref.current.destroy();
+          } else {
+            retired.webView.props.onLoadStart();
+          }
           if (afterExecute) {
             driver.ref.current.execute();
           }
@@ -494,12 +566,30 @@ test.each(COMPONENTS)('destroy rejects callbacks before React commits (passive=$
         expect(driver.documents).toHaveLength(2);
         await driver.step('ready');
         expect(driver.calls).toHaveLength(2);
-        ledger.boundaries.push({ kind: 'destroy-before-commit', passive, inline, data, afterExecute });
-        recordScenario(['ready', 'execute', `batch:destroy+${afterExecute ? 'execute+callback:' : 'callback:+execute:'}${data}`, 'ready'],
+        ledger.boundaries.push({ kind: `${retirement}-before-commit`, passive, inline, data, afterExecute });
+        const commands = afterExecute ? [retirement, 'execute', `callback:${data}`] : [retirement, `callback:${data}`, 'execute'];
+        recordScenario(['ready', 'execute', `batch:${commands.join('+')}`, 'ready'],
           passive, { inline, family: 'boundary' }, true);
       } finally {
         await driver.dispose();
       }
+    }
+  }
+});
+
+test.each(COMPONENTS)('malformed initialization envelopes preserve the loading deadline (passive=$passive, inline=$inline)', async ({ passive, inline }) => {
+  for (const data of ['{', 'null', '{}', '42']) {
+    const driver = new PrewarmDriver(passive, { inline });
+    try {
+      await driver.step('execute');
+      act(() => driver.current.receive({ nativeEvent: { data: '__hcaptcha_load_error__:' + data } }));
+      expect(driver.events).toEqual([]);
+      act(() => jest.advanceTimersByTime(15000));
+      expect(driver.events).toEqual([{ kind: 'timeout' }]);
+      ledger.boundaries.push({ kind: 'malformed-initialization-envelope', passive, inline, data });
+      recordScenario(['execute', `malformed-load-error:${data}`, 'timeout'], passive, { inline, family: 'boundary' }, true);
+    } finally {
+      await driver.dispose();
     }
   }
 });

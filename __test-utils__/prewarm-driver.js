@@ -43,7 +43,7 @@ export class PrewarmDriver {
         this.tokenExpires = Date.now() + 120000;
       } else if (event.nativeEvent.description === 'loading timeout') {
         this.events.push({ kind: 'timeout' });
-      } else if (event.nativeEvent.data !== 'open') {
+      } else if (event.nativeEvent.data !== 'open' || !event.success) {
         this.events.push({ kind: event.nativeEvent.data });
       }
       this.lastEvent = event;
@@ -126,11 +126,28 @@ export class PrewarmDriver {
         case 'execute': this.ref.current[this.options.showAlias ? 'show' : 'execute'](); break;
         case 'hide': this.ref.current[this.options.inline ? 'reset' : 'hide'](); break;
         case 'destroy': this.ref.current.destroy(); break;
-        case 'ready':
-          this.current.context.hcaptcha = this.current.sdk;
-          this.current.scripts.at(-1).onload();
-          this.current.context.hCaptchaOnLoad();
+        case 'eventReset': this.lastEvent.reset(); break;
+        case 'ready': this.ready(); break;
+        case 'duplicateReady': this.current.context.ReactNativeWebView.postMessage('__hcaptcha_ready__'); break;
+        case 'info': this.current.context.ReactNativeWebView.postMessage(command.data || 'fixture-info'); break;
+        case 'scriptError': this.current.context.ReactNativeWebView.postMessage('script-error'); break;
+        case 'initError': {
+          const loader = this.current.context.hCaptchaLoader;
+          this.current.context.hCaptchaLoader = () => Promise.reject(new Error(command.data || 'loader-error'));
+          this.current.context.loadApiScript();
+          this.current.context.hCaptchaLoader = loader;
           break;
+        }
+        case 'renderError': {
+          const sdk = this.current.sdk;
+          const renderWidget = sdk.render;
+          sdk.render = () => {
+            sdk.render = renderWidget;
+            throw new TypeError('fixture render failure');
+          };
+          this.ready();
+          break;
+        }
         case 'success':
         case 'error': {
           const attempt = command.attempt === undefined
@@ -147,9 +164,9 @@ export class PrewarmDriver {
               attempt.callbacks.callback(attempt.token);
             }
           } else if (attempt.reject) {
-            attempt.reject('network-error');
+            attempt.reject(command.errorObject ? new Error(command.data) : command.data || 'network-error');
           } else {
-            attempt.callbacks['error-callback']('network-error');
+            attempt.callbacks['error-callback'](command.data || 'network-error');
           }
           break;
         }
@@ -166,6 +183,7 @@ export class PrewarmDriver {
         case 'crash':
           this.current.webView.props[this.passive ? 'onContentProcessDidTerminate' : 'onRenderProcessGone']();
           break;
+        case 'reload': this.current.webView.props.onLoadStart(); break;
         case 'timeout': jest.advanceTimersByTime(15000); break;
         case 'consume': this.tokens.at(-1).markUsed(); break;
         case 'expire': jest.advanceTimersByTime(Math.max(0, this.tokenExpires - Date.now())); break;
@@ -174,6 +192,12 @@ export class PrewarmDriver {
       }
     });
     this.refresh();
+  }
+
+  ready() {
+    this.current.context.hcaptcha = this.current.sdk;
+    this.current.scripts.at(-1).onload();
+    this.current.context.hCaptchaOnLoad();
   }
 
   snapshot() {

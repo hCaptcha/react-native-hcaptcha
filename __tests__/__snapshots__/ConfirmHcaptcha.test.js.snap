@@ -122,24 +122,28 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
           window.hCaptchaLoader = function(config) { window.hCaptchaLoaderConfig = config; return Promise.resolve(window.hcaptcha); };
         </script>
         <script type="text/javascript">
+          var getErrorData = function(error) {
+            return typeof error === 'string' ? error : (error && error.message) || (error && error.name) || 'error';
+          };
+          var postLoadError = function(error) {
+            window.ReactNativeWebView.postMessage("__hcaptcha_load_error__:" + JSON.stringify(getErrorData(error)));
+          };
           var loadApiScript = function() {
             if (typeof window.hCaptchaLoader !== 'function') {
-              window.ReactNativeWebView.postMessage('error');
+              postLoadError('error');
               return;
             }
 
-            window.hCaptchaLoader(hcaptchaConfig.loaderConfig).then(onloadCallback).catch(function(error) {
-              window.ReactNativeWebView.postMessage((error && error.message) || (error && error.name) || 'error');
-            });
+            window.hCaptchaLoader(hcaptchaConfig.loaderConfig).then(onloadCallback).catch(postLoadError);
           };
           var hcaptchaWidgetId = null;
           var hcaptchaRequestId = null;
           var setRequest = function(requestId) {
             hcaptchaRequestId = requestId;
           };
-          var postRequestMessage = function(data, requestId) {
+          var postRequestMessage = function(data, requestId, error) {
             window.ReactNativeWebView.postMessage(requestId === null ? data :
-              "__hcaptcha_request__:" + JSON.stringify({ requestId: requestId, data: data }));
+              "__hcaptcha_request__:" + JSON.stringify({ requestId: requestId, data: data, error: Boolean(error) }));
           };
           var postCallback = function(data) {
             if (hcaptchaRequestId === null) {
@@ -157,7 +161,7 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
               hcaptcha.execute(hcaptchaWidgetId, { async: true }).then(function(result) {
                 postRequestMessage(result.response, requestId);
               }, function(error) {
-                postRequestMessage(error, requestId);
+                postRequestMessage(getErrorData(error), requestId, true);
               });
             }
           };
@@ -173,7 +177,7 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
               console.log("challenge render complete");
             } catch (e) {
               console.log("challenge failed to render:", e);
-              window.ReactNativeWebView.postMessage(e.name);
+              postLoadError(e.name || 'error');
             }
           };
           var onDataCallback = function(response) {

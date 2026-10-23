@@ -11,6 +11,11 @@ const sdk = `
   var widget, config, attempt = 0;
   window.hcaptcha = {
     render: function(id, options) {
+      if (window.fixtureRenderFailures > 0) {
+        window.fixtureRenderFailures--;
+        setTimeout(function() { fetch('${authServer}/sdk-ready', { method: 'POST' }); }, 100);
+        throw new Error('fixture render failure');
+      }
       config = options;
       widget = (window.fixtureWidgetCount || 0) + 1;
       window.fixtureWidgetCount = widget;
@@ -42,6 +47,7 @@ const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, verifyParams, delayedTo
   const opens = useRef(0);
   const [status, setStatus] = useState('loading');
   const [loads, setLoads] = useState(0);
+  const [presses, setPresses] = useState(0);
   const onMessage = (event) => {
     onEvent?.(event);
     if (event.nativeEvent.data === 'fixture-ready') {
@@ -73,7 +79,9 @@ const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, verifyParams, delayedTo
     <View style={styles.container}>
       <Text testID={status}>{status}</Text>
       <Text testID={`loads-${loads}`}>SDK loads: {loads}</Text>
+      <Text testID={`presses-${presses}`}>Screen presses: {presses}</Text>
       <Button testID="execute" title="Screen 2" onPress={() => {
+        setPresses((count) => count + 1);
         setStatus('verifying');
         ref.current.execute();
       }} />
@@ -99,6 +107,49 @@ const styles = StyleSheet.create({ container: { flex: 1, paddingTop: 80, padding
 
 describe('native WebView prewarm', () => {
   for (const variant of ['overlay', 'passive', 'inline']) {
+    test(`defers idle render failure and recovers through event.reset (${variant})`, async () => {
+      await fetch(`${authServer}/reset`, { method: 'POST' });
+      const ref = React.createRef();
+      const events = [];
+      await render(<PrewarmFixture key={`render-retry-${variant}`} captchaRef={ref}
+        inline={variant === 'inline'} passiveSiteKey={variant === 'passive'} onEvent={(event) => events.push(event)}
+        sdkSource={`data:application/javascript,${encodeURIComponent('window.fixtureRenderFailures = 2;\n' + sdk)}#`} />);
+      await waitFor(async () => {
+        const state = await (await fetch(`${authServer}/state`)).json();
+        expect(state.sdkReady).toBe(1);
+      });
+      expect(events).toHaveLength(0);
+      ref.current.execute();
+      await waitFor(() => expect(events.filter((event) => event.nativeEvent.data === 'Error')).toHaveLength(1));
+      const error = events.find((event) => event.nativeEvent.data === 'Error');
+      ref.current[variant === 'inline' ? 'reset' : 'hide']();
+      error.reset();
+      await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(1));
+      expect(await screen.findByTestId('loads-1')).toBeDefined();
+    });
+
+    test(`event.reset retries a held token after hide (${variant})`, async () => {
+      const ref = React.createRef();
+      const events = [];
+      await render(<PrewarmFixture key={`hidden-reset-${variant}`} captchaRef={ref}
+        inline={variant === 'inline'} passiveSiteKey={variant === 'passive'} delayedTokens
+        onEvent={(event) => events.push(event)} />);
+      await waitFor(() => screen.findByTestId('loads-1'));
+      ref.current.execute();
+      await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(1), { timeout: 10000 });
+      const token = events.find((event) => event.markUsed);
+      token.reset();
+      await waitFor(() => expect(events.filter((event) => event.nativeEvent.data === 'open')).toHaveLength(2));
+      if (variant === 'overlay') {
+        // A restored challenge must intercept touches intended for the form below it.
+        await userEvent.press(await screen.findByTestId('execute'));
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        expect(await screen.findByTestId('presses-0')).toBeDefined();
+      }
+      await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(2), { timeout: 10000 });
+      expect(await screen.findByTestId('loads-1')).toBeDefined();
+    });
+
     test(`destroys while the SDK HTTP request is blocked (${variant})`, async () => {
       await fetch(`${authServer}/reset`, { method: 'POST' });
       const ref = React.createRef();

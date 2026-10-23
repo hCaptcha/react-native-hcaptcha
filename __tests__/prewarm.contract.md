@@ -30,7 +30,7 @@ Twelve actions: `execute`, `hide`, `ready`, `success`, `error`, `edit`, `replace
 
 Two distinct payload values exercise latest-value delivery and double-edit identity without an unbounded string space. Metamorphic cases separately compare legacy fallback with `verifyParams` overrides. Two theme values permit config A→B→A. Five actions are sufficient for ready→execute→hide→execute→late outcome and ready→execute→replace→replace→late outcome. A four-action search found no failures; the five-action bound exposes both defects. Longer interactions are sampled separately.
 
-## Counts
+## Counts at 6df87c3
 
 Scenario identity is `(wrapper/inline, initial presentation, cold/warm option, show/execute option, payload encoding, executed action trace)`. Prefixes are distinct scenarios. Repeated runs and cross-family overlaps are deduplicated; reduction-only probes are excluded from the primary total.
 
@@ -103,7 +103,7 @@ Native runs exercise actual WebViews and the published loader on Android API 33 
 These tests establish native teardown/recreation and functional recovery, not immediate process RSS reduction or physical-device leak freedom. WebKit/Android may retain process caches after view destruction. Public auto-pass integration keys cover backend verification; interactive puzzles and enterprise payload acceptance are not established by these fixtures. Exhaustiveness applies only to the declared finite grammar and batched-command domain.
 
 
-## Stateful coverage gates and completion ordering
+## Stateful coverage gates and completion ordering at 6df87c3
 
 The previous uniform generator accepted zero tokens in its 128 long traces and never invoked consume/expire. It also omitted inline long traces and could complete only the oldest SDK attempt. The updated model and driver accept `{ type: 'success' | 'error', attempt: index }` commands independently; the driver settles that specific real generated-runtime promise. `{ type: 'advance', ms: 120000 }` checks expiry suppression after consumption. Production code is unchanged in this follow-up.
 
@@ -116,3 +116,28 @@ The tests additionally require 15 state-conditioned adjacent transition pairs, i
 The completion-order domain constructs two or three outstanding SDK attempts across hide, destroy, config replacement, or renderer loss. For each component variant and interruption, it enumerates every attempt permutation (2! or 3!) and all success/error assignments (2^2 or 2^3). If the current attempt succeeds, both consume+120-second advance and expiry tails run; if it fails, a 120-second advance verifies no stale token/expiry arrives. This declares **1,008 eligible scenarios, all exercised, zero exclusions within that domain**. Each is compared step-by-step with the oracle. The 792 non-baseline permutations additionally satisfy outcome-order metamorphic equivalence, giving 890 total relation instances including existing cases.
 
 This includes newer token delivery before an older success/error, both after same-document cancellation and after document retirement. Four or more attempts, mixed interruption kinds within the permutation setup, duplicate promise settlements, arbitrary delay values, and arbitrary native/React scheduling are outside this completion-order enumeration. Longer sampled traces can contain more attempts and mixed interruptions, but do not exhaust their permutations. No new contract violations were found.
+
+
+## Review fixes: initialization and retry lifecycle
+
+**84,220 unique primary scenarios; zero contract violations. All 248 unit/model tests, two snapshots, and lint pass.** The 1,228 boundary scenarios and 93 review-regression executions overlap the searches and each other; primary scenario identities are deduplicated in the JSON ledger.
+
+The review exposed missing pre-ready failure and event-reset transitions. The oracle now distinguishes loading, failed, ready, timed-out, and destroyed phases, and retains event-hook lifetime separately from document identity. Initialization errors cancel queued prewarm requests. Idle failures are silent and retried on execute; active failures report an error with a retry hook. An ordinary event reset starts a fresh request and restores wrapper visibility unless passive. Retained reset hooks cannot cross destroy. Render-failure retries can become ready immediately because the SDK is already loaded; loader/script retries wait for readiness. The oracle models that distinction without importing production code.
+
+Production fixes use typed initialization and async-result envelopes, preventing long errors or rejected Error objects from becoming tokens. Informational pre-ready messages do not cancel loading deadlines. Native reloads retire callbacks synchronously and recreate the WebView. Reset hooks read the latest payload after replacement; verifyParams preserves the document and legacy props still reload. The root-placement documentation continues to apply; swapping View and Modal would discard the warmed WebView.
+
+The original core domain remains 12 commands through depth five: 814,359 raw words, 71,259 eligible/exercised, 743,100 excluded by declared preconditions across three variants. A separate lifecycle domain uses 13 commands through depth four: execute, hide, ready, success, eventReset, initError, renderError, scriptError, timeout, reload, info, duplicateReady, destroy. Its **92,823 raw words admit 11,529 eligible scenarios, all exercised, and exclude 81,294**. Per variant, eligible counts by depth are `1, 10, 68, 467, 3,297`. Domains overlap; their scenario counts must not be added as unique scenarios.
+
+The lifecycle grammar admits initialization failures/informational messages only while loading, duplicate readiness only while ready, reset only after an event hook exists, and reload only while mounted. A render failure cannot spontaneously produce readiness before retry; the other load failures may be followed by late readiness. SDK completions require an outstanding attempt. Invalid commands are excluded by those preconditions, not by expected-failure filters.
+
+Per variant, the current long traces accept 273 tokens, execute 107 consume and 103 expire commands, and observe 246 distinct transitions and 792 adjacent transition pairs. Across all variants, that is 819 accepted tokens, 321 consumes, and 309 expire commands. Every seed accepts a token; no required states or pairs are missing.
+
+The 192 long traces include the seven new commands in weighted exploration and six additional lifecycle witness prefixes. Gates require **25 abstract states** (the previous 21 plus failed/idle × four token states) and **21 state-conditioned adjacent transition pairs** per component variant. Every seed must still accept a token. The 1,008 two/three-attempt completion-order scenarios remain in place. Nine new metamorphic pairs verify current payloads through retained failure/reset hooks, with the expected extra reload for legacy props: 899 relation instances total.
+
+There are 93 review-regression executions across the three variants. Minimal witnesses include idle initialization failure; execute→long initialization error; execute→initialization error→execute→ready; ready→execute→token→hide→eventReset; and info→timeout→execute. Longer cases cover expired-event retry, retry cancellation ownership, stale hooks after destroy, late readiness after errors, native reload, duplicate readiness, reserved strings as typed errors, and rejected Error objects. Boundary tests now deliver 60 retired callbacks inside destroy/reload batches before React commits and exercise 12 malformed initialization envelopes, alongside existing deadline and instance-isolation tests.
+
+Native validation adds six cases per platform: three variants × idle render failure/active failure/event-reset recovery and held-token reset after hiding. The overlay case verifies real native touch interception after retry by pressing the underlying form button; passive/inline cases verify hidden repeated execution. Together with the existing auth/lifecycle cases, **33 checks per platform** exercise actual native WebViews and live SDK/backend verification. The controlled fixture's first render failure is silent; its second failure during execute is reported and its reset recovers without reloading the SDK. Logs are `output/hcaptcha-review-ios.log` and `output/hcaptcha-review-final-android.log`.
+
+The model still excludes arbitrary React/OS scheduling, full SDK/DOM behavior, unbounded payloads, arbitrary malformed packets, and all permutations of four or more attempts. The bounded lifecycle domain omits payload/presentation changes and token consumption/expiry; those are exercised by the core search, long traces, dedicated regressions, and metamorphic cases. Native process caches and physical-device leak/performance guarantees remain outside these checks.
+
+The exhaustive domains are prewarm-only; default-mode compatibility has dedicated component/native checks. Arbitrary custom SDK callback payloads in default mode retain their legacy interpretation.

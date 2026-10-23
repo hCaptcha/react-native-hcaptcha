@@ -308,7 +308,7 @@ describe('Hcaptcha', () => {
     expect(postMessageMock).not.toHaveBeenCalled();
 
     appendedScripts[2].onerror(new Error('terminal failure'));
-    await waitFor(() => expect(postMessageMock).toHaveBeenCalledWith('script-error'));
+    await waitFor(() => expect(postMessageMock).toHaveBeenCalledWith('__hcaptcha_load_error__:"script-error"'));
   });
 
   it('serializes every HTML-facing prop safely before embedding it', () => {
@@ -443,16 +443,20 @@ describe('Hcaptcha', () => {
         data: 'error',
         description: 'loading timeout',
       },
+      success: false,
+      reset: expect.any(Function),
     });
   });
 
   it('bounds loading time despite onMessage callback changes during form edits', () => {
     jest.useFakeTimers();
     const onMessage = jest.fn();
-    const component = render(<Hcaptcha siteKey="site-key" onMessage={(event) => onMessage(event)} prewarm />);
+    const ref = React.createRef();
+    const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={(event) => onMessage(event)} prewarm />);
+    act(() => ref.current.execute());
     for (let second = 0; second < 16; second++) {
       act(() => jest.advanceTimersByTime(1000));
-      component.rerender(<Hcaptcha siteKey="site-key" onMessage={(event) => onMessage(event)} prewarm />);
+      component.rerender(<Hcaptcha ref={ref} siteKey="site-key" onMessage={(event) => onMessage(event)} prewarm />);
     }
     expect(onMessage).toHaveBeenCalledTimes(1);
     expect(onMessage).toHaveBeenCalledWith(expect.objectContaining({
@@ -485,7 +489,8 @@ describe('Hcaptcha', () => {
     expect(onMessage).not.toHaveBeenCalled();
   });
 
-  it.each(['null', '{', '{"requestId":99,"data":"network-error"}', '{"requestId":1,"data":{}}'])('ignores invalid/stale request envelopes without cancelling verification (%s)', (payload) => {
+  it.each(['null', '{', '{"requestId":99,"data":"network-error"}', '{"requestId":1,"data":{}}',
+    '{"requestId":1,"data":"network-error","error":"true"}', '{"requestId":1,"data":"network-error","error":{}}'])('ignores invalid/stale request envelopes without cancelling verification (%s)', (payload) => {
     const ref = React.createRef();
     const onMessage = jest.fn();
     const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={onMessage} prewarm />);
@@ -684,7 +689,7 @@ describe('Hcaptcha', () => {
     const component = render(<Hcaptcha ref={ref} siteKey="site-key" onMessage={onMessage} prewarm />);
     const oldWebView = getWebView(component);
     act(() => jest.advanceTimersByTime(15000));
-    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage).not.toHaveBeenCalled();
     act(() => ref.current.execute());
     const webView = getWebView(component);
     expect(webView).not.toBe(oldWebView);
@@ -692,7 +697,7 @@ describe('Hcaptcha', () => {
     act(() => webView.props.onMessage({ nativeEvent: { data: HCAPTCHA_READY_EVENT } }));
     expect(getLastInjectJavaScriptMock()).toHaveBeenCalledTimes(1);
     act(() => jest.advanceTimersByTime(15000));
-    expect(onMessage).toHaveBeenCalledTimes(1);
+    expect(onMessage).not.toHaveBeenCalled();
   });
 
   it('does not emit a loading timeout after the widget becomes ready in passive flows', () => {
