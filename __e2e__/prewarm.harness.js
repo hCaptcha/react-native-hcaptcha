@@ -39,6 +39,9 @@ const sdk = `
   window.hCaptchaOnLoad();
 `;
 const jsSrc = `data:application/javascript,${encodeURIComponent(sdk)}#`;
+// Native process startup is separate from the library's 15-second loading deadline.
+const sdkReadyOptions = { timeout: 30000 };
+const waitForSdk = (testId) => waitFor(() => expect(screen.queryByTestId(testId)).not.toBeNull(), sdkReadyOptions);
 
 const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, verifyParams, delayedTokens = false, hideAfterToken = true, cancelAndRetry = false, captchaRef, inline = false, onEvent, sdkSource }) => {
   const localRef = useRef(null);
@@ -106,6 +109,20 @@ const PrewarmFixture = ({ passiveSiteKey, theme, rqdata, verifyParams, delayedTo
 const styles = StyleSheet.create({ container: { flex: 1, paddingTop: 80, paddingHorizontal: 24 } });
 
 describe('native WebView prewarm', () => {
+  test('accepts idle SDK readiness after the loading deadline', async () => {
+    const ref = React.createRef();
+    const events = [];
+    const lateSdk = `setTimeout(function() { ${sdk} }, 16000);`;
+    await render(<PrewarmFixture key="late-ready" captchaRef={ref}
+      sdkSource={`data:application/javascript,${encodeURIComponent(lateSdk)}#`}
+      onEvent={(event) => events.push(event)} />);
+    await waitForSdk('loads-1');
+    expect(events.map((event) => event.nativeEvent.data)).toEqual(['fixture-ready']);
+    ref.current.execute();
+    await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(1), { timeout: 10000 });
+    expect(await screen.findByTestId('loads-1')).toBeDefined();
+  });
+
   for (const variant of ['overlay', 'passive', 'inline']) {
     test(`defers idle render failure and recovers through event.reset (${variant})`, async () => {
       await fetch(`${authServer}/reset`, { method: 'POST' });
@@ -117,7 +134,7 @@ describe('native WebView prewarm', () => {
       await waitFor(async () => {
         const state = await (await fetch(`${authServer}/state`)).json();
         expect(state.sdkReady).toBe(1);
-      }, { timeout: 15000 });
+      }, sdkReadyOptions);
       expect(events).toHaveLength(0);
       ref.current.execute();
       await waitFor(() => expect(events.filter((event) => event.nativeEvent.data === 'Error')).toHaveLength(1));
@@ -135,7 +152,7 @@ describe('native WebView prewarm', () => {
       const props = { captchaRef: ref, delayedTokens: true,
         inline: variant === 'inline', passiveSiteKey: variant === 'passive', onEvent: (event) => events.push(event) };
       const fixture = await render(<PrewarmFixture key={key} {...props} />);
-      await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
+      await waitForSdk('loads-1');
       ref.current.execute();
       await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(1), { timeout: 10000 });
       const token = events.find((event) => event.markUsed);
@@ -167,7 +184,7 @@ describe('native WebView prewarm', () => {
       await waitFor(async () => {
         const state = await (await fetch(`${authServer}/state`)).json();
         expect(state.sdkLoads).toBe(1);
-      }, { timeout: 15000 });
+      }, sdkReadyOptions);
       ref.current.execute();
       ref.current.destroy();
       await waitFor(() => expect(screen.queryByTestId('confirm-hcaptcha-prewarm')).toBeNull());
@@ -176,7 +193,7 @@ describe('native WebView prewarm', () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
       expect(events).toHaveLength(0);
       ref.current.execute();
-      await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
+      await waitForSdk('loads-1');
       await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(1));
     });
 
@@ -187,7 +204,7 @@ describe('native WebView prewarm', () => {
         await render(<PrewarmFixture key={`destroy-${variant}-${phase}`} captchaRef={ref}
           inline={variant === 'inline'} passiveSiteKey={variant === 'passive'}
           delayedTokens={phase === 'pending'} hideAfterToken={false} onEvent={(event) => events.push(event)} />);
-        await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
+        await waitForSdk('loads-1');
         if (phase !== 'ready') {
           ref.current.execute();
           await waitFor(() => expect(events.some((event) => event.nativeEvent.data === 'open')).toBe(true));
@@ -204,7 +221,7 @@ describe('native WebView prewarm', () => {
         for (const loads of [2, 3]) {
           const tokens = events.filter((event) => event.markUsed).length;
           ref.current[variant === 'inline' ? 'execute' : 'show']();
-          await waitFor(() => screen.findByTestId(`loads-${loads}`), { timeout: 15000 });
+          await waitForSdk(`loads-${loads}`);
           await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(tokens + 1), { timeout: 10000 });
           ref.current.destroy();
         }
@@ -215,7 +232,7 @@ describe('native WebView prewarm', () => {
   for (const passiveSiteKey of [false, true]) {
     test(`loads while hidden and reuses the widget (passiveSiteKey=${passiveSiteKey})`, async () => {
       await render(<PrewarmFixture key={String(passiveSiteKey)} passiveSiteKey={passiveSiteKey} />);
-      await waitFor(() => screen.findByTestId('ready'), { timeout: 15000 });
+      await waitForSdk('ready');
       for (const attempt of [1, 2]) {
         await userEvent.press(await screen.findByTestId('execute'));
         await waitFor(() => screen.findByTestId(`fixture-token-widget-1-attempt-${attempt}-000000000000`), { timeout: 5000 });
@@ -225,7 +242,7 @@ describe('native WebView prewarm', () => {
 
     test(`rejects a cancelled outcome after re-execute (passiveSiteKey=${passiveSiteKey})`, async () => {
       await render(<PrewarmFixture key={`cancel-${passiveSiteKey}`} passiveSiteKey={passiveSiteKey} delayedTokens cancelAndRetry />);
-      await waitFor(() => screen.findByTestId('ready'), { timeout: 15000 });
+      await waitForSdk('ready');
       await userEvent.press(await screen.findByTestId('execute'));
       await new Promise((resolve) => setTimeout(resolve, 2500));
       expect(await screen.findByTestId('verifying')).toBeDefined();
@@ -235,7 +252,7 @@ describe('native WebView prewarm', () => {
 
     test(`preserves a held token across presentation change (passiveSiteKey=${passiveSiteKey})`, async () => {
       const fixture = await render(<PrewarmFixture key={`presentation-${passiveSiteKey}`} passiveSiteKey={passiveSiteKey} hideAfterToken={false} />);
-      await waitFor(() => screen.findByTestId('ready'), { timeout: 15000 });
+      await waitForSdk('ready');
       await userEvent.press(await screen.findByTestId('execute'));
       await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-000000000000'));
       await fixture.rerender(<PrewarmFixture key={`presentation-${passiveSiteKey}`} passiveSiteKey={!passiveSiteKey} hideAfterToken={false} />);
@@ -247,11 +264,11 @@ describe('native WebView prewarm', () => {
 
   test('recreates the native document after a theme change', async () => {
     const fixture = await render(<PrewarmFixture key="theme" passiveSiteKey />);
-    await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
+    await waitForSdk('loads-1');
     await userEvent.press(await screen.findByTestId('execute'));
     await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-000000000000'));
     await fixture.rerender(<PrewarmFixture key="theme" passiveSiteKey theme="dark" />);
-    await waitFor(() => screen.findByTestId('loads-2'), { timeout: 15000 });
+    await waitForSdk('loads-2');
     await userEvent.press(await screen.findByTestId('execute'));
     await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-000000000000'));
     expect(await screen.findByTestId('loads-2')).toBeDefined();
@@ -262,10 +279,10 @@ describe('native WebView prewarm', () => {
       const initial = legacy ? { rqdata: 'initial' } : { verifyParams: { rqdata: 'initial' } };
       const updated = legacy ? { rqdata: 'current-000000000000' } : { verifyParams: { rqdata: 'current-000000000000' } };
       const fixture = await render(<PrewarmFixture key={`payload-${legacy}`} passiveSiteKey {...initial} />);
-      await waitFor(() => screen.findByTestId('loads-1'), { timeout: 15000 });
+      await waitForSdk('loads-1');
       await fixture.rerender(<PrewarmFixture key={`payload-${legacy}`} passiveSiteKey {...updated} />);
       const loads = legacy ? 2 : 1;
-      await waitFor(() => screen.findByTestId(`loads-${loads}`), { timeout: 15000 });
+      await waitForSdk(`loads-${loads}`);
       await userEvent.press(await screen.findByTestId('execute'));
       await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-current-000000000000'));
       expect(await screen.findByTestId(`loads-${loads}`)).toBeDefined();
