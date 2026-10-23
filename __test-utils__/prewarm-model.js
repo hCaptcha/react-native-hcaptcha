@@ -10,15 +10,19 @@ export const initialModel = () => ({
   attempts: [], calls: [], events: [], token: null,
 });
 
-export function eligible(state, action) {
+export function eligible(state, command) {
+  const action = typeof command === 'string' ? command : command.type;
   switch (action) {
     case 'ready': return state.phase !== 'ready' && state.phase !== 'destroyed';
     case 'crash': return state.phase !== 'destroyed';
     case 'success':
-    case 'error': return state.attempts.some((attempt) => !attempt.done);
+    case 'error': return command.attempt === undefined
+      ? state.attempts.some((attempt) => !attempt.done)
+      : Boolean(state.attempts[command.attempt] && !state.attempts[command.attempt].done);
     case 'timeout': return state.deadline !== null;
     case 'consume':
-    case 'expire': return state.token !== null && !state.token.used;
+    case 'expire': return state.token?.status === 'held';
+    case 'advance': return Number.isFinite(command.ms) && command.ms >= 0;
     default: return ACTIONS.includes(action);
   }
 }
@@ -49,7 +53,7 @@ function advance(state, target) {
   if (state.deadline !== null && state.deadline <= target) {
     timers.push({ at: state.deadline, kind: 'timeout' });
   }
-  if (state.token && !state.token.used && state.token.expires <= target) {
+  if (state.token?.status === 'held' && state.token.expires <= target) {
     timers.push({ at: state.token.expires, kind: 'expired' });
   }
   timers.sort((left, right) => left.at - right.at);
@@ -60,16 +64,17 @@ function advance(state, target) {
       state.deadline = null;
       state.request = null;
     } else {
-      state.token.used = true;
+      state.token.status = 'expired';
     }
   }
   state.clock = target;
 }
 
-export function transition(previous, action, options = {}) {
-  if (!eligible(previous, action)) {
-    throw new Error(`Ineligible action: ${action}`);
+export function transition(previous, command, options = {}) {
+  if (!eligible(previous, command)) {
+    throw new Error(`Ineligible action: ${JSON.stringify(command)}`);
   }
+  const action = typeof command === 'string' ? command : command.type;
   const state = JSON.parse(JSON.stringify(previous));
   switch (action) {
     case 'execute':
@@ -103,7 +108,7 @@ export function transition(previous, action, options = {}) {
       break;
     case 'success':
     case 'error': {
-      const index = state.attempts.findIndex((attempt) => !attempt.done);
+      const index = command.attempt ?? state.attempts.findIndex((attempt) => !attempt.done);
       const attempt = state.attempts[index];
       attempt.done = true;
       if (attempt.document !== state.document) {
@@ -117,7 +122,7 @@ export function transition(previous, action, options = {}) {
         state.events.push({ kind: 'network-error' });
       } else {
         state.events.push({ kind: 'token', id: index });
-        state.token = { id: index, expires: state.clock + 120000, used: false };
+        state.token = { id: index, expires: state.clock + 120000, status: 'held' };
       }
       state.request = null;
       break;
@@ -131,8 +136,9 @@ export function transition(previous, action, options = {}) {
     case 'replace':
     case 'crash': replaceDocument(state); break;
     case 'timeout': advance(state, state.deadline); break;
-    case 'consume': state.token.used = true; break;
+    case 'consume': state.token.status = 'consumed'; break;
     case 'expire': advance(state, state.token.expires); break;
+    case 'advance': advance(state, state.clock + command.ms); break;
   }
   return state;
 }

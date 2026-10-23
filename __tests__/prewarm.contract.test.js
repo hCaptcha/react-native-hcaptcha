@@ -8,8 +8,53 @@ import { PrewarmDriver } from '../__test-utils__/prewarm-driver';
 const BOUND = 5;
 const MODES = [false, true];
 const COMPONENTS = [{ passive: false }, { passive: true }, { passive: false, inline: true }];
-const ledger = { bound: BOUND, alphabet: ACTIONS, bounded: [], stateful: [], metamorphic: [], boundaries: [], regressions: [], failures: [] };
+const ledger = { bound: BOUND, alphabet: ACTIONS, bounded: [], stateful: [], outcomeOrders: [], metamorphic: [], boundaries: [], regressions: [], failures: [] };
 const exercised = new Map();
+const TOKEN_STATES = ['none', 'held', 'consumed', 'expired'];
+const REQUIRED_STATES = [
+  ...['loading', 'ready'].flatMap((phase) => ['idle', 'pending'].flatMap((request) => TOKEN_STATES.map((token) => `${phase}:${request}:${token}`))),
+  ...TOKEN_STATES.map((token) => `timed-out:idle:${token}`),
+  'destroyed:idle:none',
+];
+const REQUIRED_PAIRS = [
+  ['loading:idle:none', 'ready', 'ready:idle:none', 'execute', 'ready:pending:none'],
+  ['loading:pending:none', 'ready', 'ready:pending:none', 'success:current', 'ready:idle:held'],
+  ['ready:pending:none', 'success:current', 'ready:idle:held', 'consume', 'ready:idle:consumed'],
+  ['ready:pending:none', 'success:current', 'ready:idle:held', 'expire', 'ready:idle:expired'],
+  ['ready:idle:held', 'consume', 'ready:idle:consumed', 'advance', 'ready:idle:consumed'],
+  ['ready:idle:held', 'expire', 'ready:idle:expired', 'execute', 'ready:pending:expired'],
+  ['ready:pending:none', 'hide', 'ready:idle:none', 'execute', 'ready:pending:none'],
+  ['ready:pending:none', 'destroy', 'destroyed:idle:none', 'execute', 'loading:pending:none'],
+  ['ready:idle:held', 'destroy', 'destroyed:idle:none', 'execute', 'loading:pending:none'],
+  ['loading:pending:none', 'timeout', 'timed-out:idle:none', 'execute', 'loading:pending:none'],
+  ['ready:pending:none', 'crash', 'loading:pending:none', 'ready', 'ready:pending:none'],
+  ['ready:pending:none', 'replace', 'loading:pending:none', 'ready', 'ready:pending:none'],
+  ['loading:pending:none', 'ready', 'ready:pending:none', 'error:current', 'ready:idle:none'],
+  ['ready:pending:none', 'success:current', 'ready:idle:held', 'error:stale', 'ready:idle:held'],
+  ['ready:pending:none', 'success:current', 'ready:idle:held', 'success:stale', 'ready:idle:held'],
+].map(([from, first, middle, second, to]) => `${from} --${first}--> ${middle} --${second}--> ${to}`);
+
+const stateLabel = (state) => `${state.phase}:${state.request ? 'pending' : 'idle'}:${state.token?.status || 'none'}`;
+
+function observeCoverage(coverage, before, command, after) {
+  let action = typeof command === 'string' ? command : command.type;
+  if (action === 'success' || action === 'error') {
+    const index = command.attempt ?? before.attempts.findIndex((attempt) => !attempt.done);
+    const attempt = before.attempts[index];
+    action += attempt.document === before.document && attempt.request === before.request?.id ? ':current' : ':stale';
+  }
+  const state = stateLabel(after);
+  const edge = `${stateLabel(before)} --${action}--> ${state}`;
+  coverage.states[state] = (coverage.states[state] || 0) + 1;
+  coverage.actions[action] = (coverage.actions[action] || 0) + 1;
+  coverage.transitions[edge] = (coverage.transitions[edge] || 0) + 1;
+  if (coverage.lastTransition) {
+    const pair = `${coverage.lastTransition} --${action}--> ${state}`;
+    coverage.pairs[pair] = (coverage.pairs[pair] || 0) + 1;
+  }
+  coverage.lastTransition = edge;
+  coverage.acceptedTokens += after.events.slice(before.events.length).filter((event) => event.kind === 'token').length;
+}
 
 function recordScenario(trace, passive, options, passed) {
   const scenario = { passive, cold: Boolean(options.cold), showAlias: Boolean(options.showAlias),
@@ -24,6 +69,12 @@ async function runTrace(trace, passive, options = {}) {
   const driver = new PrewarmDriver(passive, options);
   let state = initialModel();
   let result;
+  let previous;
+  const context = { passive, options: { inline: Boolean(options.inline), showAlias: Boolean(options.showAlias), legacyPayload: Boolean(options.legacyPayload) } };
+  if (options.coverage) {
+    options.coverage.lastTransition = null;
+    options.coverage.states[stateLabel(state)] = (options.coverage.states[stateLabel(state)] || 0) + 1;
+  }
   try {
     for (let index = 0; index <= trace.length; index++) {
       if (index) {
@@ -32,11 +83,12 @@ async function runTrace(trace, passive, options = {}) {
           result = { ineligible: true };
           return result;
         }
+        previous = state;
         state = transition(state, action, options);
         try {
           await driver.step(action);
         } catch (error) {
-          result = { failure: { trace: trace.slice(0, index), passive, fields: ['driver'], error: error.message } };
+          result = { failure: { trace: trace.slice(0, index), ...context, fields: ['driver'], error: error.message } };
           return result;
         }
       }
@@ -44,9 +96,12 @@ async function runTrace(trace, passive, options = {}) {
       const actual = driver.snapshot();
       if (!isDeepStrictEqual(actual, expected)) {
         const fields = Object.keys(expected).filter((key) => !isDeepStrictEqual(actual[key], expected[key]));
-        result = { failure: { trace: trace.slice(0, index), passive, fields,
+        result = { failure: { trace: trace.slice(0, index), ...context, fields,
           actual: JSON.parse(JSON.stringify(actual)), expected } };
         return result;
+      }
+      if (index && options.coverage) {
+        observeCoverage(options.coverage, previous, trace[index - 1], state);
       }
     }
     result = { actual: driver.snapshot() };
@@ -60,13 +115,36 @@ async function runTrace(trace, passive, options = {}) {
 }
 
 function statefulTrace(seed, length) {
+  // Witness prefixes prevent destructive actions from starving token lifecycle coverage.
+  const prefixes = [
+    ['ready', 'execute', 'success', 'consume', { type: 'advance', ms: 120000 }, 'execute', 'success', 'expire'],
+    ['ready', 'execute', 'success', 'expire', 'execute', 'success', 'consume', { type: 'advance', ms: 120000 }],
+    ['ready', 'execute', 'hide', 'execute', { type: 'success', attempt: 1 }, { type: 'error', attempt: 0 }, 'consume'],
+    ['ready', 'execute', 'destroy', 'execute', 'ready', { type: 'success', attempt: 1 }, { type: 'success', attempt: 0 }, 'expire'],
+    ['execute', 'timeout', 'execute', 'ready', 'success', 'expire'],
+    ['ready', 'execute', 'crash', 'ready', { type: 'success', attempt: 1 }, 'consume'],
+    ['ready', 'execute', 'replace', 'ready', { type: 'error', attempt: 1 }, 'execute', { type: 'success', attempt: 2 }, 'expire'],
+    ['ready', 'execute', 'hide', 'execute', { type: 'error', attempt: 1 }, { type: 'success', attempt: 0 }, 'execute', 'success', 'consume'],
+    ['ready', 'execute', 'success', 'destroy', 'execute', 'ready', 'success', 'consume'],
+  ];
   let state = initialModel();
-  const trace = [];
+  const trace = [...prefixes[(seed - 1) % prefixes.length]];
+  for (const action of trace) {
+    state = transition(state, action);
+  }
   let random = seed;
-  for (let step = 0; step < length; step++) {
+  const weights = { ready: 8, execute: 6, consume: 8, expire: 8 };
+  while (trace.length < length) {
     random = (1664525 * random + 1013904223) % 4294967296;
-    const actions = ACTIONS.filter((action) => eligible(state, action));
-    const action = actions[random % actions.length];
+    const actions = ACTIONS.filter((action) => action !== 'success' && action !== 'error' && eligible(state, action))
+      .flatMap((action) => Array(weights[action] || 1).fill(action));
+    for (const [attempt, entry] of state.attempts.entries()) {
+      if (!entry.done) {
+        const weight = entry.document === state.document && entry.request === state.request?.id ? 16 : 2;
+        actions.push(...Array(weight).fill({ type: 'success', attempt }), { type: 'error', attempt });
+      }
+    }
+    const action = actions[Math.floor(random / 256) % actions.length];
     trace.push(action);
     state = transition(state, action);
   }
@@ -78,7 +156,7 @@ async function minimize(failure) {
   for (let width = Math.ceil(trace.length / 2); width; width--) {
     for (let index = 0; index + width <= trace.length;) {
       const candidate = [...trace.slice(0, index), ...trace.slice(index + width)];
-      const result = await runTrace(candidate, failure.passive, { family: 'reduction' });
+      const result = await runTrace(candidate, failure.passive, { ...failure.options, family: 'reduction' });
       if (!result.ineligible && result.failure?.fields.join() === failure.fields.join()) {
         trace = result.failure.trace;
         index = 0;
@@ -87,7 +165,7 @@ async function minimize(failure) {
       }
     }
   }
-  return (await runTrace(trace, failure.passive, { family: 'reduction' })).failure;
+  return (await runTrace(trace, failure.passive, { ...failure.options, family: 'reduction' })).failure;
 }
 
 beforeEach(() => jest.useFakeTimers());
@@ -125,21 +203,93 @@ test.each(COMPONENTS)('bounded exhaustive domain (passiveSiteKey=$passive, inlin
   expect(failures).toEqual([]);
 }, 180000);
 
-test.each(MODES)('deterministic stateful traces (passiveSiteKey=%s)', async (passive) => {
+test.each(COMPONENTS)('deterministic stateful traces and coverage gates (passive=$passive, inline=$inline)', async ({ passive, inline = false }) => {
   const failures = [];
+  const coverage = { states: {}, transitions: {}, pairs: {}, actions: {}, acceptedTokens: 0 };
+  const tokenlessSeeds = [];
   const traces = Array.from({ length: 64 }, (_, index) => statefulTrace(index + 1, 32));
-  for (const trace of traces) {
-    const result = await runTrace(trace, passive, { family: 'stateful' });
+  for (const [index, trace] of traces.entries()) {
+    const acceptedBefore = coverage.acceptedTokens;
+    const result = await runTrace(trace, passive, { inline, coverage, family: 'stateful' });
+    if (acceptedBefore === coverage.acceptedTokens) {
+      tokenlessSeeds.push(index + 1);
+    }
     if (result.failure) {
       failures.push(await minimize(result.failure));
     }
   }
-  ledger.stateful.push({ passive, seeds: [1, 64], length: 32, eligible: traces.length,
-    exercised: new Set(traces.map((trace) => trace.join())).size, completedWithoutViolation: traces.length - failures.length,
-    stoppedAtViolation: failures.length });
+  const missingStates = REQUIRED_STATES.filter((state) => !coverage.states[state]);
+  const missingPairs = REQUIRED_PAIRS.filter((pair) => !coverage.pairs[pair]);
+  ledger.stateful.push({ passive, inline, seeds: [1, 64], length: 32, eligible: traces.length,
+    exercised: new Set(traces.map((trace) => JSON.stringify(trace))).size, completedWithoutViolation: traces.length - failures.length,
+    stoppedAtViolation: failures.length, coverage, requiredStates: REQUIRED_STATES, requiredPairs: REQUIRED_PAIRS, missingStates, missingPairs, tokenlessSeeds });
   ledger.failures.push(...failures);
   expect(failures).toEqual([]);
+  expect(missingStates).toEqual([]);
+  expect(missingPairs).toEqual([]);
+  expect(tokenlessSeeds).toEqual([]);
 }, 180000);
+
+function permutations(values) {
+  if (!values.length) {
+    return [[]];
+  }
+  return values.flatMap((value) => permutations(values.filter((entry) => entry !== value))
+    .map((suffix) => [value, ...suffix]));
+}
+
+test.each(COMPONENTS)('all completion orders for two/three attempts (passive=$passive, inline=$inline)', async ({ passive, inline = false }) => {
+  let exercisedOrders = 0;
+  for (const interruption of ['hide', 'destroy', 'replace', 'crash']) {
+    for (const count of [2, 3]) {
+      const setup = ['ready', 'execute'];
+      for (let attempt = 1; attempt < count; attempt++) {
+        setup.push(interruption);
+        if (interruption === 'hide' || interruption === 'destroy') {
+          setup.push('execute');
+        }
+        if (interruption !== 'hide') {
+          setup.push('ready');
+        }
+      }
+      const orders = permutations(Array.from({ length: count }, (_, index) => index));
+      expect(orders).toHaveLength({ 2: 2, 3: 6 }[count]);
+      expect(new Set(orders.map((order) => order.join())).size).toBe(orders.length);
+      for (let mask = 0; mask < 2 ** count; mask++) {
+        const outcomes = Array.from({ length: count }, (_, attempt) => ({ type: Math.floor(mask / 2 ** attempt) % 2 ? 'success' : 'error', attempt }));
+        const tails = outcomes.at(-1).type === 'success'
+          ? [['expire'], ['consume', { type: 'advance', ms: 120000 }]]
+          : [[{ type: 'advance', ms: 120000 }]];
+        for (const tail of tails) {
+          let baseline;
+          let baselineTrace;
+          for (const order of orders) {
+            const trace = [...setup, ...order.map((attempt) => outcomes[attempt]), ...tail];
+            const result = await runTrace(trace, passive, { inline, family: 'outcome-order' });
+            if (result.failure) {
+              const failure = await minimize(result.failure);
+              ledger.failures.push(failure);
+              expect(failure).toBeUndefined();
+            }
+            expect(result.ineligible).toBeUndefined();
+            if (baseline) {
+              expect(result.actual).toEqual(baseline);
+              ledger.metamorphic.push({ passive, inline, relation: 'outcome-order-invariance',
+                trace: baselineTrace, transformed: trace });
+            } else {
+              baseline = result.actual;
+              baselineTrace = trace;
+            }
+            exercisedOrders++;
+          }
+        }
+      }
+    }
+  }
+  ledger.outcomeOrders.push({ passive, inline, attempts: [2, 3], interruptions: ['hide', 'destroy', 'replace', 'crash'],
+    eligible: 336, exercised: exercisedOrders, excluded: 0 });
+  expect(exercisedOrders).toBe(336);
+}, 30000);
 
 const METAMORPHIC_BASES = [
   ['execute', 'ready', 'success', 'hide', 'execute', 'success', 'consume'],

@@ -119,7 +119,8 @@ export class PrewarmDriver {
     });
   }
 
-  async step(action) {
+  async step(command) {
+    const action = typeof command === 'string' ? command : command.type;
     await act(async () => {
       switch (action) {
         case 'execute': this.ref.current[this.options.showAlias ? 'show' : 'execute'](); break;
@@ -132,8 +133,10 @@ export class PrewarmDriver {
           break;
         case 'success':
         case 'error': {
-          const attempt = this.attempts.find((entry) => !entry.done);
-          if (!attempt) {
+          const attempt = command.attempt === undefined
+            ? this.attempts.find((entry) => !entry.done)
+            : this.attempts[command.attempt];
+          if (!attempt || attempt.done) {
             throw new Error('SDK completion has no corresponding execute');
           }
           attempt.done = true;
@@ -166,6 +169,7 @@ export class PrewarmDriver {
         case 'timeout': jest.advanceTimersByTime(15000); break;
         case 'consume': this.tokens.at(-1).markUsed(); break;
         case 'expire': jest.advanceTimersByTime(Math.max(0, this.tokenExpires - Date.now())); break;
+        case 'advance': jest.advanceTimersByTime(command.ms); break;
         default: throw new Error(`Unknown driver action: ${action}`);
       }
     });
