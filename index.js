@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   modal: {
     flex: 1,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     width: 1,
   },
   prewarmContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 1000,
     elevation: 1000,
   },

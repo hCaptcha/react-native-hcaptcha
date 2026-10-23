@@ -80,7 +80,10 @@ describe('live SDK multi-screen auth flow', () => {
     await userEvent.press(await screen.findByTestId('signup'));
     await userEvent.press(await screen.findByTestId('cancel'));
     await fetch(`${authServer}/release-sdk`, { method: 'POST' });
-    await new Promise((resolve) => setTimeout(resolve, 5000));
+    await waitFor(async () => {
+      const state = await (await fetch(`${authServer}/state`)).json();
+      expect(state.sdkReady).toBe(1);
+    }, { timeout: 30000 });
     expect(await screen.findByTestId('page-welcome')).toBeDefined();
     expect(await screen.findByTestId('tokens-0')).toBeDefined();
     await userEvent.press(await screen.findByTestId('signup'));
@@ -109,6 +112,7 @@ describe('live SDK multi-screen auth flow', () => {
       }
     }
     await userEvent.press(await screen.findByTestId('retry-captcha'));
+    await waitFor(() => expect(measurements.attempts).toHaveLength(3));
     await waitFor(() => screen.findByTestId('tokens-3'), { timeout: 15000 });
     await userEvent.type(await screen.findByTestId('password'), 'Password-123');
     await waitFor(() => screen.findByTestId('password-valid'));

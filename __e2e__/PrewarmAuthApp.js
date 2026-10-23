@@ -132,6 +132,7 @@ export default function PrewarmAuthApp({ passiveSiteKey = false, slowSdk = false
     }
   };
 
+  const canRetry = !tokenRef.current && !submitting && status !== 'Verifying';
   return (
     <View style={styles.root}>
       <SafeAreaView style={styles.root}>
@@ -188,9 +189,9 @@ export default function PrewarmAuthApp({ passiveSiteKey = false, slowSdk = false
               />
               <Button testID="cancel" title="Back" onPress={leave} />
               <Button
-                testID="retry-captcha"
+                testID={canRetry ? 'retry-captcha' : 'retry-captcha-disabled'}
                 title="Retry security check"
-                disabled={Boolean(tokenRef.current) || submitting || status === 'Verifying'}
+                disabled={!canRetry}
                 onPress={verify}
               />
             </>

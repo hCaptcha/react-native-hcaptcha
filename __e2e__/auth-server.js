@@ -70,7 +70,7 @@ http
             releaseSdk = resolve;
           });
         }
-        if (['/measured/1/api.js', '/deferred/1/api.js'].includes(url.pathname)) {
+        if (['/measured/1/api.js', '/deferred/1/api.js', '/slow/1/api.js'].includes(url.pathname)) {
           res.setHeader('Content-Type', 'application/javascript');
           // Observe readiness without replacing any real SDK behavior.
           res.end(`
