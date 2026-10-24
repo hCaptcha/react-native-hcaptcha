@@ -19,6 +19,8 @@ hCaptcha wrapper for React Native (Android and iOS)
 
 Full examples for expo and react-native, as well as debugging guides, are in [MAINTAINER.md](./MAINTAINER.md)
 
+Upgrading from v4.1: see [v5 contract changes and migration steps](./UPGRADING.md), including changes that apply without prewarming.
+
 ## Demo
 
 See live demo in [Snack](https://snack.expo.io/rTUn6wTjW).
@@ -33,7 +35,7 @@ This means that if you are an Enterprise user with a 99.9% passive or purely pas
 
 Also, please note the following special message strings that can be returned via `onMessage` for [error cases](https://docs.hcaptcha.com/configuration#error-codes)
 
-The event returned by `onMessage` with `success === true` will be a passcode.
+Token events include `markUsed()`. The `open` message also has `success === true`; handle it separately from passcodes.
 
 In practice, you should always provide `onMessage`. Without it, your app will not receive tokens, errors, or cancel events.
 
@@ -51,7 +53,7 @@ export default function Example() {
       return;
     }
 
-    if (event.success) {
+    if (event.markUsed) {
       const token = event.nativeEvent.data;
       event.markUsed?.();
       captchaRef.current?.hide();
@@ -74,6 +76,56 @@ export default function Example() {
 }
 ```
 
+### Prewarming a multi-step flow
+
+Set `prewarm` to load the WebView and SDK on mount without fetching a token. It defaults to `false`, preserving the existing mount-on-`show()` behavior.
+
+Mount `ConfirmHcaptcha` once at the app root, after your navigation/content, inside a full-screen `View`. Keep it mounted across screens. Call `captchaRef.current.execute()` when screen 2 loads; `show()` is equivalent. Calls made before SDK readiness are queued. `hide()` cancels pending verification and keeps the WebView warm for reuse.
+
+```js
+<View style={{ flex: 1 }}>
+  <NavigationContainer>{/* screens */}</NavigationContainer>
+  <ConfirmHcaptcha
+    ref={captchaRef}
+    prewarm
+    siteKey="your-site-key"
+    onMessage={(event) => {
+      if (event.markUsed) {
+        // Store the token and markUsed callback for form submission.
+        tokenRef.current = { token: event.nativeEvent.data, markUsed: event.markUsed };
+        captchaRef.current.hide();
+      } else if (event.nativeEvent.data === 'expired') {
+        tokenRef.current = null;
+      }
+    }}
+  />
+</View>
+
+// Screen 2 load:
+captchaRef.current.execute();
+
+// On form submit, retain a snapshot across the async request:
+const token = tokenRef.current;
+await submitForm({ captchaToken: token.token });
+token.markUsed();
+```
+
+Submit `tokenRef.current.token` to your backend. Keep the token and its `markUsed` callback together for delayed submission. Tokens expire after 120 seconds by default; request a replacement if the form outlives the token. Idle prewarm loading failures stay silent. `execute()` retries a failed preload; failures during an active request reach `onMessage` with `success: false` and a retry hook.
+
+Use `verifyParams` for changing verification data to preserve the warm SDK. Changing legacy top-level `rqdata`, `phonePrefix`, or `phoneNumber` still reloads the SDK, including in prewarm mode. If the backend rejects credentials after consuming a token, discard it and execute again before retrying the form.
+
+Late results from cancelled executions are ignored. Changing `passiveSiteKey` preserves the warmed WebView and any held token's expiry deadline; it does not start another verification.
+
+Prewarm mode uses a persistent app-level overlay so showing the challenge preserves the native WebView. It covers its parent view and cannot appear above another native `Modal`. Android back-button and backdrop cancellation remain supported. With `passiveSiteKey`, it stays hidden during verification too.
+
+Call `captchaRef.current.destroy()` when the warmed WebView is no longer needed. It silently cancels pending verification, loading/token-expiry timers, and unmounts the WebView while keeping the component ref usable. Repeated calls are safe. Prop changes and `hide()` do not recreate it; the next `execute()` or `show()` creates a fresh WebView and queues verification until readiness. Native memory reclamation is managed by the OS/WebView runtime and may not immediately reduce process RSS.
+
+`destroy()` does not revoke an issued token. If retaining one for submission, track its expiry in the app because its local expiry notification stops. Retained `event.reset()` hooks become inert after destruction; use the component ref to start another verification. `event.markUsed()` remains safe and cannot clear a later token's timer.
+
+SDK loading has a 15-second timeout independent of form re-renders. A later `execute()` can retry a timed-out load; terminated WebView processes are recreated automatically.
+
+The inline `Hcaptcha` export also supports `prewarm`, `ref.current.execute()`, `ref.current.reset()` (cancel/reset without executing), and `ref.current.destroy()`. After destruction, `reset()` is inert and `execute()` recreates the WebView. The caller controls its visibility.
+
 ### Verification payloads with `verifyParams`
 
 Use `verifyParams` for request data passed to `hcaptcha.setData(...)` immediately before each verification attempt.
@@ -92,7 +144,7 @@ Use `verifyParams` for request data passed to `hcaptcha.setData(...)` immediatel
 />
 ```
 
-Legacy top-level `rqdata`, `phonePrefix`, and `phoneNumber` props still work, but `verifyParams` takes precedence and should be preferred for new code.
+Legacy top-level `rqdata`, `phonePrefix`, and `phoneNumber` props still work, but `verifyParams` takes precedence and should be preferred for new code. Keep legacy values stable during prewarming: changing them reloads the document even when `verifyParams` overrides their payload values. A `verifyParams` update changes the next execution's data without reloading or automatically starting another attempt.
 
 ### User Journeys (Enterprise)
 
@@ -195,11 +247,9 @@ import { Hcaptcha } from '@hcaptcha/react-native-hcaptcha';
 
 ### Handling the post-issuance expiration lifecycle
 
-This extension is a lightweight wrapper, and does not currently attempt to manage post-verification state in the same way as the web JS API, e.g. with an on-expire callback.
+The wrapper emits `expired` through `onMessage` 120 seconds after receiving the latest token unless its `event.markUsed()` has been called. A newer token replaces the earlier token's expiry timer. Expiry is delivered to the latest `onMessage` handler.
 
-In particular, if you do **not** plan to immediately consume the passcode returned by submitting it to your backend, you should start a timer to let your application state know that a new passcode is required when it expires.
-
-By default, this value is 120 seconds. So, an `expired` error will be emitted to `onMessage` if you haven't called `event.markUsed()`.
+In prewarm mode, hiding preserves this timer and unmounting cancels it. Explicit `destroy()` cancels it in both modes. Without prewarm, the existing expiry callback can still fire after ordinary unmount. Keep the token with its own `markUsed` callback and clear held app state when it expires. The local timer does not replace backend verification.
 
 Once you've utilized hCaptcha's token, call `markUsed` on the event object in `onMessage`:
 
@@ -237,11 +287,11 @@ Once you've utilized hCaptcha's token, call `markUsed` on the event object in `o
 
 If your app encounters an `error` event, you can reset the hCaptcha SDK flow by calling `event.reset()` to perform another attempt at verification.
 
-`event.reset()` rebuilds the verification payload from the current props and the current buffered journey immediately before retrying.
+`event.reset()` rebuilds the verification payload from the current props and the current buffered journey immediately before retrying. It requests a fresh verification, including after initialization failure or expiry. In prewarm mode it restores the wrapper overlay if hidden; passive mode stays hidden. A reset hook retained across `destroy()` is inert.
 
-The SDK automatically retries loading `api.js` after transient failures. If all attempts fail, `script-error` is sent via `onMessage`.
+The SDK automatically retries loading `api.js` after transient failures. Active initialization failures, including `script-error` and render exceptions, reach `onMessage` as errors and can be retried. Initialization failures and prewarm async rejections are explicitly typed, so their long messages or `Error` objects cannot be treated as tokens. Informational messages before readiness do not cancel the loading deadline.
 
-The 15-second `loading timeout` message does not stop initialization and should not be treated as a terminal loading failure.
+With `prewarm`, a 15-second loading timeout during an active request cancels that request and reports `loading timeout`; call `execute()` or `event.reset()` to retry. Idle preload failures and timeouts do not notify the app. Their failure state is retained so the next `execute()` retries; a timed-out document is recreated. Initialization can still finish in the background without fetching a token. Without `prewarm`, initialization and the pending verification continue after the timeout, preserving existing behavior.
 
 ## Dependencies
 
@@ -349,6 +399,7 @@ For new code, prefer:
 | onMessage | Function (see [here](https://github.com/react-native-webview/react-native-webview/blob/master/src/WebViewTypes.ts#L299)) | Required. Runs after receiving a response, error, or when user cancels. |
 | languageCode | string | Default language for hCaptcha; overrides phone defaults. A complete list of supported languages and their codes can be found [here](https://docs.hcaptcha.com/languages/) |
 | showLoading | boolean | Whether to show a loading indicator while the hCaptcha web content loads |
+| prewarm | boolean | Load the WebView and SDK on mount; defer verification until `execute()` or `show()`. Default: `false`. Keep mounted across screens; see prewarming usage above. |
 | closableLoading | boolean | Allow user to cancel hcaptcha during loading by touch loader overlay |
 | loadingIndicatorColor | string | Color of the ActivityIndicator |
 | backgroundColor | string | The background color code that will be applied to the main HTML element |

@@ -1,0 +1,218 @@
+/* eslint-env jest */
+import React from 'react';
+import vm from 'vm';
+import { act, cleanup, render } from '@testing-library/react-native';
+import { Modal } from 'react-native';
+import { getLastInjectJavaScriptMock, resetWebViewMockState } from 'react-native-webview';
+import ConfirmHcaptcha from '../index';
+import Hcaptcha from '../Hcaptcha';
+
+// Use the published loader, replacing only the native transport and remote SDK boundary.
+jest.unmock('@hcaptcha/loader/inline');
+
+export class PrewarmDriver {
+  constructor(passive, options = {}) {
+    this.passive = passive;
+    this.options = options;
+    this.documents = [];
+    this.attempts = [];
+    this.calls = [];
+    this.events = [];
+    this.tokens = [];
+    this.ref = React.createRef();
+    this.props = { prewarm: true, passiveSiteKey: passive, siteKey: 'contract-site',
+      baseUrl: 'https://contract.test', theme: 'light', rqdata: 'legacy-A', sentry: false };
+    if (!options.legacyPayload) {
+      this.props.verifyParams = { rqdata: 'legacy-A' };
+    }
+    if (options.cold) {
+      this.props.prewarm = false;
+    }
+    resetWebViewMockState();
+    this.component = render(this.element());
+    this.refresh();
+  }
+
+  element() {
+    const Component = this.options.inline ? Hcaptcha : ConfirmHcaptcha;
+    return <Component {...this.props} url={this.props.baseUrl} ref={this.ref} onMessage={(event) => {
+      if (event.markUsed) {
+        const id = this.attempts.findIndex((attempt) => attempt.token === event.nativeEvent.data);
+        this.events.push({ kind: 'token', id });
+        this.tokens.push(event);
+        this.tokenExpires = Date.now() + 120000;
+      } else if (event.nativeEvent.description === 'loading timeout') {
+        this.events.push({ kind: 'timeout' });
+      } else if (event.nativeEvent.data !== 'open' || !event.success) {
+        this.events.push({ kind: event.nativeEvent.data });
+      }
+      this.lastEvent = event;
+    }} />;
+  }
+
+  configure(props) {
+    this.props = { ...this.props, ...props };
+    this.passive = this.props.passiveSiteKey;
+    this.component.rerender(this.element());
+    this.refresh();
+  }
+
+  refresh() {
+    const webView = this.component.UNSAFE_queryByType('WebView');
+    if (!webView) {
+      return;
+    }
+    if (webView === this.current?.webView) {
+      this.current.receive = webView.props.onMessage;
+      return;
+    }
+    const document = { webView, receive: webView.props.onMessage, scripts: [], data: {} };
+    this.current = document;
+    this.documents.push(document);
+    const sandbox = {
+      console: { log() {}, warn() {}, error() {} },
+      document: { URL: 'https://contract.test', body: { style: {} },
+        createElement: () => ({}), head: { appendChild: (script) => document.scripts.push(script) } },
+      setTimeout, clearTimeout,
+      ReactNativeWebView: { postMessage: (data) => {
+        if (document.outbox) {
+          document.outbox.push(data);
+        } else {
+          document.receive({ nativeEvent: { data } });
+        }
+      } },
+    };
+    sandbox.window = sandbox;
+    sandbox.document.defaultView = sandbox;
+    sandbox.document.head.ownerDocument = sandbox.document;
+    document.context = vm.createContext(sandbox);
+    const sdk = {
+      render: (container, callbacks) => {
+        document.callbacks = callbacks;
+        return this.documents.indexOf(document);
+      },
+      setData: (id, data) => { document.data = JSON.parse(JSON.stringify(data)); },
+      reset() {}, // Keep old outcomes deliverable to challenge cancellation ownership.
+      execute: (id, options) => {
+        const token = `contract-token-${this.attempts.length}-${'x'.repeat(40)}`;
+        this.calls.push(document.data);
+        const attempt = { document, token, callbacks: document.callbacks, done: false };
+        this.attempts.push(attempt);
+        document.callbacks['open-callback']();
+        if (options?.async) {
+          return new Promise((resolve, reject) => {
+            attempt.resolve = resolve;
+            attempt.reject = reject;
+          });
+        }
+      },
+    };
+    document.sdk = sdk;
+    getLastInjectJavaScriptMock().mockImplementation((source) => vm.runInContext(source, document.context));
+    // Evaluate actual serialized config, actual published loader, and actual generated runtime.
+    const scripts = [...webView.props.source.html.matchAll(/<script type="text\/javascript">([\s\S]*?)<\/script>/g)];
+    act(() => {
+      webView.props.onLoadStart();
+      for (const script of scripts) {
+        vm.runInContext(script[1], document.context);
+      }
+    });
+  }
+
+  async step(command) {
+    const action = typeof command === 'string' ? command : command.type;
+    await act(async () => {
+      switch (action) {
+        case 'execute': this.ref.current[this.options.showAlias ? 'show' : 'execute'](); break;
+        case 'hide': this.ref.current[this.options.inline ? 'reset' : 'hide'](); break;
+        case 'destroy': this.ref.current.destroy(); break;
+        case 'eventReset': this.lastEvent.reset(); break;
+        case 'ready': this.ready(); break;
+        case 'duplicateReady': this.current.context.ReactNativeWebView.postMessage('__hcaptcha_ready__'); break;
+        case 'info': this.current.context.ReactNativeWebView.postMessage(command.data || 'fixture-info'); break;
+        case 'scriptError': this.current.context.ReactNativeWebView.postMessage('script-error'); break;
+        case 'initError': {
+          const loader = this.current.context.hCaptchaLoader;
+          this.current.context.hCaptchaLoader = () => Promise.reject(new Error(command.data || 'loader-error'));
+          this.current.context.loadApiScript();
+          this.current.context.hCaptchaLoader = loader;
+          break;
+        }
+        case 'renderError': {
+          const sdk = this.current.sdk;
+          const renderWidget = sdk.render;
+          sdk.render = () => {
+            sdk.render = renderWidget;
+            throw new TypeError('fixture render failure');
+          };
+          this.ready();
+          break;
+        }
+        case 'success':
+        case 'error': {
+          const attempt = command.attempt === undefined
+            ? this.attempts.find((entry) => !entry.done)
+            : this.attempts[command.attempt];
+          if (!attempt || attempt.done) {
+            throw new Error('SDK completion has no corresponding execute');
+          }
+          attempt.done = true;
+          if (action === 'success') {
+            if (attempt.resolve) {
+              attempt.resolve({ response: attempt.token });
+            } else {
+              attempt.callbacks.callback(attempt.token);
+            }
+          } else if (attempt.reject) {
+            attempt.reject(command.errorObject ? new Error(command.data) : command.data || 'network-error');
+          } else {
+            attempt.callbacks['error-callback'](command.data || 'network-error');
+          }
+          break;
+        }
+        case 'edit':
+          if (this.options.legacyPayload) {
+            this.configure({ rqdata: this.props.rqdata === 'legacy-A' ? 'override-B' : 'legacy-A' });
+          } else {
+            this.configure({ verifyParams: { rqdata: this.props.verifyParams.rqdata === 'override-B' ? 'legacy-A' : 'override-B' } });
+          }
+          break;
+        case 'replace':
+          this.configure({ theme: this.props.theme === 'dark' ? 'light' : 'dark' });
+          break;
+        case 'crash':
+          this.current.webView.props[this.passive ? 'onContentProcessDidTerminate' : 'onRenderProcessGone']();
+          break;
+        case 'reload': this.current.webView.props.onLoadStart(); break;
+        case 'timeout': jest.advanceTimersByTime(15000); break;
+        case 'consume': this.tokens.at(-1).markUsed(); break;
+        case 'expire': jest.advanceTimersByTime(Math.max(0, this.tokenExpires - Date.now())); break;
+        case 'advance': jest.advanceTimersByTime(command.ms); break;
+        default: throw new Error(`Unknown driver action: ${action}`);
+      }
+    });
+    this.refresh();
+  }
+
+  ready() {
+    this.current.context.hcaptcha = this.current.sdk;
+    this.current.scripts.at(-1).onload();
+    this.current.context.hCaptchaOnLoad();
+  }
+
+  snapshot() {
+    let visible = null;
+    if (!this.passive && !this.options.inline) {
+      visible = this.props.prewarm
+        ? this.component.queryByTestId('confirm-hcaptcha-prewarm', { includeHiddenElements: true })?.props.pointerEvents === 'auto'
+        : Boolean(this.component.UNSAFE_queryByType(Modal));
+    }
+    return { mounted: Boolean(this.component.UNSAFE_queryByType('WebView')), documents: this.documents.length, visible, calls: this.calls, events: this.events };
+  }
+
+  async dispose() {
+    await act(async () => { cleanup(); });
+    jest.clearAllTimers();
+    jest.clearAllMocks();
+  }
+}

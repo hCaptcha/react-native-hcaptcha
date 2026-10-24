@@ -40,12 +40,21 @@ type ConfirmHcaptchaProps = Omit<HcaptchaProps, 'url' | 'style'> & {
 
 export default class ConfirmHcaptcha extends React.Component<ConfirmHcaptchaProps> {
   /**
-   * Shows the modal containing the challenge
+   * Requests verification and shows the challenge unless passive. Equivalent to execute().
    */
   show: () => void;
   /**
-   * Hides the modal containing the challenge. Do not pass any argument to trigger
-   * the onMessage `cancel` event
+   * Starts verification; equivalent to show(). Queues until SDK readiness.
+   */
+  execute: () => void;
+  /**
+   * Silently cancels verification and timers and unmounts the WebView.
+   * The next show()/execute() creates a fresh WebView. Retained event.reset() hooks become inert.
+   */
+  destroy: () => void;
+  /**
+   * Hides the challenge; prewarm also cancels pending verification without unmounting.
+   * Passing a truthy source emits onMessage `cancel`; omitting it is silent.
    */
   hide: (source?: any) => void;
   /**

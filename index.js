@@ -1,5 +1,5 @@
-import React, { PureComponent } from 'react';
-import { Modal, SafeAreaView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
+import React, { createRef, PureComponent } from 'react';
+import { BackHandler, Modal, SafeAreaView, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import Hcaptcha from './Hcaptcha';
 import PropTypes from 'prop-types';
 import { clearJourneyEvents, disableJourneyConsumer, enableJourneyConsumer } from './journey';
@@ -10,15 +10,26 @@ class ConfirmHcaptcha extends PureComponent {
   state = {
     journeyStopped: false,
     show: false,
+    destroyed: false,
+    generation: 0,
   };
   hasJourneyConsumer = false;
+  verificationPending = false;
+  captchaRef = createRef();
+  // Default-mode token timers can outlive hide() and must remain cancellable.
+  tokenTimers = new Set();
   getJourneyEnabled(props = this.props, state = this.state) {
-    return Boolean(props.userJourney && !state.journeyStopped);
+    return Boolean(props.userJourney && !state.journeyStopped && !state.destroyed);
   }
   componentDidMount() {
     this.syncJourneyConsumer(false, this.getJourneyEnabled());
   }
   componentDidUpdate(prevProps, prevState) {
+    if (this.state.show && (prevProps.prewarm !== this.props.prewarm || prevProps.passiveSiteKey !== this.props.passiveSiteKey)) {
+      this.backSubscription?.remove();
+      this.backSubscription = null;
+      this.executePrewarmed(this.verificationPending);
+    }
     if (prevProps.userJourney !== this.props.userJourney && prevState.journeyStopped) {
       this.setState({ journeyStopped: false });
       return;
@@ -31,6 +42,7 @@ class ConfirmHcaptcha extends PureComponent {
   }
   componentWillUnmount() {
     this.syncJourneyConsumer(this.getJourneyEnabled(), false);
+    this.backSubscription?.remove();
   }
   syncJourneyConsumer(previousValue, nextValue) {
     if (!previousValue && nextValue && !this.hasJourneyConsumer) {
@@ -51,10 +63,59 @@ class ConfirmHcaptcha extends PureComponent {
     this.setState({ journeyStopped: true });
   };
   show = () => {
-    this.setState({ show: true });
+    if (this.props.prewarm || !this.state.show) {
+      this.verificationPending = true;
+    }
+    this.setState({ show: true, destroyed: false }, this.executePrewarmed);
+  };
+  onRequestChange = (pending) => {
+    this.verificationPending = pending;
+    if (pending && this.props.prewarm && !this.state.show && !this.state.destroyed) {
+      this.setState({ show: true }, () => this.executePrewarmed(false));
+    }
+  };
+  onTokenTimerChange = (timer, active) => {
+    if (active) {
+      this.tokenTimers.add(timer);
+    } else {
+      this.tokenTimers.delete(timer);
+    }
+  };
+  executePrewarmed = (execute = true) => {
+    if (!this.props.prewarm || !this.state.show) {
+      return;
+    }
+    if (!this.props.passiveSiteKey) {
+      this.backSubscription?.remove();
+      this.backSubscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        this.hide('back_button');
+        return true;
+      });
+    }
+    if (execute) {
+      this.captchaRef.current?.execute();
+    }
+  };
+  execute = () => this.show();
+  destroy = () => {
+    this.verificationPending = false;
+    this.backSubscription?.remove();
+    this.backSubscription = null;
+    this.captchaRef.current?.destroy();
+    for (const timer of this.tokenTimers) {
+      clearTimeout(timer);
+    }
+    this.tokenTimers.clear();
+    this.setState(({ generation }) => ({ show: false, destroyed: true, generation: generation + 1 }));
   };
   hide = (source) => {
     const { onMessage } = this.props;
+    this.verificationPending = false;
+    this.backSubscription?.remove();
+    this.backSubscription = null;
+    if (this.props.prewarm) {
+      this.captchaRef.current?.reset();
+    }
     this.setState({ show: false });
     if (source) { // if source === undefined => called by the user
       onMessage({ nativeEvent: { data: 'cancel' } });
@@ -86,6 +147,7 @@ class ConfirmHcaptcha extends PureComponent {
       phonePrefix,
       phoneNumber,
       verifyParams,
+      prewarm,
     } = this.props;
 
     const WrapperComponent = useSafeAreaView === false ? View : SafeAreaView;
@@ -94,6 +156,8 @@ class ConfirmHcaptcha extends PureComponent {
     return (
       <WrapperComponent style={styles.wrapper}>
         <Hcaptcha
+          key={this.state.generation}
+          ref={this.captchaRef}
           url={baseUrl}
           size={size}
           siteKey={siteKey}
@@ -118,7 +182,10 @@ class ConfirmHcaptcha extends PureComponent {
           phoneNumber={phoneNumber}
           userJourney={journeyEnabled}
           verifyParams={verifyParams}
+          prewarm={prewarm}
           _journeyManagedExternally={true}
+          _onRequestChange={this.onRequestChange}
+          _onTokenTimerChange={this.onTokenTimerChange}
         />
       </WrapperComponent>
     );
@@ -129,16 +196,48 @@ class ConfirmHcaptcha extends PureComponent {
       passiveSiteKey,
       backgroundColor,
       hasBackdrop,
+      prewarm,
     } = this.props;
 
-    if (!show) {
+    if (this.state.destroyed || (!show && !prewarm)) {
       return null;
     }
 
-    if (passiveSiteKey) {
+    if (passiveSiteKey && !prewarm) {
       return (
         <View pointerEvents="none" style={styles.passiveContainer}>
           {this.renderCaptcha()}
+        </View>
+      );
+    }
+
+    const content = (
+      <View style={styles.modal}>
+        {hasBackdrop ? (
+          <TouchableWithoutFeedback
+            onPress={() => this.hide('backdrop')}
+            testID="confirm-hcaptcha-backdrop"
+          >
+            <View style={[styles.backdrop, { backgroundColor }]} />
+          </TouchableWithoutFeedback>
+        ) : null}
+        <View style={styles.modalContent}>
+          {this.renderCaptcha()}
+        </View>
+      </View>
+    );
+
+    if (prewarm) {
+      return (
+        <View
+          testID="confirm-hcaptcha-prewarm"
+          pointerEvents={show && !passiveSiteKey ? 'auto' : 'none'}
+          accessibilityElementsHidden={!show || passiveSiteKey}
+          importantForAccessibility={show && !passiveSiteKey ? 'auto' : 'no-hide-descendants'}
+          accessibilityViewIsModal={show && !passiveSiteKey}
+          style={[styles.prewarmContainer, passiveSiteKey && styles.passiveContainer, (!show || passiveSiteKey) && styles.hidden]}
+        >
+          {content}
         </View>
       );
     }
@@ -150,19 +249,7 @@ class ConfirmHcaptcha extends PureComponent {
         transparent
         visible={show}
       >
-        <View style={styles.modal}>
-          {hasBackdrop ? (
-            <TouchableWithoutFeedback
-              onPress={() => this.hide('backdrop')}
-              testID="confirm-hcaptcha-backdrop"
-            >
-              <View style={[styles.backdrop, { backgroundColor }]} />
-            </TouchableWithoutFeedback>
-          ) : null}
-          <View style={styles.modalContent}>
-            {this.renderCaptcha()}
-          </View>
-        </View>
+        {content}
       </Modal>
     );
   }
@@ -177,7 +264,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   modal: {
     flex: 1,
@@ -194,6 +281,14 @@ const styles = StyleSheet.create({
     top: 0,
     width: 1,
   },
+  prewarmContainer: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 1000,
+    elevation: 1000,
+  },
+  hidden: {
+    opacity: 0,
+  },
   wrapper: {
     flex: 1,
     justifyContent: 'center',
@@ -205,6 +300,7 @@ ConfirmHcaptcha.propTypes = {
   size: PropTypes.string,
   siteKey: PropTypes.string.isRequired,
   passiveSiteKey: PropTypes.bool,
+  prewarm: PropTypes.bool,
   baseUrl: PropTypes.string,
   onMessage: PropTypes.func.isRequired,
   languageCode: PropTypes.string,
@@ -237,6 +333,7 @@ ConfirmHcaptcha.propTypes = {
 ConfirmHcaptcha.defaultProps = {
   size: 'invisible',
   passiveSiteKey: false,
+  prewarm: false,
   showLoading: false,
   closableLoading: false,
   orientation: 'portrait',

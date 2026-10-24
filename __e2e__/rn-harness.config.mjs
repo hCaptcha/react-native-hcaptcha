@@ -12,7 +12,8 @@ const config = {
   appRegistryComponentName: 'react_native_hcaptcha_example',
 
   disableViewFlattening: true,
-  bridgeTimeout: 120000,
+  bridgeTimeout: Number(process.env.HARNESS_BRIDGE_TIMEOUT || 120000),
+  testTimeout: Number(process.env.HARNESS_TEST_TIMEOUT || 120000),
   forwardClientLogs: true,
 
   runners: [

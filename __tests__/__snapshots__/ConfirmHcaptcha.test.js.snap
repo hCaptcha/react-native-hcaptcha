@@ -88,7 +88,10 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
 })();"
             javaScriptEnabled={true}
             mixedContentMode="always"
+            onContentProcessDidTerminate={[Function]}
+            onLoadStart={[Function]}
             onMessage={[Function]}
+            onRenderProcessGone={[Function]}
             onShouldStartLoadWithRequest={[Function]}
             originWhitelist={
               [
@@ -112,29 +115,55 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="X-UA-Compatible" content="ie=edge">
         <script type="text/javascript">
-          var hcaptchaConfig = {"loaderConfig":{"scriptSource":"https://js.hcaptcha.com/1/api.js","render":"explicit","host":"00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com","hl":"en","custom":false},"backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_4_1_0":true},"phoneNumber":null,"phonePrefix":null,"orientation":"portrait","rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
+          var hcaptchaConfig = {"loaderConfig":{"scriptSource":"https://js.hcaptcha.com/1/api.js","render":"explicit","host":"00000000-0000-0000-0000-000000000000.react-native.hcaptcha.com","hl":"en","custom":false},"backgroundColor":"rgba(0, 0, 0, 0.3)","debugInfo":{"rnver_0_0_0":true,"dep_mocked-md5":true,"sdk_5_0_0":true},"phoneNumber":null,"phonePrefix":null,"orientation":"portrait","rqdata":null,"siteKey":"00000000-0000-0000-0000-000000000000","size":"invisible","theme":"light"};
           Object.entries(hcaptchaConfig.debugInfo || {}).forEach(function (entry) { window[entry[0]] = entry[1] });
         </script>
         <script type="text/javascript">
           window.hCaptchaLoader = function(config) { window.hCaptchaLoaderConfig = config; return Promise.resolve(window.hcaptcha); };
         </script>
         <script type="text/javascript">
+          var getErrorData = function(error) {
+            return typeof error === 'string' ? error : (error && error.message) || (error && error.name) || 'error';
+          };
+          var postLoadError = function(error) {
+            window.ReactNativeWebView.postMessage("__hcaptcha_load_error__:" + JSON.stringify(getErrorData(error)));
+          };
           var loadApiScript = function() {
             if (typeof window.hCaptchaLoader !== 'function') {
-              window.ReactNativeWebView.postMessage('error');
+              postLoadError('error');
               return;
             }
 
-            window.hCaptchaLoader(hcaptchaConfig.loaderConfig).then(onloadCallback).catch(function(error) {
-              window.ReactNativeWebView.postMessage((error && error.message) || (error && error.name) || 'error');
-            });
+            window.hCaptchaLoader(hcaptchaConfig.loaderConfig).then(onloadCallback).catch(postLoadError);
           };
           var hcaptchaWidgetId = null;
+          var hcaptchaRequestId = null;
+          var setRequest = function(requestId) {
+            hcaptchaRequestId = requestId;
+          };
+          var postRequestMessage = function(data, requestId, error) {
+            window.ReactNativeWebView.postMessage(requestId === null ? data :
+              "__hcaptcha_request__:" + JSON.stringify({ requestId: requestId, data: data, error: Boolean(error) }));
+          };
+          var postCallback = function(data) {
+            if (hcaptchaRequestId === null) {
+              window.ReactNativeWebView.postMessage(data);
+            }
+          };
           var setData = function(data) {
             hcaptcha.setData(hcaptchaWidgetId, data || {});
           };
           var execute = function() {
-            hcaptcha.execute(hcaptchaWidgetId);
+            if (hcaptchaRequestId === null) {
+              hcaptcha.execute(hcaptchaWidgetId);
+            } else {
+              var requestId = hcaptchaRequestId;
+              hcaptcha.execute(hcaptchaWidgetId, { async: true }).then(function(result) {
+                postRequestMessage(result.response, requestId);
+              }, function(error) {
+                postRequestMessage(getErrorData(error), requestId, true);
+              });
+            }
           };
           var reset = function() {
             hcaptcha.reset(hcaptchaWidgetId);
@@ -148,25 +177,25 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
               console.log("challenge render complete");
             } catch (e) {
               console.log("challenge failed to render:", e);
-              window.ReactNativeWebView.postMessage(e.name);
+              postLoadError(e.name || 'error');
             }
           };
           var onDataCallback = function(response) {
-            window.ReactNativeWebView.postMessage(response);
+            postCallback(response);
           };
           var onCancel = function() {
-            window.ReactNativeWebView.postMessage("challenge-closed");
+            postCallback("challenge-closed");
           };
           var onOpen = function() {
             document.body.style.backgroundColor = hcaptchaConfig.backgroundColor;
-            window.ReactNativeWebView.postMessage("open");
+            postRequestMessage("open", hcaptchaRequestId);
             console.log("challenge opened");
           };
-          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onDataExpiredCallback = function(error) { postCallback(error); };
+          var onChalExpiredCallback = function(error) { postCallback(error); };
           var onDataErrorCallback = function(error) {
             console.warn("challenge error callback fired");
-            window.ReactNativeWebView.postMessage(error);
+            postCallback(error);
           };
           const getRenderConfig = function(siteKey, theme, size, orientation) {
             var config = {

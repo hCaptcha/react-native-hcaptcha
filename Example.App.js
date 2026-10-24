@@ -46,13 +46,14 @@ const App = () => {
         // userJourney={true}
       />
       <TouchableOpacity
+        testID="example-launch"
         onPress={() => {
           captchaForm.current.show();
         }}>
         <Text style={styles.paragraph}>Click to launch</Text>
       </TouchableOpacity>
       {code && (
-        <Text style={styles.codeContainer}>
+        <Text testID="example-status" style={styles.codeContainer}>
           {'passcode or status: '}
           <Text style={styles.codeText}>
             {code}
