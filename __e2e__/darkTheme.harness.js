@@ -3,12 +3,15 @@ import { screen } from '@react-native-harness/ui';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import Hcaptcha, {
-  LOADING_OVERLAY_TEST_ID,
-} from '@hcaptcha/react-native-hcaptcha/Hcaptcha.js';
+import Hcaptcha from '@hcaptcha/react-native-hcaptcha/Hcaptcha.js';
 
 const siteKey = '10000000-ffff-ffff-ffff-000000000001';
 const baseUrl = 'https://hcaptcha.com';
+
+// Screenshots are cropped to this view. On a full-screen shot the widget is ~11% of the
+// pixels and its light card is close enough to white that removing the widget entirely
+// changed only ~0.6% of the screen - under the threshold below, so a missing widget passed.
+const WIDGET_TEST_ID = 'hcaptcha-widget-frame';
 
 // `render` resolves once React has committed and native has processed the view-creation
 // commands; it does not wait for the WebView to fetch anything, so the widget is still blank
@@ -21,23 +24,23 @@ const MOUNT_MS = 10000;
 const READY_MS = 20000;
 const POLL_MS = 250;
 
-// Readiness only means `hcaptcha.render()` returned; the widget's own images may still be
-// painting. Rather than guess a settle delay, poll until two consecutive frames are identical.
-// Best-effort: if the pixels never settle we screenshot anyway and let the diff decide, which
-// keeps a never-quiet widget from turning into an unexplained timeout.
+// The token arrives with the checkmark, but the checkmark animates in. Rather than guess a
+// settle delay, poll until two consecutive frames are identical. Best-effort: if the pixels
+// never settle we screenshot anyway and let the diff decide, which keeps a never-quiet widget
+// from turning into an unexplained timeout.
 const PAINT_SETTLE_MS = 5000;
 
 // `failureThresholdType: 'percent'` compares `differences / totalPixels` - a 0-1 ratio - so
 // this is a fraction, not a percentage: 0.01 is 1% of the pixels. The previous value of 5
 // meant 500%, which no image pair can exceed, so neither assertion below could ever fail.
-// For reference, the widest signal these shots carry - the light baseline against the dark
-// one - is 5.6% of the screen on Android and 6.3% on iOS, so 1% leaves room for antialiasing
-// while still catching a widget that renders in the wrong theme.
+// Measured on the full-screen baselines, a missing widget is ~0.6% of the screen and the
+// wrong theme ~6%; cropped to the widget both are eight to nine times that, so 1% leaves room
+// for antialiasing while catching either.
 const FAILURE_THRESHOLD = 0.01;
 
 const WidgetFixture = ({ theme, onMessage }) => (
   <View style={styles.container}>
-    <View style={styles.widgetFrame}>
+    <View style={styles.widgetFrame} testID={WIDGET_TEST_ID}>
       <Hcaptcha
         siteKey={siteKey}
         size="normal"
@@ -57,13 +60,16 @@ const sameBytes = (a, b) =>
   a.length === b.length &&
   a.every((byte, index) => byte === b[index]);
 
+const screenshotWidget = async () =>
+  screen.screenshot(await screen.findByTestId(WIDGET_TEST_ID));
+
 const waitForStablePaint = async () => {
   const deadline = Date.now() + PAINT_SETTLE_MS;
-  let previous = (await screen.screenshot())?.data;
+  let previous = (await screenshotWidget())?.data;
 
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-    const current = (await screen.screenshot())?.data;
+    const current = (await screenshotWidget())?.data;
     if (sameBytes(previous, current)) {
       return;
     }
@@ -71,13 +77,18 @@ const waitForStablePaint = async () => {
   }
 };
 
+// The SDK forwards a successful message longer than 35 characters as a token.
+const isToken = (m) => m.success === true && m.nativeEvent.data.length > 35;
+
 /**
- * Renders the widget and blocks until it is actually on screen.
+ * Renders the widget and blocks until it has finished verifying.
  *
- * The overlay is torn down when the page posts its first message, so its absence is the
- * readiness signal. It also goes on failure, which is why the collected messages are checked
- * on every poll: an error there should fail the test with the SDK's own description instead of
- * letting it run on and diff a screenshot of a spinner or a blank frame.
+ * The test sitekey passes without a challenge, so the widget's final state - the checked
+ * checkbox the baselines show - arrives together with the token. Waiting on anything earlier
+ * is not enough: the SDK's internal ready event only means `hcaptcha.render()` returned, and
+ * the iframe can still be blank on the network after it. Collected messages are also checked
+ * for errors on every poll, so a failure ends the test with the SDK's own description instead
+ * of diffing a screenshot of a spinner or a blank frame.
  */
 const renderWidget = async (theme) => {
   const messages = [];
@@ -93,8 +104,8 @@ const renderWidget = async (theme) => {
         const { description, data } = failure.nativeEvent;
         throw new Error(`hCaptcha reported: ${description || data}`);
       }
-      if (screen.queryByTestId(LOADING_OVERLAY_TEST_ID) !== null) {
-        throw new Error('hCaptcha is still loading');
+      if (!messages.some(isToken)) {
+        throw new Error('hCaptcha has not issued a token yet');
       }
     },
     { timeout: READY_MS, interval: POLL_MS },
@@ -129,7 +140,7 @@ describe('hCaptcha theme rendering', () => {
   test('light widget matches baseline', async () => {
     await renderWidget('light');
 
-    const screenshot = await screen.screenshot();
+    const screenshot = await screenshotWidget();
     await expect(screenshot).toMatchImageSnapshot({
       name: 'hcaptcha-light',
       threshold: 0.15,
@@ -141,7 +152,7 @@ describe('hCaptcha theme rendering', () => {
   test('dark widget matches baseline', async () => {
     await renderWidget('dark');
 
-    const screenshot = await screen.screenshot();
+    const screenshot = await screenshotWidget();
     await expect(screenshot).toMatchImageSnapshot({
       name: 'hcaptcha-dark',
       threshold: 0.15,
