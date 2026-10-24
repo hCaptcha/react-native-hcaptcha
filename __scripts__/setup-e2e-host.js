@@ -34,12 +34,17 @@ if (fs.existsSync(hostTestsDir)) {
 // 2. Install react-native-harness (must happen BEFORE native build so
 //    HarnessUI TurboModule is compiled into the binary)
 console.log('Installing react-native-harness in host app...');
+// Pinned deliberately. The host app is regenerated from scratch on every CI run, so an
+// unpinned range resolves to whatever is newest at that moment and upstream defaults land
+// without a commit here: 1.0.0 had no per-test timeout at all, and the `testTimeout: 5000`
+// default introduced later turned the e2e suite red on its own. Bump this on purpose.
+const HARNESS_VERSION = '1.6.0';
 const harnessPkgs = [
   'react-native-harness',
   '@react-native-harness/platform-android',
   '@react-native-harness/platform-apple',
   '@react-native-harness/ui',
-].join(' ');
+].map((name) => `${name}@${HARNESS_VERSION}`).join(' ');
 
 if (pm === 'yarn') {
   execSync(`yarn add --dev ${harnessPkgs}`, { stdio: 'inherit', cwd: HOST_DIR });

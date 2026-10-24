@@ -13,6 +13,12 @@ const config = {
 
   disableViewFlattening: true,
   bridgeTimeout: Number(process.env.HARNESS_BRIDGE_TIMEOUT || 120000),
+  // A backstop, not the mechanism: each case waits on the widget's own readiness signal and
+  // returns as soon as it arrives, so a healthy run finishes well inside this.
+  //
+  // This has to live here rather than as Jest's `testTimeout`: the harness reads
+  // `session.config.testTimeout` first and the schema defaults it to 5000, so it is never
+  // undefined and a value in jest.harness.config.mjs is never consulted.
   testTimeout: Number(process.env.HARNESS_TEST_TIMEOUT || 120000),
   forwardClientLogs: true,
 
