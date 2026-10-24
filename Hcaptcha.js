@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import hCaptchaLoaderInlineScript from '@hcaptcha/loader/inline';
 import WebView from 'react-native-webview';
 import { ActivityIndicator, Linking, Platform, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
@@ -28,6 +28,8 @@ const patchPostMessageJsCode = `(${String(function () {
 })})();`;
 
 const HCAPTCHA_READY_EVENT = '__hcaptcha_ready__';
+const HCAPTCHA_REQUEST_EVENT = '__hcaptcha_request__:';
+const HCAPTCHA_LOAD_ERROR_EVENT = '__hcaptcha_load_error__:';
 
 const serializeForInlineScript = (value) =>
   JSON.stringify(value)
@@ -133,8 +135,8 @@ const buildVerifyData = ({
   return data;
 };
 
-const buildVerifyInjectionScript = (payload, resetFirst = false) =>
-  `try { ${resetFirst ? 'reset(); ' : ''}setData(${serializeForInlineScript(payload)}); execute(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;`;
+const buildVerifyInjectionScript = (payload, resetFirst = false, requestId) =>
+  `try { ${resetFirst ? 'reset(); ' : ''}${requestId === undefined ? '' : `setRequest(${requestId}); `}setData(${serializeForInlineScript(payload)}); execute(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;`;
 
 const getHcaptchaHost = (host, siteKey) => {
   if (host) {
@@ -199,8 +201,9 @@ function buildHcaptchaLoaderConfig({
  * @param {string} phoneNumber: Optional full phone number in E.164 format ("+44123..."), for use in MFA.
  * @param {boolean} userJourney: Enable automatic user journey injection
  * @param {object} verifyParams: Verification payload overrides
+ * @param {boolean} prewarm: Load the SDK on mount and defer verification until execute()
  */
-const Hcaptcha = ({
+const Hcaptcha = forwardRef(({
   onMessage,
   size,
   siteKey,
@@ -226,14 +229,52 @@ const Hcaptcha = ({
   phoneNumber,
   userJourney,
   verifyParams,
+  prewarm = false,
   _journeyManagedExternally,
-}) => {
+  _onRequestChange,
+  _onTokenTimerChange,
+}, ref) => {
   const tokenTimeout = 120000;
   const loadingTimeout = 15000;
   const [isLoading, setIsLoading] = useState(true);
+  const [webViewGeneration, setWebViewGeneration] = useState(0);
+  const [destroyed, setDestroyed] = useState(false);
+  const destroyedRef = useRef(false);
+  const lifetimeRef = useRef({});
+  const lifetime = lifetimeRef.current;
   const isLoadingRef = useRef(true);
   const journeyEnabled = Boolean(userJourney);
   const hasJourneyConsumerRef = useRef(false);
+  const readyRef = useRef(false);
+  const loadStartedRef = useRef(false);
+  const executeRequestedRef = useRef(!prewarm);
+  const requestIdRef = useRef(0);
+  const prewarmRef = useRef(prewarm);
+  const hasExecutedRef = useRef(false);
+  const loadFailedRef = useRef(false);
+  const webViewRef = useRef(null);
+  const documentRef = useRef(null);
+  const loadingTimerRef = useRef(null);
+  const tokenTimerRef = useRef(null);
+  const clearTokenTimer = useCallback(() => {
+    clearTimeout(tokenTimerRef.current);
+    _onTokenTimerChange?.(tokenTimerRef.current, false);
+  }, [_onTokenTimerChange]);
+  const onMessageRef = useRef(onMessage);
+  const resetRef = useRef(null);
+  const mountedRef = useRef(true);
+  onMessageRef.current = onMessage;
+  prewarmRef.current = prewarm;
+  const setExecuteRequested = useCallback((requested) => {
+    executeRequestedRef.current = requested;
+    _onRequestChange?.(requested);
+  }, [_onRequestChange]);
+  // Retained reset hooks follow renders, but cannot cross explicit destruction.
+  const reset = useCallback(() => {
+    if (mountedRef.current && lifetimeRef.current === lifetime) {
+      resetRef.current();
+    }
+  }, [lifetime]);
   const normalizedTheme = useMemo(() => normalizeTheme(theme), [theme]);
   const normalizedSize = useMemo(() => normalizeSize(size), [size]);
   const loaderConfig = useMemo(
@@ -289,22 +330,48 @@ const Hcaptcha = ({
           ${hCaptchaLoaderInlineScript}
         </script>
         <script type="text/javascript">
+          var getErrorData = function(error) {
+            return typeof error === 'string' ? error : (error && error.message) || (error && error.name) || 'error';
+          };
+          var postLoadError = function(error) {
+            window.ReactNativeWebView.postMessage("${HCAPTCHA_LOAD_ERROR_EVENT}" + JSON.stringify(getErrorData(error)));
+          };
           var loadApiScript = function() {
             if (typeof window.hCaptchaLoader !== 'function') {
-              window.ReactNativeWebView.postMessage('error');
+              postLoadError('error');
               return;
             }
 
-            window.hCaptchaLoader(hcaptchaConfig.loaderConfig).then(onloadCallback).catch(function(error) {
-              window.ReactNativeWebView.postMessage((error && error.message) || (error && error.name) || 'error');
-            });
+            window.hCaptchaLoader(hcaptchaConfig.loaderConfig).then(onloadCallback).catch(postLoadError);
           };
           var hcaptchaWidgetId = null;
+          var hcaptchaRequestId = null;
+          var setRequest = function(requestId) {
+            hcaptchaRequestId = requestId;
+          };
+          var postRequestMessage = function(data, requestId, error) {
+            window.ReactNativeWebView.postMessage(requestId === null ? data :
+              "${HCAPTCHA_REQUEST_EVENT}" + JSON.stringify({ requestId: requestId, data: data, error: Boolean(error) }));
+          };
+          var postCallback = function(data) {
+            if (hcaptchaRequestId === null) {
+              window.ReactNativeWebView.postMessage(data);
+            }
+          };
           var setData = function(data) {
             hcaptcha.setData(hcaptchaWidgetId, data || {});
           };
           var execute = function() {
-            hcaptcha.execute(hcaptchaWidgetId);
+            if (hcaptchaRequestId === null) {
+              hcaptcha.execute(hcaptchaWidgetId);
+            } else {
+              var requestId = hcaptchaRequestId;
+              hcaptcha.execute(hcaptchaWidgetId, { async: true }).then(function(result) {
+                postRequestMessage(result.response, requestId);
+              }, function(error) {
+                postRequestMessage(getErrorData(error), requestId, true);
+              });
+            }
           };
           var reset = function() {
             hcaptcha.reset(hcaptchaWidgetId);
@@ -318,25 +385,25 @@ const Hcaptcha = ({
               console.log("challenge render complete");
             } catch (e) {
               console.log("challenge failed to render:", e);
-              window.ReactNativeWebView.postMessage(e.name);
+              postLoadError(e.name || 'error');
             }
           };
           var onDataCallback = function(response) {
-            window.ReactNativeWebView.postMessage(response);
+            postCallback(response);
           };
           var onCancel = function() {
-            window.ReactNativeWebView.postMessage("challenge-closed");
+            postCallback("challenge-closed");
           };
           var onOpen = function() {
             document.body.style.backgroundColor = hcaptchaConfig.backgroundColor;
-            window.ReactNativeWebView.postMessage("open");
+            postRequestMessage("open", hcaptchaRequestId);
             console.log("challenge opened");
           };
-          var onDataExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
-          var onChalExpiredCallback = function(error) { window.ReactNativeWebView.postMessage(error); };
+          var onDataExpiredCallback = function(error) { postCallback(error); };
+          var onChalExpiredCallback = function(error) { postCallback(error); };
           var onDataErrorCallback = function(error) {
             console.warn("challenge error callback fired");
-            window.ReactNativeWebView.postMessage(error);
+            postCallback(error);
           };
           const getRenderConfig = function(siteKey, theme, size, orientation) {
             var config = {
@@ -368,7 +435,7 @@ const Hcaptcha = ({
   );
 
   useEffect(() => {
-    if (_journeyManagedExternally || !journeyEnabled || hasJourneyConsumerRef.current) {
+    if (destroyed || _journeyManagedExternally || !journeyEnabled || hasJourneyConsumerRef.current) {
       return undefined;
     }
 
@@ -381,31 +448,73 @@ const Hcaptcha = ({
         hasJourneyConsumerRef.current = false;
       }
     };
-  }, [_journeyManagedExternally, journeyEnabled]);
+  }, [destroyed, _journeyManagedExternally, journeyEnabled]);
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
+  const startLoadingTimeout = useCallback(() => {
+    clearTimeout(loadingTimerRef.current);
+    loadingTimerRef.current = setTimeout(() => {
       if (isLoadingRef.current) {
-        onMessage({ nativeEvent: { data: 'error', description: 'loading timeout' } });
+        const notify = !prewarmRef.current || executeRequestedRef.current;
+        isLoadingRef.current = false;
+        loadFailedRef.current = 'timeout';
+        if (prewarmRef.current) {
+          setExecuteRequested(false);
+        }
+        setIsLoading(false);
+        if (notify) {
+          onMessageRef.current({ nativeEvent: { data: 'error', description: 'loading timeout' }, success: false, reset });
+        }
       }
     }, loadingTimeout);
+  }, [reset, setExecuteRequested]);
 
-    return () => clearTimeout(timeoutId);
-  }, [onMessage]);
+  const documentKey = useMemo(() => JSON.stringify([serializedWebViewConfig, url, webViewGeneration, prewarm]), [serializedWebViewConfig, url, webViewGeneration, prewarm]);
+  const documentId = useMemo(() => ({ key: documentKey }), [documentKey]);
+  useLayoutEffect(() => {
+    if (destroyed) {
+      return;
+    }
+    documentRef.current = documentId;
+    loadStartedRef.current = false;
+    readyRef.current = false;
+    hasExecutedRef.current = false;
+    loadFailedRef.current = false;
+    if (!prewarm) {
+      setExecuteRequested(true);
+    }
+    isLoadingRef.current = true;
+    setIsLoading(true);
+    startLoadingTimeout();
+  }, [destroyed, documentId, prewarm, setExecuteRequested, startLoadingTimeout]);
 
-  const webViewRef = useRef(null);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      documentRef.current = null;
+      clearTimeout(loadingTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => () => {
+    if (prewarm) {
+      clearTokenTimer();
+    }
+  }, [prewarm, clearTokenTimer]);
+
   const injectVerifyData = (resetFirst = false) => {
     if (!webViewRef.current) {
       return;
     }
 
+    hasExecutedRef.current = true;
     webViewRef.current.injectJavaScript(buildVerifyInjectionScript(buildVerifyData({
       phoneNumber,
       phonePrefix,
       rqdata,
       userJourney: journeyEnabled ? peekJourneyEvents() : undefined,
       verifyParams,
-    }), resetFirst));
+    }), resetFirst, prewarm ? ++requestIdRef.current : undefined));
   };
 
   // This shows ActivityIndicator till webview loads hCaptcha images
@@ -417,29 +526,106 @@ const Hcaptcha = ({
     </TouchableWithoutFeedback>
   );
 
-  const reset = () => {
-    injectVerifyData(true);
+  resetRef.current = () => {
+    setExecuteRequested(true);
+    if (readyRef.current) {
+      injectVerifyData(true);
+    } else if (loadFailedRef.current) {
+      retryApiLoad();
+    }
+  };
+
+  const reloadWebView = () => {
+    if (!mountedRef.current || documentRef.current !== documentId) {
+      return;
+    }
+    documentRef.current = null;
+    readyRef.current = false;
+    hasExecutedRef.current = false;
+    isLoadingRef.current = true;
+    setIsLoading(true);
+    startLoadingTimeout();
+    // WKWebView.reload() can lose inline HTML after its content process dies.
+    setWebViewGeneration((generation) => generation + 1);
   };
 
   const retryApiLoad = () => {
-    if (!webViewRef.current) {
+    if (!webViewRef.current || documentRef.current !== documentId) {
       return;
     }
 
-    webViewRef.current.injectJavaScript('loadApiScript(); true;');
+    const timedOut = loadFailedRef.current === 'timeout';
+    loadFailedRef.current = false;
+    if (timedOut) {
+      reloadWebView();
+    } else {
+      isLoadingRef.current = true;
+      setIsLoading(true);
+      startLoadingTimeout();
+      webViewRef.current.injectJavaScript('loadApiScript(); true;');
+    }
   };
+
+  useImperativeHandle(ref, () => ({
+    execute: () => {
+      destroyedRef.current = false;
+      setDestroyed(false);
+      if (executeRequestedRef.current && !loadFailedRef.current) {
+        return;
+      }
+      setExecuteRequested(true);
+      if (readyRef.current) {
+        injectVerifyData(hasExecutedRef.current);
+      } else if (loadFailedRef.current) {
+        retryApiLoad();
+      }
+    },
+    reset: () => {
+      if (destroyedRef.current) {
+        return;
+      }
+      setExecuteRequested(false);
+      if (readyRef.current) {
+        webViewRef.current?.injectJavaScript("try { reset(); } catch (e) { window.ReactNativeWebView.postMessage((e && e.name) || 'error'); } true;");
+      }
+    },
+    destroy: () => {
+      setExecuteRequested(false);
+      destroyedRef.current = true;
+      lifetimeRef.current = {};
+      documentRef.current = null;
+      readyRef.current = false;
+      loadFailedRef.current = false;
+      isLoadingRef.current = false;
+      clearTimeout(loadingTimerRef.current);
+      clearTokenTimer();
+      setDestroyed(true);
+      setWebViewGeneration((generation) => generation + 1);
+    },
+  }));
+
+  if (destroyed) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
       <WebView
+        key={documentKey}
         ref={webViewRef}
         originWhitelist={['*']}
         onShouldStartLoadWithRequest={(event) => {
+          if (documentRef.current !== documentId) {
+            return false;
+          }
           if (event.url.slice(0, 24) === 'https://www.hcaptcha.com') {
             Linking.openURL(event.url);
             return false;
           } else if (event.url.toLowerCase().startsWith('sms:')) {
             Linking.openURL(event.url).catch((err) => {
+              if (documentRef.current !== documentId) {
+                return;
+              }
               onMessage({
                 nativeEvent: {
                   data: 'sms-open-failed',
@@ -454,29 +640,122 @@ const Hcaptcha = ({
           return true;
         }}
         mixedContentMode={'always'}
-        onMessage={(e) => {
-          isLoadingRef.current = false;
-          setIsLoading(false);
+        onContentProcessDidTerminate={reloadWebView}
+        onRenderProcessGone={reloadWebView}
+        onLoadStart={() => {
+          if (documentRef.current !== documentId) {
+            return;
+          }
+          // Android can deliver the initial load event after SDK readiness.
+          if (!loadStartedRef.current) {
+            loadStartedRef.current = true;
+            return;
+          }
+          reloadWebView();
+        }}
+        onMessage={(event) => {
+          if (documentRef.current !== documentId) {
+            return;
+          }
+          // Native events can be pooled with custom fields from an earlier token.
+          const e = Object.create(Object.getPrototypeOf(event), Object.getOwnPropertyDescriptors({
+            ...event,
+            nativeEvent: { ...event.nativeEvent },
+          }));
+          let requestError = false;
+          let requestMessage = false;
+          let loadError = false;
+          if (e.nativeEvent.data.startsWith(HCAPTCHA_LOAD_ERROR_EVENT)) {
+            try {
+              const data = JSON.parse(e.nativeEvent.data.slice(HCAPTCHA_LOAD_ERROR_EVENT.length));
+              if (typeof data !== 'string') {
+                return;
+              }
+              e.nativeEvent.data = data;
+              loadError = true;
+            } catch (_) {
+              return;
+            }
+          }
+          if (!loadError && e.nativeEvent.data.startsWith(HCAPTCHA_REQUEST_EVENT)) {
+            let message;
+            try {
+              message = JSON.parse(e.nativeEvent.data.slice(HCAPTCHA_REQUEST_EVENT.length));
+            } catch (_) {
+              return;
+            }
+            if (!message || !executeRequestedRef.current || message.requestId !== requestIdRef.current || typeof message.data !== 'string' || (message.error !== undefined && typeof message.error !== 'boolean')) {
+              return;
+            }
+            e.nativeEvent.data = message.data;
+            requestError = Boolean(message.error);
+            requestMessage = true;
+          }
+          e.markUsed = undefined;
 
-          if (e.nativeEvent.data === HCAPTCHA_READY_EVENT) {
-            injectVerifyData();
+          if (!loadError && !requestMessage && e.nativeEvent.data === HCAPTCHA_READY_EVENT) {
+            clearTimeout(loadingTimerRef.current);
+            isLoadingRef.current = false;
+            setIsLoading(false);
+            if (!readyRef.current) {
+              readyRef.current = true;
+              loadFailedRef.current = false;
+              if (executeRequestedRef.current) {
+                injectVerifyData();
+              }
+            }
             return;
           }
 
-          if (e.nativeEvent.data === 'script-error') {
-            e.reset = retryApiLoad;
-          } else {
+          if (loadError || (!requestMessage && (e.nativeEvent.data === 'script-error' || (!readyRef.current && e.nativeEvent.data === 'error')))) {
+            const notify = !prewarm || executeRequestedRef.current;
+            clearTimeout(loadingTimerRef.current);
+            isLoadingRef.current = false;
+            setIsLoading(false);
+            readyRef.current = false;
+            loadFailedRef.current = true;
             e.reset = reset;
+            e.success = false;
+            if (prewarm) {
+              setExecuteRequested(false);
+            }
+            if (notify) {
+              onMessage(e);
+            }
+            return;
           }
+          e.reset = reset;
           e.success = true;
-          if (e.nativeEvent.data === 'open') {
-          } else if (e.nativeEvent.data.length > 35) {
-            const expiredTokenTimerId = setTimeout(() => onMessage({ nativeEvent: { data: 'expired' }, success: false, reset }), tokenTimeout);
-            e.markUsed = () => clearTimeout(expiredTokenTimerId);
+          if (!requestError && e.nativeEvent.data === 'open') {
+            clearTimeout(loadingTimerRef.current);
+            isLoadingRef.current = false;
+            setIsLoading(false);
+          } else if ((!prewarm || readyRef.current) && !requestError && e.nativeEvent.data.length > 35) {
+            if (prewarm && !executeRequestedRef.current) {
+              return;
+            }
+            setExecuteRequested(false);
+            clearTimeout(loadingTimerRef.current);
+            isLoadingRef.current = false;
+            setIsLoading(false);
+            clearTokenTimer();
+            const expiredTokenTimerId = setTimeout(() => {
+              _onTokenTimerChange?.(expiredTokenTimerId, false);
+              onMessageRef.current({ nativeEvent: { data: 'expired' }, success: false, reset });
+            }, tokenTimeout);
+            tokenTimerRef.current = expiredTokenTimerId;
+            _onTokenTimerChange?.(expiredTokenTimerId, true);
+            e.markUsed = () => {
+              clearTimeout(expiredTokenTimerId);
+              _onTokenTimerChange?.(expiredTokenTimerId, false);
+            };
             if (journeyEnabled) {
               clearJourneyEvents();
             }
           } else /* error */ {
+            if (readyRef.current) {
+              setExecuteRequested(false);
+            }
             e.success = false;
           }
           onMessage(e);
@@ -493,14 +772,16 @@ const Hcaptcha = ({
       {showLoading && isLoading && renderLoading()}
     </View>
   );
-};
+});
+
+Hcaptcha.displayName = 'Hcaptcha';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
   loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
   },
   webview: {
