@@ -8,8 +8,10 @@
 const createHcaptchaMock = () => {
   const state = {
     // Controls what the loader does on the next call. `hang` models an api.js request
-    // that never settles, which is what the loading timeout exists for.
-    loader: { shouldFail: false, error: null, hang: false },
+    // that never settles, which is what the loading timeout exists for. `defer` parks
+    // the request in `pendingLoad` so a test can settle it at a chosen moment.
+    loader: { shouldFail: false, error: null, hang: false, defer: false },
+    pendingLoad: null,
     lastLoaderConfig: null,
     loadCount: 0,
     // Recorded widget interactions.
@@ -77,6 +79,18 @@ jest.mock('@hcaptcha/loader', () => ({
 
     if (state.loader.hang) {
       return new Promise(() => {});
+    }
+
+    if (state.loader.defer) {
+      return new Promise((resolve, reject) => {
+        state.pendingLoad = {
+          resolve: () => {
+            global.hcaptcha = state.api;
+            resolve(global.hcaptcha);
+          },
+          reject,
+        };
+      });
     }
 
     if (state.loader.shouldFail) {

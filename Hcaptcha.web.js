@@ -63,6 +63,9 @@ const Hcaptcha = ({
   const containerRef = useRef(null);
   const widgetIdRef = useRef(null);
   const hasRenderedRef = useRef(false);
+  // Bumped on every load and on unmount, so a loader promise from an earlier load or
+  // an unmounted instance settles into a no-op instead of reaching `onMessage`.
+  const loadGenerationRef = useRef(0);
   const journeyEnabled = Boolean(userJourney);
   const hasJourneyConsumerRef = useRef(false);
   // Declared up front: `emit` and the widget callbacks are mutually recursive with the
@@ -143,8 +146,15 @@ const Hcaptcha = ({
   const reset = useCallback(() => applyVerifyData(true), [applyVerifyData]);
 
   const loadApiScript = useCallback(() => {
+    const generation = ++loadGenerationRef.current;
+    const isStale = () => generation !== loadGenerationRef.current;
+
     hCaptchaLoader(loaderConfig)
       .then(() => {
+        if (isStale()) {
+          return;
+        }
+
         const api = getApi();
         const container = containerRef.current;
 
@@ -171,6 +181,10 @@ const Hcaptcha = ({
         }
       })
       .catch((error) => {
+        if (isStale()) {
+          return;
+        }
+
         emitRef.current((error && error.message) || (error && error.name) || 'error');
       });
   }, [loaderConfig, siteKey, normalizedTheme, normalizedSize, orientation, applyVerifyData]);
@@ -267,6 +281,7 @@ const Hcaptcha = ({
         }
       }
 
+      loadGenerationRef.current += 1;
       widgetIdRef.current = null;
       hasRenderedRef.current = false;
     };

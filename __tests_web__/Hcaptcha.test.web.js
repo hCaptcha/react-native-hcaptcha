@@ -315,6 +315,43 @@ describe('Hcaptcha on web', () => {
     expect(onMessage).not.toHaveBeenCalled();
   });
 
+  it('ignores a loader failure that settles after unmount', async () => {
+    const onMessage = jest.fn();
+    global.__hcaptcha.loader.defer = true;
+
+    const { unmount } = render(<Hcaptcha {...defaultProps} onMessage={onMessage} />);
+    const { pendingLoad } = global.__hcaptcha;
+    unmount();
+
+    await act(async () => {
+      pendingLoad.reject(new Error('script-error'));
+    });
+
+    expect(onMessage).not.toHaveBeenCalled();
+  });
+
+  it('does not let a stale load from a previous instance reach the new one', async () => {
+    const firstOnMessage = jest.fn();
+    const secondOnMessage = jest.fn();
+    global.__hcaptcha.loader.defer = true;
+
+    const first = render(<Hcaptcha {...defaultProps} onMessage={firstOnMessage} />);
+    const stalePendingLoad = global.__hcaptcha.pendingLoad;
+    first.unmount();
+
+    render(<Hcaptcha {...defaultProps} onMessage={secondOnMessage} />);
+    const freshPendingLoad = global.__hcaptcha.pendingLoad;
+
+    await act(async () => {
+      stalePendingLoad.reject(new Error('script-error'));
+      freshPendingLoad.resolve();
+    });
+
+    expect(firstOnMessage).not.toHaveBeenCalled();
+    expect(secondOnMessage).not.toHaveBeenCalled();
+    expect(global.__hcaptcha.renderCount).toBe(1);
+  });
+
   it('removes the widget on unmount', async () => {
     const { unmount } = await renderAndLoad();
 
