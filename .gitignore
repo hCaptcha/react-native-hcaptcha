@@ -9,3 +9,9 @@ output/
 
 # Generated E2E host app
 __e2e__/host/
+
+# Web example build output
+dist/
+
+# Jest coverage output
+coverage/

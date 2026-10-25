@@ -1,0 +1,12 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Hcaptcha on web matches the rendered DOM snapshot 1`] = `
+<div
+  class="css-view-g5y9jx r-flex-13awgt0"
+>
+  <div
+    class="css-view-g5y9jx r-alignItems-1awozwy r-backgroundColor-1niwhzg r-flex-13awgt0 r-justifyContent-1777fci r-width-13qz1uu"
+    data-testid="hcaptcha-container"
+  />
+</div>
+`;

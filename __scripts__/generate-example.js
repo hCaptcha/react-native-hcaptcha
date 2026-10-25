@@ -162,6 +162,16 @@ function main({ cliName, projectRelativeProjectPath, projectName, projectTemplat
     const destLibDir = path.join(projectPath, 'react-native-hcaptcha');
     const excludes = ['__e2e__/host', '__tests__', '__mocks__', 'node_modules', '.git', 'output', '.reassure'].map(e => `--exclude=${e}`).join(' ');
     execSync(`rsync -a ${excludes} ${libRoot}/ ${destLibDir}/`, { stdio: 'inherit' });
+    // npm installs a local directory dependency's devDependencies too, which a registry
+    // install never does. Unpinned ones (react-dom, react-test-renderer) resolve to the
+    // newest React and nest a second copy inside the library when the host pins an older
+    // one, so Metro bundles two Reacts and every hook call fails. `prepare` goes too: npm
+    // runs it for directory dependencies, and it calls husky, a devDependency.
+    const destPackagePath = path.join(destLibDir, 'package.json');
+    const destPackage = JSON.parse(fs.readFileSync(destPackagePath, 'utf8'));
+    delete destPackage.devDependencies;
+    delete destPackage.scripts.prepare;
+    fs.writeFileSync(destPackagePath, JSON.stringify(destPackage, null, 2) + '\n');
     execSync('npm i --save file:./react-native-hcaptcha', packageManagerOptions);
     execSync(`npm i --save-dev ${devPackages}`, packageManagerOptions);
     execSync(`npm i --save ${peerPackages}`, packageManagerOptions);

@@ -26,9 +26,20 @@ exports[`ConfirmHcaptcha renders ConfirmHcaptcha with minimum props after show()
           "selected": undefined,
         }
       }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
       accessible={true}
+      collapsable={false}
       focusable={true}
+      onBlur={[Function]}
       onClick={[Function]}
+      onFocus={[Function]}
       onResponderGrant={[Function]}
       onResponderMove={[Function]}
       onResponderRelease={[Function]}
