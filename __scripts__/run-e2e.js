@@ -23,7 +23,7 @@ fs.writeFileSync(
   path.join(host, '__e2e__', 'ExampleAutopass.js'),
   fs.readFileSync(path.join(root, 'Example.App.js'), 'utf8').replace('00000000-0000-0000-0000-000000000000', '10000000-ffff-ffff-ffff-000000000001')
 );
-for (const file of ['Hcaptcha.js', 'index.js', 'md5.js', 'package.json', 'journey']) {
+for (const file of ['Hcaptcha.js', 'hcaptchaShared.js', 'reactNativeVersion.js', 'index.js', 'md5.js', 'package.json', 'journey']) {
   fs.cpSync(path.join(root, file), path.join(host, 'react-native-hcaptcha', file), { recursive: true });
 }
 for (const file of fs.readdirSync(path.join(root, '__e2e__'))) {
