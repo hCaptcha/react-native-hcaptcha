@@ -1077,7 +1077,7 @@ describe('Hcaptcha', () => {
     expect(openURL).toHaveBeenCalledWith('https://www.hcaptcha.com/privacy');
   });
 
-  it('opens sms links externally and reports failures back through onMessage', async () => {
+  it('opens sms links externally, normalising the challenge link shape', async () => {
     const openURL = jest.spyOn(Linking, 'openURL');
     const onMessage = jest.fn();
     const component = render(
@@ -1088,17 +1088,20 @@ describe('Hcaptcha', () => {
       />
     );
 
+    // The shape the challenge emits, with the empty leading query parameter.
     openURL.mockResolvedValueOnce(true);
     const successfulSms = getWebView(component).props.onShouldStartLoadWithRequest({
-      url: 'sms:+15551234567',
+      url: 'sms:+15550001111?&body=Do%20not%20share%20the%20code%3A%20aaaa-bbbb-cccc',
     });
 
     expect(successfulSms).toBe(false);
-    expect(openURL).toHaveBeenCalledWith('sms:+15551234567');
+    expect(openURL).toHaveBeenCalledWith(
+      'sms:+15550001111?body=Do%20not%20share%20the%20code%3A%20aaaa-bbbb-cccc'
+    );
 
     openURL.mockRejectedValueOnce(new Error('sms unavailable'));
     const failedSms = getWebView(component).props.onShouldStartLoadWithRequest({
-      url: 'sms:+15557654321',
+      url: 'sms:+15550002222',
     });
 
     expect(failedSms).toBe(false);
@@ -1107,11 +1110,93 @@ describe('Hcaptcha', () => {
       expect(onMessage).toHaveBeenCalledWith({
         nativeEvent: {
           data: 'sms-open-failed',
-          description: 'sms unavailable',
+          // The rejection message embeds the URL, which carries the one-time code, so it is
+          // deliberately not forwarded.
+          description: 'Could not open the messaging app',
         },
         success: false,
       });
     });
+  });
+
+  it('handles target="_blank" links through onOpenWindow', () => {
+    // The challenge opens its sms link with target="_blank", which never reaches
+    // onShouldStartLoadWithRequest on Android.
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={jest.fn()}
+      />
+    );
+
+    getWebView(component).props.onOpenWindow({
+      nativeEvent: { targetUrl: 'sms:+15550001111?&body=code%3A%20aaaa-bbbb-cccc' },
+    });
+    expect(openURL).toHaveBeenCalledWith('sms:+15550001111?body=code%3A%20aaaa-bbbb-cccc');
+
+    getWebView(component).props.onOpenWindow({
+      nativeEvent: { targetUrl: 'https://www.hcaptcha.com/privacy' },
+    });
+    expect(openURL).toHaveBeenCalledWith('https://www.hcaptcha.com/privacy');
+
+    getWebView(component).props.onOpenWindow({
+      nativeEvent: { targetUrl: 'https://example.com/other' },
+    });
+    expect(openURL).toHaveBeenCalledWith('https://example.com/other');
+  });
+
+  it('hands off an smsto link through the same normalisation as sms', () => {
+    // The parser accepts `smsto:`, so the dispatch must too: a separate scheme check here would
+    // be a narrower matcher and would send the link out unnormalised instead.
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={jest.fn()}
+      />
+    );
+
+    const handled = getWebView(component).props.onShouldStartLoadWithRequest({
+      url: 'smsto:+1 (555) 000-1111?&body=code%3A%20aaaa-bbbb-cccc',
+    });
+
+    expect(handled).toBe(false);
+    expect(openURL).toHaveBeenCalledWith('sms:+15550001111?body=code%3A%20aaaa-bbbb-cccc');
+  });
+
+  it('does not reject when opening an hcaptcha.com link fails', async () => {
+    // This branch returns before the onOpenWindow fallback, so it has to catch for itself:
+    // an unhandled rejection here surfaces in the host app.
+    const openURL = jest
+      .spyOn(Linking, 'openURL')
+      .mockRejectedValueOnce(new Error('no browser'));
+    const onMessage = jest.fn();
+    const component = render(
+      <Hcaptcha
+        siteKey="00000000-0000-0000-0000-000000000000"
+        url="https://hcaptcha.com"
+        onMessage={onMessage}
+      />
+    );
+
+    const unhandled = jest.fn();
+    process.on('unhandledRejection', unhandled);
+
+    getWebView(component).props.onOpenWindow({
+      nativeEvent: { targetUrl: 'https://www.hcaptcha.com/privacy' },
+    });
+    expect(openURL).toHaveBeenCalledWith('https://www.hcaptcha.com/privacy');
+
+    // Let the rejection settle and the microtask queue drain.
+    await new Promise((resolve) => setImmediate(resolve));
+    process.off('unhandledRejection', unhandled);
+
+    expect(unhandled).not.toHaveBeenCalled();
+    // A browser that cannot open is not an SMS hand-off failure, so nothing is reported.
+    expect(onMessage).not.toHaveBeenCalled();
   });
 
   it('allows non-hcaptcha, non-sms navigations to continue inside the WebView', () => {

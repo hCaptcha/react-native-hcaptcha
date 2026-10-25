@@ -25,6 +25,7 @@ exports[`Hcaptcha renders Hcaptcha with minimum props 1`] = `
     onContentProcessDidTerminate={[Function]}
     onLoadStart={[Function]}
     onMessage={[Function]}
+    onOpenWindow={[Function]}
     onRenderProcessGone={[Function]}
     onShouldStartLoadWithRequest={[Function]}
     originWhitelist={

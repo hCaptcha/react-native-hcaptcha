@@ -6,6 +6,7 @@ import ReactNativeVersion from 'react-native/Libraries/Core/ReactNativeVersion';
 
 import md5 from './md5';
 import hcaptchaPackage from './package.json';
+import { parseSmsLink } from './hcaptchaSmsLink';
 import {
   clearJourneyEvents,
   disableJourneyConsumer,
@@ -604,6 +605,59 @@ const Hcaptcha = forwardRef(({
     },
   }));
 
+  // The parser is the only place that decides what an SMS link is: a second scheme check here
+  // would be a narrower matcher that drifts out of sync with it - `smsto:` is accepted by
+  // `parseSmsLink` and would otherwise never reach this hand-off.
+  const openSmsLink = (smsUrl) => {
+    const link = parseSmsLink(smsUrl);
+    if (!link) {
+      return false;
+    }
+
+    // Rebuilt from the parsed parts rather than passed through: the recipient can arrive with
+    // formatting a messaging app rejects, and the challenge emits an empty leading query
+    // parameter (`?&body=`). The body itself is re-encoded unchanged, so the one-time code
+    // reaches the composer byte-exact.
+    const target = link.recipient
+      ? `sms:${link.recipient}${link.body ? `?body=${encodeURIComponent(link.body)}` : ''}`
+      : smsUrl;
+
+    Linking.openURL(target).catch(() => {
+      if (documentRef.current !== documentId) {
+        return;
+      }
+      // The rejection message embeds the URL, and the body carries a one-time code, so it is
+      // deliberately not forwarded: this event reaches host apps that log it.
+      onMessage({
+        nativeEvent: {
+          data: 'sms-open-failed',
+          description: 'Could not open the messaging app',
+        },
+        success: false,
+      });
+    });
+
+    return true;
+  };
+
+  // Shared by both navigation callbacks. The challenge opens its `sms:` link with
+  // `target="_blank"`, which never reaches `onShouldStartLoadWithRequest` - on Android
+  // `setSupportMultipleWindows` is always on, so it surfaces as `onOpenWindow` instead.
+  const handleExternalUrl = (candidate) => {
+    if (typeof candidate !== 'string') {
+      return false;
+    }
+
+    if (candidate.slice(0, 24) === 'https://www.hcaptcha.com') {
+      // Returning true keeps this off the `onOpenWindow` fallback below, which is where the
+      // rejection would otherwise have been caught.
+      Linking.openURL(candidate).catch(() => {});
+      return true;
+    }
+
+    return openSmsLink(candidate);
+  };
+
   if (destroyed) {
     return null;
   }
@@ -614,30 +668,20 @@ const Hcaptcha = forwardRef(({
         key={documentKey}
         ref={webViewRef}
         originWhitelist={['*']}
-        onShouldStartLoadWithRequest={(event) => {
+        onShouldStartLoadWithRequest={(event) => documentRef.current === documentId && !handleExternalUrl(event.url)}
+        onOpenWindow={(event) => {
           if (documentRef.current !== documentId) {
-            return false;
+            return;
           }
-          if (event.url.slice(0, 24) === 'https://www.hcaptcha.com') {
-            Linking.openURL(event.url);
-            return false;
-          } else if (event.url.toLowerCase().startsWith('sms:')) {
-            Linking.openURL(event.url).catch((err) => {
-              if (documentRef.current !== documentId) {
-                return;
-              }
-              onMessage({
-                nativeEvent: {
-                  data: 'sms-open-failed',
-                  description: err.message,
-                },
-                success: false,
-              });
-            });
-            return false;
+          const { targetUrl } = event.nativeEvent;
+          if (handleExternalUrl(targetUrl)) {
+            return;
           }
 
-          return true;
+          // A `target="_blank"` link the challenge does not own. Android already sent these out
+          // to the system before this callback existed, so keep that behaviour rather than
+          // swallowing the navigation.
+          Linking.openURL(targetUrl).catch(() => {});
         }}
         mixedContentMode={'always'}
         onContentProcessDidTerminate={reloadWebView}
