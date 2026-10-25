@@ -39,6 +39,9 @@ const sdk = `
   window.hCaptchaOnLoad();
 `;
 const jsSrc = `data:application/javascript,${encodeURIComponent(sdk)}#`;
+// `render` gives up after 1s by default, and the first render in a process creates the first
+// native WebView, which on the CI Android emulator takes longer than that.
+const MOUNT_OPTIONS = { timeout: 10000 };
 // Native process startup is separate from the library's 15-second loading deadline.
 const sdkReadyOptions = { timeout: 30000 };
 const waitForSdk = (testId) => waitFor(() => expect(screen.queryByTestId(testId)).not.toBeNull(), sdkReadyOptions);
@@ -115,7 +118,7 @@ describe('native WebView prewarm', () => {
     const lateSdk = `setTimeout(function() { ${sdk} }, 16000);`;
     await render(<PrewarmFixture key="late-ready" captchaRef={ref}
       sdkSource={`data:application/javascript,${encodeURIComponent(lateSdk)}#`}
-      onEvent={(event) => events.push(event)} />);
+      onEvent={(event) => events.push(event)} />, MOUNT_OPTIONS);
     await waitForSdk('loads-1');
     expect(events.map((event) => event.nativeEvent.data)).toEqual(['fixture-ready']);
     ref.current.execute();
@@ -130,7 +133,7 @@ describe('native WebView prewarm', () => {
       const events = [];
       await render(<PrewarmFixture key={`render-retry-${variant}`} captchaRef={ref}
         inline={variant === 'inline'} passiveSiteKey={variant === 'passive'} onEvent={(event) => events.push(event)}
-        sdkSource={`data:application/javascript,${encodeURIComponent('window.fixtureRenderFailures = 2;\n' + sdk)}#`} />);
+        sdkSource={`data:application/javascript,${encodeURIComponent('window.fixtureRenderFailures = 2;\n' + sdk)}#`} />, MOUNT_OPTIONS);
       await waitFor(async () => {
         const state = await (await fetch(`${authServer}/state`)).json();
         expect(state.sdkReady).toBe(1);
@@ -151,7 +154,7 @@ describe('native WebView prewarm', () => {
       const key = `hidden-reset-${variant}`;
       const props = { captchaRef: ref, delayedTokens: true,
         inline: variant === 'inline', passiveSiteKey: variant === 'passive', onEvent: (event) => events.push(event) };
-      const fixture = await render(<PrewarmFixture key={key} {...props} />);
+      const fixture = await render(<PrewarmFixture key={key} {...props} />, MOUNT_OPTIONS);
       await waitForSdk('loads-1');
       ref.current.execute();
       await waitFor(() => expect(events.filter((event) => event.markUsed)).toHaveLength(1), { timeout: 10000 });
@@ -180,7 +183,7 @@ describe('native WebView prewarm', () => {
       const props = { captchaRef: ref, inline: variant === 'inline', passiveSiteKey: variant === 'passive',
         onEvent: (event) => events.push(event) };
       const fixture = await render(<PrewarmFixture key={`loading-${variant}`} {...props}
-        sdkSource={`${authServer}/slow/1/api.js`} />);
+        sdkSource={`${authServer}/slow/1/api.js`} />, MOUNT_OPTIONS);
       await waitFor(async () => {
         const state = await (await fetch(`${authServer}/state`)).json();
         expect(state.sdkLoads).toBe(1);
@@ -203,7 +206,7 @@ describe('native WebView prewarm', () => {
         const events = [];
         await render(<PrewarmFixture key={`destroy-${variant}-${phase}`} captchaRef={ref}
           inline={variant === 'inline'} passiveSiteKey={variant === 'passive'}
-          delayedTokens={phase === 'pending'} hideAfterToken={false} onEvent={(event) => events.push(event)} />);
+          delayedTokens={phase === 'pending'} hideAfterToken={false} onEvent={(event) => events.push(event)} />, MOUNT_OPTIONS);
         await waitForSdk('loads-1');
         if (phase !== 'ready') {
           ref.current.execute();
@@ -231,7 +234,7 @@ describe('native WebView prewarm', () => {
 
   for (const passiveSiteKey of [false, true]) {
     test(`loads while hidden and reuses the widget (passiveSiteKey=${passiveSiteKey})`, async () => {
-      await render(<PrewarmFixture key={String(passiveSiteKey)} passiveSiteKey={passiveSiteKey} />);
+      await render(<PrewarmFixture key={String(passiveSiteKey)} passiveSiteKey={passiveSiteKey} />, MOUNT_OPTIONS);
       await waitForSdk('ready');
       for (const attempt of [1, 2]) {
         await userEvent.press(await screen.findByTestId('execute'));
@@ -241,7 +244,7 @@ describe('native WebView prewarm', () => {
     });
 
     test(`rejects a cancelled outcome after re-execute (passiveSiteKey=${passiveSiteKey})`, async () => {
-      await render(<PrewarmFixture key={`cancel-${passiveSiteKey}`} passiveSiteKey={passiveSiteKey} delayedTokens cancelAndRetry />);
+      await render(<PrewarmFixture key={`cancel-${passiveSiteKey}`} passiveSiteKey={passiveSiteKey} delayedTokens cancelAndRetry />, MOUNT_OPTIONS);
       await waitForSdk('ready');
       await userEvent.press(await screen.findByTestId('execute'));
       await new Promise((resolve) => setTimeout(resolve, 2500));
@@ -251,7 +254,7 @@ describe('native WebView prewarm', () => {
     });
 
     test(`preserves a held token across presentation change (passiveSiteKey=${passiveSiteKey})`, async () => {
-      const fixture = await render(<PrewarmFixture key={`presentation-${passiveSiteKey}`} passiveSiteKey={passiveSiteKey} hideAfterToken={false} />);
+      const fixture = await render(<PrewarmFixture key={`presentation-${passiveSiteKey}`} passiveSiteKey={passiveSiteKey} hideAfterToken={false} />, MOUNT_OPTIONS);
       await waitForSdk('ready');
       await userEvent.press(await screen.findByTestId('execute'));
       await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-000000000000'));
@@ -263,7 +266,7 @@ describe('native WebView prewarm', () => {
   }
 
   test('recreates the native document after a theme change', async () => {
-    const fixture = await render(<PrewarmFixture key="theme" passiveSiteKey />);
+    const fixture = await render(<PrewarmFixture key="theme" passiveSiteKey />, MOUNT_OPTIONS);
     await waitForSdk('loads-1');
     await userEvent.press(await screen.findByTestId('execute'));
     await waitFor(() => screen.findByTestId('fixture-token-widget-1-attempt-1-000000000000'));
@@ -278,7 +281,7 @@ describe('native WebView prewarm', () => {
     test(`updates verification data with the expected reload behavior (legacy=${legacy})`, async () => {
       const initial = legacy ? { rqdata: 'initial' } : { verifyParams: { rqdata: 'initial' } };
       const updated = legacy ? { rqdata: 'current-000000000000' } : { verifyParams: { rqdata: 'current-000000000000' } };
-      const fixture = await render(<PrewarmFixture key={`payload-${legacy}`} passiveSiteKey {...initial} />);
+      const fixture = await render(<PrewarmFixture key={`payload-${legacy}`} passiveSiteKey {...initial} />, MOUNT_OPTIONS);
       await waitForSdk('loads-1');
       await fixture.rerender(<PrewarmFixture key={`payload-${legacy}`} passiveSiteKey {...updated} />);
       const loads = legacy ? 2 : 1;
