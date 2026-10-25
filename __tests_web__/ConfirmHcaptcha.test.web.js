@@ -99,6 +99,28 @@ describe('ConfirmHcaptcha on web', () => {
     expect(screen.queryByTestId('confirm-hcaptcha-backdrop')).toBeNull();
   });
 
+  it.each([false, true])('ignores prewarm and mounts on show() (passiveSiteKey=%s)', async (passiveSiteKey) => {
+    const { ref, container } = renderConfirm({ prewarm: true, passiveSiteKey });
+
+    // Native prewarm would mount a hidden widget here; the web widget would execute it at
+    // once, so the wrapper must not take that path on web.
+    expect(container.firstChild).toBeNull();
+    expect(global.__hcaptcha.loadCount).toBe(0);
+
+    await show(ref);
+
+    expect(screen.queryByTestId('confirm-hcaptcha-prewarm')).toBeNull();
+    expect(screen.getByTestId('hcaptcha-container')).toBeTruthy();
+    expect(global.__hcaptcha.executeCount).toBe(1);
+
+    await act(async () => {
+      ref.current.hide();
+    });
+
+    expect(screen.queryByTestId('hcaptcha-container')).toBeNull();
+    expect(global.__hcaptcha.removeCount).toBe(1);
+  });
+
   it('forwards a token from the widget through to onMessage', async () => {
     const onMessage = jest.fn();
     const { ref } = renderConfirm({ onMessage });

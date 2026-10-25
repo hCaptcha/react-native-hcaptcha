@@ -78,7 +78,7 @@ export default function Example() {
 
 ### Prewarming a multi-step flow
 
-Set `prewarm` to load the WebView and SDK on mount without fetching a token. It defaults to `false`, preserving the existing mount-on-`show()` behavior.
+Set `prewarm` to load the WebView and SDK on mount without fetching a token. It defaults to `false`, preserving the existing mount-on-`show()` behavior. Prewarming is native-only; it is [ignored on web](#react-native-web).
 
 Mount `ConfirmHcaptcha` once at the app root, after your navigation/content, inside a full-screen `View`. Keep it mounted across screens. Call `captchaRef.current.execute()` when screen 2 loads; `show()` is equivalent. Calls made before SDK readiness are queued. `hide()` cancels pending verification and keeps the WebView warm for reuse.
 
@@ -323,13 +323,14 @@ fields, and `size`, `theme`, `rqdata`, `verifyParams`, MFA phone props, User Jou
 the 15-second loading timeout and the 120-second token expiry all behave as documented
 above.
 
-Three behaviours necessarily differ:
+Four behaviours necessarily differ:
 
 | Prop / behaviour | On web |
 | --- | --- |
 | `backgroundColor` | Not applied to the page. On native it tints the WebView document body; on web that document is your app's own page, so the library leaves it alone. The `ConfirmHcaptcha` modal backdrop still uses it. |
 | `debug` | Debug markers are set on `window` rather than inside a WebView, because the widget now runs in the host document. |
 | `sms:` links | Handled by the browser and the hCaptcha widget directly; there is no WebView navigation to intercept, so no `sms-open-failed` event is emitted. |
+| `prewarm` | Ignored. Prewarming keeps a native WebView alive between `show()` calls; on web there is no WebView to keep, so `ConfirmHcaptcha` mounts on `show()` as if `prewarm` were `false`. The inline `Hcaptcha` export has no `execute()` / `reset()` / `destroy()` ref methods on web. |
 
 ### Run the example
 
