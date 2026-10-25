@@ -1,6 +1,7 @@
 import React from 'react';
 import { act, cleanup, render, screen } from '@testing-library/react';
 
+import Hcaptcha from '../Hcaptcha';
 import ConfirmHcaptcha from '../index';
 import {
   __unsafeResetJourneyRuntime,
@@ -154,6 +155,29 @@ describe('journey on web', () => {
 
     // The second consumer still holds capture open.
     expect(isJourneyCapturing()).toBe(true);
+  });
+
+  it('omits journey events when userJourney is turned off before the loader resolves', async () => {
+    initJourneyTracking();
+    global.__hcaptcha.loader.defer = true;
+
+    const { rerender } = render(
+      <Hcaptcha siteKey={SITE_KEY} onMessage={() => {}} userJourney={true} />
+    );
+    emitJourneyEvent('click', 'View', { id: 'must-not-leak', ac: 'tap' });
+
+    rerender(<Hcaptcha siteKey={SITE_KEY} onMessage={() => {}} userJourney={false} />);
+    // The runtime keeps buffering after the last consumer disables, so the event is
+    // still there for a stale closure to pick up.
+    expect(peekJourneyEvents()).toHaveLength(1);
+
+    await act(async () => {
+      global.__hcaptcha.pendingLoad.resolve();
+    });
+
+    const { setDataCalls } = global.__hcaptcha;
+    expect(setDataCalls).toHaveLength(1);
+    expect(JSON.stringify(setDataCalls[0].data)).not.toContain('must-not-leak');
   });
 
   it('forwards buffered journey events into the verify payload', async () => {

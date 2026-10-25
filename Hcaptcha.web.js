@@ -67,6 +67,10 @@ const Hcaptcha = ({
   // an unmounted instance settles into a no-op instead of reaching `onMessage`.
   const loadGenerationRef = useRef(0);
   const journeyEnabled = Boolean(userJourney);
+  // Read at execute time: a pending loader holds an old `applyVerifyData`, and the flag
+  // may have been turned off before it resolves.
+  const journeyEnabledRef = useRef(journeyEnabled);
+  journeyEnabledRef.current = journeyEnabled;
   const hasJourneyConsumerRef = useRef(false);
   // Declared up front: `emit` and the widget callbacks are mutually recursive with the
   // loader, so both are reached through refs that are populated further down.
@@ -134,14 +138,14 @@ const Hcaptcha = ({
         phoneNumber: pn,
         phonePrefix: pp,
         rqdata: rq,
-        userJourney: journeyEnabled ? peekJourneyEvents() : undefined,
+        userJourney: journeyEnabledRef.current ? peekJourneyEvents() : undefined,
         verifyParams: vp,
       }));
       api.execute(widgetId);
     } catch (e) {
       emitRef.current((e && e.name) || 'error');
     }
-  }, [journeyEnabled]);
+  }, []);
 
   const reset = useCallback(() => applyVerifyData(true), [applyVerifyData]);
 
