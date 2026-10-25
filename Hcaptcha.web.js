@@ -161,6 +161,10 @@ const Hcaptcha = ({
             callbacks: callbacksRef.current,
           }));
           hasRenderedRef.current = true;
+          // Parity with native's ready event: a rendered widget is no longer loading,
+          // even if it has not emitted open/token/error yet.
+          isLoadingRef.current = false;
+          setIsLoading(false);
           applyVerifyData();
         } catch (e) {
           emitRef.current((e && e.name) || 'error');

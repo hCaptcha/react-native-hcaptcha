@@ -40,31 +40,24 @@ afterEach(() => {
 });
 
 describe('web render counts', () => {
-  it('commits Hcaptcha once on mount', async () => {
+  it('commits Hcaptcha twice through mount and widget render', async () => {
     const { commits } = await countCommits(
       <Hcaptcha siteKey={SITE_KEY} onMessage={() => {}} />
     );
 
-    // Loading the widget does not clear `isLoading` — that only happens in `emit`,
-    // on the first message. So a successful load costs no extra commit.
-    expect(commits()).toBe(1);
+    // One commit for mount, one for setIsLoading(false) once the widget renders —
+    // the web counterpart of native's ready event.
+    expect(commits()).toBe(2);
   });
 
-  it('costs exactly one extra commit when the first message clears the loading state', async () => {
+  it('costs at most one redundant commit per message once loading is cleared', async () => {
     const { commits } = await countCommits(
       <Hcaptcha siteKey={SITE_KEY} onMessage={() => {}} />
     );
-    expect(commits()).toBe(1);
-
-    await act(async () => {
-      global.__hcaptcha.fire('open-callback');
-    });
-
-    // One commit for setIsLoading(false).
     expect(commits()).toBe(2);
 
     await act(async () => {
-      global.__hcaptcha.fire('close-callback');
+      global.__hcaptcha.fire('open-callback');
     });
 
     // Known redundancy, not a regression: `emit` calls `setIsLoading(false)` on every
@@ -75,12 +68,12 @@ describe('web render counts', () => {
     expect(commits()).toBe(3);
   });
 
-  it('commits Hcaptcha once when the loading overlay is disabled', async () => {
+  it('commits Hcaptcha twice when the loading overlay is disabled', async () => {
     const { commits } = await countCommits(
       <Hcaptcha siteKey={SITE_KEY} onMessage={() => {}} showLoading={false} />
     );
 
-    expect(commits()).toBe(1);
+    expect(commits()).toBe(2);
   });
 
   it('commits ConfirmHcaptcha once before show() is called', async () => {

@@ -301,6 +301,20 @@ describe('Hcaptcha on web', () => {
     expect(onMessage).not.toHaveBeenCalled();
   });
 
+  it('clears loading and skips the loading timeout once the widget renders', async () => {
+    const onMessage = jest.fn();
+    // Invisible widgets render and execute without emitting open/token/error.
+    await renderAndLoad({ onMessage, showLoading: true, size: 'invisible' });
+
+    expect(screen.queryByRole('progressbar')).toBeNull();
+
+    act(() => {
+      jest.advanceTimersByTime(15000);
+    });
+
+    expect(onMessage).not.toHaveBeenCalled();
+  });
+
   it('removes the widget on unmount', async () => {
     const { unmount } = await renderAndLoad();
 
