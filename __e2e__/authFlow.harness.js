@@ -3,11 +3,15 @@ import { screen, userEvent } from '@react-native-harness/ui';
 import React from 'react';
 import PrewarmAuthApp, { authServer } from './PrewarmAuthApp';
 
+// `render` gives up after 1s by default, and the first render in a process creates the first
+// native WebView, which on the CI Android emulator takes longer than that.
+const MOUNT_OPTIONS = { timeout: 10000 };
+
 describe('live SDK multi-screen auth flow', () => {
   for (const passiveSiteKey of [false, true]) {
     test(`signs up and logs in after destroying the warmed WebView (passiveSiteKey=${passiveSiteKey})`, async () => {
       await fetch(`${authServer}/reset`, { method: 'POST' });
-      await render(<PrewarmAuthApp destroyOnLeave destroyAfterToken passiveSiteKey={passiveSiteKey} />);
+      await render(<PrewarmAuthApp destroyOnLeave destroyAfterToken passiveSiteKey={passiveSiteKey} />, MOUNT_OPTIONS);
       await userEvent.type(await screen.findByTestId('email'), 'destroy@example.test');
       for (const [attempt, mode] of ['signup', 'login'].entries()) {
         await userEvent.press(await screen.findByTestId(mode));
@@ -30,7 +34,7 @@ describe('live SDK multi-screen auth flow', () => {
   for (const passiveSiteKey of [false, true]) {
     test(`prewarms, signs up, and logs in without reloading (passiveSiteKey=${passiveSiteKey})`, async () => {
       await fetch(`${authServer}/reset`, { method: 'POST' });
-      await render(<PrewarmAuthApp passiveSiteKey={passiveSiteKey} />);
+      await render(<PrewarmAuthApp passiveSiteKey={passiveSiteKey} />, MOUNT_OPTIONS);
       await waitFor(
         async () => {
           const state = await (await fetch(`${authServer}/state`)).json();
@@ -75,7 +79,7 @@ describe('live SDK multi-screen auth flow', () => {
 
   test('cancels queued verification and reuses the warmed SDK on retry', async () => {
     await fetch(`${authServer}/reset`, { method: 'POST' });
-    await render(<PrewarmAuthApp slowSdk passiveSiteKey />);
+    await render(<PrewarmAuthApp slowSdk passiveSiteKey />, MOUNT_OPTIONS);
     await userEvent.type(await screen.findByTestId('email'), 'cancel@example.test');
     await userEvent.press(await screen.findByTestId('signup'));
     await userEvent.press(await screen.findByTestId('cancel'));
@@ -96,7 +100,7 @@ describe('live SDK multi-screen auth flow', () => {
   test('fetches a fresh token after the backend rejects credentials', async () => {
     await fetch(`${authServer}/reset`, { method: 'POST' });
     const measurements = { attempts: [], errors: [], authErrors: [] };
-    await render(<PrewarmAuthApp passiveSiteKey measurements={measurements} />);
+    await render(<PrewarmAuthApp passiveSiteKey measurements={measurements} />, MOUNT_OPTIONS);
     await userEvent.type(await screen.findByTestId('email'), 'retry@example.test');
     for (const [mode, password, tokenCount] of [['signup', 'Password-123', 1], ['login', 'Password', 2]]) {
       await userEvent.press(await screen.findByTestId(mode));

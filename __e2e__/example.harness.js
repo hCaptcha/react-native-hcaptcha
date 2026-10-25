@@ -6,6 +6,10 @@ import App from '../App';
 import AutopassExample from './ExampleAutopass';
 import { authServer } from './PrewarmAuthApp';
 
+// `render` gives up after 1s by default, and the first render in a process creates the first
+// native WebView, which on the CI Android emulator takes longer than that.
+const MOUNT_OPTIONS = { timeout: 10000 };
+
 async function saveScreenshot(phase) {
   const screenshot = await screen.screenshot();
   expect(screenshot).not.toBeNull();
@@ -35,7 +39,7 @@ describe('original repository example', () => {
   afterEach(() => log.mockRestore());
 
   test('opens, dismisses, and reopens the live demo challenge', async () => {
-    await render(<App />);
+    await render(<App />, MOUNT_OPTIONS);
     for (const attempt of [1, 2]) {
       await launchExample(log);
       await waitFor(() => expect(log.mock.calls.filter(([message]) => message === 'Visual challenge opened')).toHaveLength(attempt), { timeout: 30000 });
@@ -56,7 +60,7 @@ describe('original repository example', () => {
   // Generated from Example.App.js; only the sitekey changes to the public auto-pass key.
   test('displays valid tokens and allows a second launch with the auto-pass key', async () => {
     await fetch(`${authServer}/reset`, { method: 'POST' });
-    await render(<AutopassExample />);
+    await render(<AutopassExample />, MOUNT_OPTIONS);
     for (const attempt of [1, 2]) {
       await launchExample(log);
       await waitFor(() => expect(log.mock.calls.filter(([message]) => message === 'Verified code from hCaptcha')).toHaveLength(attempt), { timeout: 30000 });
